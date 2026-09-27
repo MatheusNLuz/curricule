@@ -13,6 +13,7 @@ export type SessionUser = {
   userId: string;
   email: string;
   name?: string | null;
+  image?: string | null;
 };
 
 export async function hashPassword(password: string): Promise<string> {
@@ -64,7 +65,7 @@ export const getSessionUser = cache(async function getSessionUser() {
             select: { id: true, email: true, name: true },
           });
 
-      return { userId: user.id, email: user.email, name: user.name } satisfies SessionUser;
+      return { userId: user.id, email: user.email, name: user.name, image: neonUser.image ?? null } satisfies SessionUser;
     } catch (error) {
       console.error("Erro ao consultar sessão Neon Auth:", error);
       return null;

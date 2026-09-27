@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getFetchErrorMessage, getLoginUrl, readApiError } from "./api-client.ts";
+import { getFetchErrorMessage, getLoginUrl, getOAuthCallbackUrl, readApiError } from "./api-client.ts";
+
+test("keeps safe in-app destinations for OAuth and rejects external redirects", () => {
+  assert.equal(getOAuthCallbackUrl("/analysis/new?mode=OPTIMIZE_FOR_JOB"), "/analysis/new?mode=OPTIMIZE_FOR_JOB");
+  assert.equal(getOAuthCallbackUrl("//attacker.example"), "/");
+  assert.equal(getOAuthCallbackUrl("https://attacker.example"), "/");
+});
 
 test("preserves the requested analysis route in the login URL", () => {
   assert.equal(

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Add01Icon,
@@ -9,10 +9,10 @@ import {
   Clock01Icon,
   File02Icon,
   Home01Icon,
-  Logout01Icon,
   Menu01Icon,
 } from "@hugeicons/core-free-icons";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AccountMenu, UserAvatar } from "@/components/app-shell/account-menu";
 import { HugeIcon } from "@/components/ui/huge-icon";
 import type { SessionUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -24,14 +24,7 @@ const navigation = [
 
 export function AppShellNav({ session }: { session: SessionUser | null }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
-  };
 
   const isAuthRoute = pathname === "/login" || pathname === "/register";
 
@@ -56,6 +49,10 @@ export function AppShellNav({ session }: { session: SessionUser | null }) {
 
   return (
     <>
+      <header data-app-shell-nav className="sticky top-0 z-30 hidden h-16 items-center justify-end border-b border-border/80 bg-background/90 pl-64 pr-8 backdrop-blur-xl md:flex">
+        <AccountMenu session={session} />
+      </header>
+
       <aside data-app-shell-nav className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border/80 bg-surface/92 px-4 py-5 backdrop-blur-xl md:flex">
         <div className="flex items-center justify-between gap-3">
           <Brand />
@@ -73,11 +70,8 @@ export function AppShellNav({ session }: { session: SessionUser | null }) {
         </div>
         <div className="space-y-3 border-t border-border pt-4">
           <div className="flex items-center gap-3 px-2">
-            <div className="grid size-9 shrink-0 place-items-center rounded-full bg-soft-primary text-sm font-semibold text-primary">{(session.name || session.email).slice(0, 1).toUpperCase()}</div>
+            <UserAvatar session={session} />
             <div className="min-w-0"><p className="truncate text-[13px] font-semibold">{session.name || "Sua conta"}</p><p className="truncate text-[11px] text-muted-foreground">{session.email}</p></div>
-          </div>
-          <div className="flex items-center justify-end px-2">
-            <button type="button" onClick={handleLogout} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-signal/10 hover:text-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/40"><HugeIcon icon={Logout01Icon} size={15} /> Sair</button>
           </div>
         </div>
       </aside>
@@ -87,6 +81,7 @@ export function AppShellNav({ session }: { session: SessionUser | null }) {
           <Brand compact />
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <AccountMenu session={session} />
             <button type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-label={open ? "Fechar menu" : "Abrir menu"} className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-surface text-muted-foreground transition-colors hover:bg-soft-primary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"><HugeIcon icon={open ? Cancel01Icon : Menu01Icon} size={18} /></button>
           </div>
         </div>
@@ -96,7 +91,6 @@ export function AppShellNav({ session }: { session: SessionUser | null }) {
               {navigation.map((item) => <NavItem key={item.href} item={item} pathname={pathname} onNavigate={() => setOpen(false)} />)}
             </nav>
             <Link href="/analysis/new?mode=OPTIMIZE_FOR_JOB" onClick={() => setOpen(false)} className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-primary-foreground"><HugeIcon icon={Add01Icon} size={17} /> Começar jornada</Link>
-            <button type="button" onClick={handleLogout} className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-medium text-signal hover:bg-signal/10"><HugeIcon icon={Logout01Icon} size={16} /> Sair da conta</button>
           </div>
         )}
       </header>

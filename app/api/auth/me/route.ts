@@ -14,7 +14,7 @@ export async function GET() {
       select: { id: true, email: true, name: true }
     });
 
-    return NextResponse.json({ user });
+    return NextResponse.json({ user: user ? { ...user, image: session.image ?? null } : null });
   } catch (error) {
     console.error("Erro no fetch do usuário:", error);
     return NextResponse.json({ user: null });

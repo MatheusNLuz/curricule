@@ -3,6 +3,12 @@ export function getLoginUrl(nextPath = "/") {
   return `/login?${new URLSearchParams({ next: safePath }).toString()}`;
 }
 
+export function getOAuthCallbackUrl(nextPath: string | null = "/") {
+  return nextPath?.startsWith("/") && !nextPath.startsWith("//") && !nextPath.includes("\\")
+    ? nextPath
+    : "/";
+}
+
 export async function readApiError(response: Response, fallback: string) {
   try {
     const payload = await response.clone().json() as { error?: unknown };
