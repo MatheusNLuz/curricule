@@ -17,7 +17,7 @@ const stepDelayClasses = ["delay-0", "delay-75", "delay-150", "delay-200", "dela
 
 export function RouteLine({ steps, activeIndex, className }: RouteLineProps) {
   return (
-    <ol className={cn("grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-0", className)} aria-label="Etapas da jornada">
+    <ol className={cn("grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-0", className)} aria-label="Etapas da análise">
       {steps.map((step, index) => {
         const complete = index < activeIndex;
         const active = index === activeIndex;

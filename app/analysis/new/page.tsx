@@ -9,6 +9,8 @@ import { useToast } from "@/components/ui/custom-toast";
 import { HugeIcon } from "@/components/ui/huge-icon";
 import { RouteLine } from "@/components/ui/route-line";
 import { getFetchErrorMessage, readApiError } from "@/lib/api-client";
+import { resolveAnalysisMode } from "@/lib/analysis-modes";
+import { AnalysisModeGrid } from "@/components/home/analysis-mode-grid";
 
 const MODE_LABELS: Record<string, string> = {
   MAKE_ATS_FRIENDLY: "Otimização para ATS",
@@ -37,7 +39,7 @@ function NewAnalysisContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const mode = searchParams.get("mode") || "MAKE_ATS_FRIENDLY";
+  const mode = resolveAnalysisMode(searchParams.get("mode"));
   const requiresJob = mode === "COMPARE_AGAINST_JOB" || mode === "OPTIMIZE_FOR_JOB" || mode === "COVER_LETTER_ONLY";
   const [file, setFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState("");
@@ -47,6 +49,16 @@ function NewAnalysisContent() {
   const [activeTab, setActiveTab] = useState("pdf");
   const [dragActive, setDragActive] = useState(false);
   const [linkedInLanguage, setLinkedInLanguage] = useState("pt-BR");
+
+  if (!mode) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 pb-24 pt-10 sm:px-8 lg:px-12 lg:pt-14">
+        <h1 className="font-heading text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Escolha uma análise</h1>
+        <p className="mt-3 max-w-[58ch] text-[14px] leading-7 text-muted-foreground">Selecione o tipo de ajuda para continuar com seu currículo ou perfil.</p>
+        <AnalysisModeGrid />
+      </div>
+    );
+  }
 
   const selectedLocation = JOB_LOCATIONS.find((location) => location.value === jobLocation);
   const hasResume = Boolean(file || pastedText.trim());

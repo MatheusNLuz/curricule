@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { href: "/", label: "Início", icon: Home01Icon },
   { href: "/history", label: "Histórico", icon: Clock01Icon },
+  { href: "/resumes", label: "Ver currículos", icon: File02Icon },
 ];
 
 export function AppShellNav({ session }: { session: SessionUser | null }) {
@@ -63,9 +64,9 @@ export function AppShellNav({ session }: { session: SessionUser | null }) {
           <nav className="mt-3 space-y-1" aria-label="Navegação principal">
             {navigation.map((item) => <NavItem key={item.href} item={item} pathname={pathname} />)}
           </nav>
-          <Link href="/analysis/new?mode=OPTIMIZE_FOR_JOB" className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
+          <Link href="/analysis/new" className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
             <HugeIcon icon={Add01Icon} size={17} />
-            Começar jornada
+            Nova análise
           </Link>
         </div>
         <div className="space-y-3 border-t border-border pt-4">
@@ -90,12 +91,12 @@ export function AppShellNav({ session }: { session: SessionUser | null }) {
             <nav className="grid gap-1" aria-label="Navegação principal">
               {navigation.map((item) => <NavItem key={item.href} item={item} pathname={pathname} onNavigate={() => setOpen(false)} />)}
             </nav>
-            <Link href="/analysis/new?mode=OPTIMIZE_FOR_JOB" onClick={() => setOpen(false)} className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-primary-foreground"><HugeIcon icon={Add01Icon} size={17} /> Começar jornada</Link>
+            <Link href="/analysis/new" onClick={() => setOpen(false)} className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-primary-foreground"><HugeIcon icon={Add01Icon} size={17} /> Nova análise</Link>
           </div>
         )}
       </header>
 
-      <nav data-app-shell-nav className="fixed inset-x-0 bottom-0 z-40 grid min-h-16 grid-cols-2 border-t border-border bg-surface/95 px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl md:hidden" aria-label="Navegação rápida">
+      <nav data-app-shell-nav className="fixed inset-x-0 bottom-0 z-40 grid min-h-16 grid-cols-3 border-t border-border bg-surface/95 px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl md:hidden" aria-label="Navegação rápida">
         {navigation.map((item) => <NavItem key={item.href} item={item} pathname={pathname} compact />)}
       </nav>
     </>

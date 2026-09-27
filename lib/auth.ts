@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { getNeonAuth } from "@/lib/auth/server";
+import { getPreferredProfileName } from "@/lib/user-profile";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "atsforge-default-ultra-secure-key-32chars-minimum"
@@ -57,7 +58,7 @@ export const getSessionUser = cache(async function getSessionUser() {
       const user = existingUser
         ? await prisma.user.update({
             where: { id: existingUser.id },
-            data: { neonAuthId: neonUser.id, name: neonUser.name || existingUser.name },
+            data: { neonAuthId: neonUser.id, name: getPreferredProfileName(existingUser.name, neonUser.name) },
             select: { id: true, email: true, name: true },
           })
         : await prisma.user.create({

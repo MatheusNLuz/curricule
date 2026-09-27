@@ -39,7 +39,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       if (!response.ok) throw new Error(await readApiError(response, "Não foi possível entrar."));
-      toast({ title: "Bem-vindo de volta", description: "Sua jornada está pronta para continuar.", variant: "success" });
+      toast({ title: "Bem-vindo de volta", description: "Sua análise está pronta para continuar.", variant: "success" });
       const requestedPath = searchParams.get("next");
       const nextPath = requestedPath?.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : "/";
       router.push(nextPath);
@@ -83,7 +83,7 @@ export default function LoginPage() {
       <div className="mx-auto w-full max-w-md">
         <div className="mb-7 lg:hidden"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Bem-vindo ao Curriculy</p><h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.05em]">Entre para continuar.</h1></div>
         <div className="surface rounded-[24px] p-6 shadow-[0_24px_80px_rgba(108,74,163,0.10)] sm:p-8">
-          <div className="mb-8"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Seu espaço profissional</p><h2 className="mt-2 font-heading text-2xl font-semibold tracking-[-0.04em]">Entrar na conta</h2><p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Retome a jornada exatamente de onde parou.</p></div>
+          <div className="mb-8"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Seu espaço profissional</p><h2 className="mt-2 font-heading text-2xl font-semibold tracking-[-0.04em]">Entrar na conta</h2><p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Retome sua análise exatamente de onde parou.</p></div>
           <button type="button" onClick={handleGoogleSignIn} disabled={loading || googleLoading} className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border bg-background px-4 text-[13px] font-semibold text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
             <GoogleMark />
             {googleLoading ? "Conectando ao Google..." : "Continuar com Google"}
@@ -104,11 +104,11 @@ export default function LoginPage() {
 
 function GoogleMark() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 48 48" className="size-[18px]">
-      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z" transform="translate(0 5)" />
-      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.9c-.58 2.96-2.28 5.47-4.81 7.16l7.74 6C44.34 37.87 46.98 31.8 46.98 24.55Z" />
-      <path fill="#FBBC05" d="M10.53 28.59a14.4 14.4 0 0 1 0-9.18l-7.98-6.19a24 24 0 0 0 0 21.56l7.98-6.19Z" transform="translate(0 5)" />
-      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.82l-7.74-6c-2.15 1.45-4.9 2.32-8.17 2.32-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z" transform="translate(0 -5)" />
+    <svg aria-hidden="true" viewBox="0 0 48 48" className="size-5 shrink-0">
+      <path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11c-.5 2.5-1.9 4.6-4.2 6v5h6.8c4-3.7 6-9 6-14.7Z" />
+      <path fill="#34A853" d="M24 44c5.4 0 10-1.8 13.4-4.8l-6.8-5c-1.9 1.3-4.2 2.1-6.6 2.1-5.1 0-9.5-3.4-11.1-8H5.9v5.2C9.2 39.8 16 44 24 44Z" />
+      <path fill="#FBBC05" d="M12.9 28.3a12 12 0 0 1 0-8.6v-5.2H5.9a20 20 0 0 0 0 19l7-5.2Z" />
+      <path fill="#EA4335" d="M24 11.7c2.9 0 5.5 1 7.5 3l5.8-5.8C33.7 5.6 29.2 4 24 4 16 4 9.2 8.2 5.9 14.5l7 5.2c1.6-4.6 6-8 11.1-8Z" />
     </svg>
   );
 }

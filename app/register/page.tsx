@@ -36,7 +36,7 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       });
       if (!response.ok) throw new Error(await readApiError(response, "Não foi possível criar sua conta."));
-      toast({ title: "Espaço criado", description: "Agora você já pode começar sua jornada.", variant: "success" });
+      toast({ title: "Espaço criado", description: "Agora você já pode começar uma análise.", variant: "success" });
       const requestedPath = searchParams.get("next");
       const nextPath = requestedPath?.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : "/";
       router.push(nextPath);

@@ -7,7 +7,7 @@ export default function Loading() {
       <div className="relative grid size-16 place-items-center rounded-2xl bg-soft-primary text-primary">
         <HugeIcon icon={Loading03Icon} size={27} className="animate-spin" />
       </div>
-      <h2 className="font-heading text-xl font-semibold tracking-tight">Carregando sua jornada...</h2>
+      <h2 className="font-heading text-xl font-semibold tracking-tight">Carregando sua análise...</h2>
       <p className="text-center text-[13px] text-muted-foreground">Preparando o próximo ponto para você.</p>
     </div>
   );

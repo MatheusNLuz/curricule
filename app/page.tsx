@@ -1,66 +1,12 @@
-import {
-  Add01Icon,
-  Briefcase01Icon,
-  File02Icon,
-  FileUploadIcon,
-  Layout01Icon,
-  SparklesIcon,
-  UserIcon,
-} from "@hugeicons/core-free-icons";
+import { Add01Icon, Briefcase01Icon, FileUploadIcon, SparklesIcon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
-import type { CSSProperties } from "react";
-import { ModeRoute } from "@/components/home/mode-route";
+import { AnalysisModeGrid } from "@/components/home/analysis-mode-grid";
 import { HugeIcon } from "@/components/ui/huge-icon";
 import { Reveal } from "@/components/ui/reveal";
 import { RouteLine } from "@/components/ui/route-line";
-import { LinkedInLogo } from "@/components/ui/linkedin-logo";
 import { getHomeRedirect } from "@/lib/home-route";
 import { getSessionUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-
-const modes = [
-  {
-    href: "/analysis/new?mode=MAKE_ATS_FRIENDLY",
-    icon: File02Icon,
-    title: "Otimizar para ATS",
-    description: "Analise e reestruture seu currículo para passar nos filtros de ATS. Não precisa de descrição de vaga.",
-    cta: "Iniciar Análise",
-    accent: "primary" as const,
-  },
-  {
-    href: "/analysis/new?mode=COMPARE_AGAINST_JOB",
-    icon: Briefcase01Icon,
-    title: "Comparar com a Vaga",
-    description: "Cruze seu currículo com uma descrição de vaga e veja o relatório detalhado de lacunas.",
-    cta: "Iniciar Comparação",
-    accent: "route" as const,
-  },
-  {
-    href: "/analysis/new?mode=OPTIMIZE_FOR_JOB",
-    icon: SparklesIcon,
-    title: "Otimização Completa",
-    description: "Fluxo completo: comparar, responder perguntas da IA, reescrever e exportar o currículo otimizado.",
-    cta: "Iniciar Otimização",
-    accent: "signal" as const,
-  },
-  {
-    href: "/analysis/new?mode=LINKEDIN_OPTIMIZATION",
-    icon: UserIcon,
-    title: "Otimizar LinkedIn",
-    description: "Analise o SEO do seu perfil do LinkedIn e melhore sua atratividade para recrutadores.",
-    cta: "Otimizar Perfil",
-    customIcon: <LinkedInLogo className="size-[19px] text-linkedin" />,
-    accent: "linkedin" as const,
-  },
-  {
-    href: "/analysis/new?mode=COVER_LETTER_ONLY",
-    icon: Layout01Icon,
-    title: "Carta de Apresentação",
-    description: "Crie uma carta de apresentação sob medida cruzando seu currículo com a descrição da vaga.",
-    cta: "Gerar Carta",
-    accent: "route" as const,
-  },
-];
 
 export default async function Home() {
   const session = await getSessionUser();
@@ -79,8 +25,8 @@ export default async function Home() {
               Escolha uma rota para melhorar seu currículo, entender uma vaga ou preparar uma candidatura mais forte.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link href="/analysis/new?mode=OPTIMIZE_FOR_JOB" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
-                <HugeIcon icon={Add01Icon} size={18} /> Começar minha jornada
+              <Link href="/analysis/new" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
+                <HugeIcon icon={Add01Icon} size={18} /> Nova análise
               </Link>
               <a href="#rotas" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-surface px-5 text-[13px] font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-soft-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
                 Ver possibilidades
@@ -110,16 +56,7 @@ export default async function Home() {
           </div>
           <p className="max-w-[34ch] text-[12px] leading-relaxed text-muted-foreground sm:text-right">Escolha o tipo de ajuda que você precisa agora.</p>
         </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          {modes.map((mode, index) => (
-            <ModeRoute
-              key={mode.href}
-              {...mode}
-              className={`route-card-enter lg:col-span-2 ${index === 3 ? "lg:col-start-2" : index === 4 ? "lg:col-start-4" : ""}`}
-              style={{ "--route-delay": `${Math.min(index, 4) * 45}ms` } as CSSProperties}
-            />
-          ))}
-        </div>
+        <AnalysisModeGrid />
       </section>
 
       <Reveal delay={120}>
