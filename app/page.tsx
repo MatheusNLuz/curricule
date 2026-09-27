@@ -14,6 +14,9 @@ import { HugeIcon } from "@/components/ui/huge-icon";
 import { Reveal } from "@/components/ui/reveal";
 import { RouteLine } from "@/components/ui/route-line";
 import { LinkedInLogo } from "@/components/ui/linkedin-logo";
+import { getHomeRedirect } from "@/lib/home-route";
+import { getSessionUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 const modes = [
   {
@@ -59,7 +62,11 @@ const modes = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await getSessionUser();
+  const destination = getHomeRedirect(session);
+  if (destination) redirect(destination);
+
   return (
     <div className="mx-auto max-w-6xl px-5 pb-24 pt-8 sm:px-8 sm:pt-10 lg:px-12 lg:pt-12">
       <Reveal>
