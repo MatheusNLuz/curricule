@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import { prisma } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -10,7 +11,10 @@ export async function POST(req: Request) {
     const { analysisId } = await req.json();
     if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
 
-    const analysis = await prisma.analysis.findUnique({ where: { id: analysisId } });
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
+    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId } });
     if (!analysis || !analysis.finalResumeJson) {
       return NextResponse.json({ error: "Optimized resume not found" }, { status: 404 });
     }
@@ -59,7 +63,7 @@ export async function POST(req: Request) {
     await prisma.pdfExport.create({
       data: {
         analysisId,
-        fileName: `ATSForge_Resume_${analysisId}.pdf`,
+        fileName: `Curriculy_Resume_${analysisId}.pdf`,
         path: "memory", // Can be updated if saving to disk later
       }
     });
@@ -67,7 +71,7 @@ export async function POST(req: Request) {
     return new NextResponse(pdfBuffer as any, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="ATSForge_Resume_${analysisId}.pdf"`
+        "Content-Disposition": `attachment; filename="Curriculy_Resume_${analysisId}.pdf"`
       }
     });
   } catch (error) {

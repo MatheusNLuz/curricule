@@ -1,58 +1,43 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "atsforge-default-ultra-secure-key-32chars-minimum"
-);
+import { getNeonAuth, hasNeonAuthConfig } from "@/lib/auth/server";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get("session")?.value;
 
-  let isAuthenticated = false;
-  if (token) {
-    try {
-      await jwtVerify(token, JWT_SECRET);
-      isAuthenticated = true;
-    } catch (e) {
-      // Invalid token
-    }
+  if (pathname === "/" || pathname === "/login" || pathname === "/register" || pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
+    return NextResponse.next();
   }
 
-  // Allow internal Puppeteer PDF export requests (no cookies available)
   if (pathname.includes("/preview") && request.nextUrl.searchParams.get("export") === "true") {
     return NextResponse.next();
   }
 
-  const isProtectedRoute = 
-    pathname === "/" ||
-    pathname.startsWith("/analysis") || 
-    pathname.startsWith("/history") || 
-    pathname.startsWith("/settings");
+  if (!hasNeonAuthConfig()) {
+    if (pathname.startsWith("/api/")) {
+      if (request.cookies.get("session")?.value) return NextResponse.next();
+      return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+    }
 
-  const isAuthRoute = pathname === "/login" || pathname === "/register";
+    if (request.cookies.get("session")?.value) return NextResponse.next();
 
-  if (isProtectedRoute && !isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthRoute && isAuthenticated) {
-    const homeUrl = new URL("/", request.url);
-    return NextResponse.redirect(homeUrl);
-  }
+  const auth = getNeonAuth();
+  if (!auth) return NextResponse.next();
 
-  return NextResponse.next();
+  return auth.middleware({ loginUrl: "/login" })(request);
 }
 
 export const config = {
   matcher: [
     "/",
-    "/analysis/:path*", 
-    "/history/:path*", 
+    "/analysis/:path*",
+    "/history/:path*",
     "/settings/:path*",
-    "/login",
-    "/register"
+    "/api/:path*",
   ],
 };

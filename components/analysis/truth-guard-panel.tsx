@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
+import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, ArrowRight } from "@/components/ui/app-icon";
 import { Button } from "@/components/ui/button";
 
 export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { truthGuardData: any, onApprove: () => void, onEditAnswers: () => void }) {
@@ -18,9 +18,9 @@ export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { 
   );
 
   return (
-    <div className="surface rounded-xl p-6 border-l-4 border-l-orange-500">
+    <div className="surface rounded-xl p-6 border border-warning/30">
       <div className="flex items-center gap-2 mb-4">
-        <ShieldAlert className="w-5 h-5 text-orange-500" />
+        <ShieldAlert className="w-5 h-5 text-warning" />
         <h2 className="text-[16px] font-semibold">Truth Guard: Revisão de Fatos</h2>
       </div>
       
@@ -33,11 +33,11 @@ export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { 
         {truthGuardData.claims.map((claim: any, i: number) => {
           if (claim.source === "confirmed_by_resume" || claim.source === "confirmed_by_user") {
             return (
-              <div key={i} className="flex gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div key={i} className="flex gap-3 p-3 rounded-lg bg-route/10 border border-route/20">
+                <ShieldCheck className="w-4 h-4 text-route shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400">{claim.claim}</p>
-                  <p className="text-[11px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">{claim.explanation}</p>
+                  <p className="text-[13px] font-medium text-route">{claim.claim}</p>
+                  <p className="text-[11px] text-route/70 mt-0.5">{claim.explanation}</p>
                 </div>
               </div>
             );
@@ -45,11 +45,11 @@ export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { 
           
           if (claim.source === "forbidden_to_use" || claim.source === "missing") {
             return (
-              <div key={i} className="flex gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <div key={i} className="flex gap-3 p-3 rounded-lg bg-signal/10 border border-signal/20">
+                <AlertTriangle className="w-4 h-4 text-signal shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[13px] font-medium text-red-600 dark:text-red-400 line-through">{claim.claim}</p>
-                  <p className="text-[11px] text-red-600/70 dark:text-red-400/70 mt-0.5">{claim.explanation}</p>
+                  <p className="text-[13px] font-medium text-signal line-through">{claim.claim}</p>
+                  <p className="text-[11px] text-signal/70 mt-0.5">{claim.explanation}</p>
                 </div>
               </div>
             );
@@ -58,8 +58,8 @@ export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { 
           // Low confidence inference
           const isApproved = approvedClaims[i];
           return (
-            <div key={i} className={`flex gap-3 p-4 rounded-lg border transition-colors ${isApproved ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-orange-500/5 border-orange-500/20'}`}>
-              <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${isApproved ? 'text-indigo-500' : 'text-orange-500'}`} />
+            <div key={i} className={`flex gap-3 p-4 rounded-lg border transition-colors ${isApproved ? 'bg-primary/10 border-primary/30' : 'bg-warning/5 border-warning/20'}`}>
+              <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${isApproved ? 'text-primary' : 'text-warning'}`} />
               <div className="flex-1">
                 <p className="text-[13px] font-medium mb-1">{claim.claim}</p>
                 <p className="text-[11px] text-muted-foreground mb-3">{claim.explanation}</p>
@@ -68,7 +68,7 @@ export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { 
                   <Button 
                     size="sm" 
                     variant={isApproved === true ? "default" : "outline"}
-                    className={isApproved === true ? "bg-indigo-600" : ""}
+                    className={isApproved === true ? "bg-primary text-primary-foreground" : ""}
                     onClick={() => setApprovedClaims({ ...approvedClaims, [i]: true })}
                   >
                     Aprovar Adição
@@ -98,7 +98,7 @@ export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { 
         <Button 
           onClick={onApprove} 
           disabled={hasUnreviewedLowConfidence}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           {hasUnreviewedLowConfidence ? "Revise as inferências acima" : "Aprovar e Reescrever Currículo"} <ArrowRight className="w-4 h-4 ml-2" />
         </Button>

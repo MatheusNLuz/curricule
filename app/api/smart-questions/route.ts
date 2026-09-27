@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { SmartQuestionSchema, SmartQuestionGen } from "@/lib/schemas/questions-truth.schema";
+import { getSessionUser } from "@/lib/auth";
 
 const QUESTIONS_WITH_JOB_PROMPT = `You are an expert technical recruiter and ATS specialist.
 Based on the gap analysis between the resume and the job description, generate smart questions to ask the candidate. You can generate up to 8 questions if necessary.
@@ -83,9 +84,12 @@ export async function POST(req: Request) {
     const { analysisId } = await req.json();
     if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
 
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
     // 1. Return existing questions if already generated
     const existingQuestions = await prisma.smartQuestion.findMany({
-      where: { analysisId }
+      where: { analysisId, analysis: { userId: session.userId } }
     });
     if (existingQuestions.length > 0) {
       // Map database format to API format (options parsed from JSON string)
@@ -102,7 +106,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, questions: mapped });
     }
 
-    const analysis = await prisma.analysis.findUnique({ where: { id: analysisId } });
+    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId } });
     if (!analysis) {
       return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
     }
@@ -180,6 +184,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, questions: savedQuestions });
   } catch (error) {
     console.error("Smart questions error:", error);
-    return NextResponse.json({ error: "Failed to generate questions" }, { status: 500 });
+    return NextResponse.json({ error: "As perguntas não puderam ser geradas. Tente novamente em instantes." }, { status: 503 });
   }
 }

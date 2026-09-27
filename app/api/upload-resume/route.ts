@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import pdf from "pdf-parse";
+import { getSessionUser } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +16,12 @@ export async function POST(req: Request) {
     if (!analysisId) {
       return NextResponse.json({ error: "No analysisId provided" }, { status: 400 });
     }
+
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
+    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId }, select: { id: true } });
+    if (!analysis) return NextResponse.json({ error: "Análise não encontrada." }, { status: 404 });
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -67,6 +74,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, file: fileAsset });
   } catch (error) {
     console.error("Error uploading resume:", error);
-    return NextResponse.json({ error: "Failed to upload resume" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível processar o PDF. Confira o arquivo e tente novamente." }, { status: 503 });
   }
 }

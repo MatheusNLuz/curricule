@@ -1,39 +1,69 @@
-import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Topbar } from "@/components/app-shell/topbar";
 import { ToastProvider } from "@/components/ui/custom-toast";
+import { ThemeProvider } from "@/components/theme-provider";
+import { getSessionUser } from "@/lib/auth";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-heading" });
+export const dynamic = "force-dynamic";
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f4ef" },
+    { media: "(prefers-color-scheme: dark)", color: "#171a19" },
+  ],
+};
+
+const themeInitScript = `
+  (function () {
+    try {
+      var saved = window.localStorage.getItem("curriculy-theme");
+      var preferred = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      var theme = saved === "dark" || saved === "light" ? saved : preferred;
+      var root = document.documentElement;
+      root.classList.toggle("dark", theme === "dark");
+      root.style.colorScheme = theme;
+    } catch (error) {}
+  })();
+`;
 
 export const metadata: Metadata = {
-  title: "ATSForge | Construa Currículos Imbatíveis com IA",
-  description: "Sistema avançado de Inteligência Artificial focado em otimizar currículos para passar em sistemas ATS. Identifica lacunas, melhora o impacto e gera currículos perfeitos para a sua vaga.",
-  keywords: ["currículo", "ats", "inteligência artificial", "vagas", "otimizador de currículo", "resume", "ai"],
+  title: "Curriculy | Dê direção ao seu próximo passo",
+  description: "Organize seu currículo, entenda uma oportunidade e prepare uma candidatura que representa sua história.",
+  keywords: ["currículo", "vagas", "candidatura", "resume", "perfil profissional"],
   openGraph: {
-    title: "ATSForge | Otimizador de Currículos",
-    description: "Crie o currículo perfeito com a ajuda de Agentes de IA.",
+    title: "Curriculy | Dê direção ao seu próximo passo",
+    description: "Um espaço calmo para melhorar seu currículo e preparar sua próxima candidatura.",
     type: "website",
     locale: "pt_BR",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ATSForge | Otimizador de Currículos",
-    description: "Crie o currículo perfeito com a ajuda de Agentes de IA.",
+    title: "Curriculy | Dê direção ao seu próximo passo",
+    description: "Um espaço calmo para melhorar seu currículo e preparar sua próxima candidatura.",
   }
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const session = await getSessionUser();
+
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.variable} ${outfit.variable} font-sans min-h-screen bg-background text-foreground antialiased`}>
-        <ToastProvider>
-          <div className="flex min-h-screen flex-col">
-            <Topbar />
-            <main className="flex-1">{children}</main>
-          </div>
-        </ToastProvider>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script id="theme-init" dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="font-sans min-h-screen bg-background text-foreground antialiased">
+        <ThemeProvider>
+          <ToastProvider>
+            <div className="flex min-h-screen flex-col">
+              <a href="#main-content" className="sr-only fixed left-4 top-4 z-[100] rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-ring">
+                Ir para o conteúdo principal
+              </a>
+              <Topbar session={session} />
+              <main id="main-content" className={session ? "min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-64" : "min-w-0 flex-1"}>{children}</main>
+            </div>
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

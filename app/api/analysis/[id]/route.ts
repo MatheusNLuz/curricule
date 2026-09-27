@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
 
-    const analysis = await prisma.analysis.findUnique({
-      where: { id },
+    const analysis = await prisma.analysis.findFirst({
+      where: { id, userId: session.userId },
       include: { questions: true }
     });
 
@@ -24,10 +27,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
     const body = await req.json();
 
+    const existingAnalysis = await prisma.analysis.findFirst({ where: { id, userId: session.userId }, select: { id: true } });
+    if (!existingAnalysis) return NextResponse.json({ error: "Análise não encontrada." }, { status: 404 });
+
     const analysis = await prisma.analysis.update({
-      where: { id },
+      where: { id: existingAnalysis.id },
       data: body,
     });
 

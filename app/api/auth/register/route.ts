@@ -1,52 +1,65 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { getNeonAuth } from "@/lib/auth/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, signToken } from "@/lib/auth";
-import { cookies } from "next/headers";
+import { validateRegistration } from "@/lib/form-validation";
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name } = await req.json();
-
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email e senha são obrigatórios" }, { status: 400 });
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Envie nome, e-mail e senha válidos." }, { status: 400 });
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    });
+    const { email, password, name } = body as { email?: unknown; password?: unknown; name?: unknown };
 
+    if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string") {
+      return NextResponse.json({ error: "Nome, e-mail e senha são obrigatórios." }, { status: 400 });
+    }
+
+    const fieldErrors = validateRegistration({ name, email, password });
+    if (Object.keys(fieldErrors).length > 0) {
+      return NextResponse.json({ error: Object.values(fieldErrors)[0] ?? "Revise os dados informados.", fieldErrors }, { status: 400 });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = name.trim();
+
+    const neonAuth = getNeonAuth();
+    if (neonAuth) {
+      const result = await neonAuth.signUp.email({ name: normalizedName, email: normalizedEmail, password });
+      if (result.error) {
+        return NextResponse.json({ error: result.error.message || "Não foi possível criar a conta." }, { status: 400 });
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) {
-      return NextResponse.json({ error: "Este email já está cadastrado" }, { status: 400 });
+      return NextResponse.json({ error: "Este e-mail já está cadastrado." }, { status: 409 });
     }
-
-    const hashedPassword = await hashPassword(password);
 
     const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name: name || null
-      }
+      data: { email: normalizedEmail, password: await hashPassword(password), name: normalizedName },
     });
-
     const token = await signToken({ userId: user.id, email: user.email });
-
     const cookieStore = await cookies();
     cookieStore.set("session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/"
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
     });
 
     return NextResponse.json({
       success: true,
-      user: { id: user.id, email: user.email, name: user.name }
+      user: { id: user.id, email: user.email, name: user.name },
     });
-
   } catch (error) {
-    console.error("Erro no registro:", error);
-    return NextResponse.json({ error: "Falha ao criar conta" }, { status: 500 });
+    console.error("Erro no cadastro:", error);
+    return NextResponse.json({ error: "Não foi possível criar sua conta agora. Tente novamente em instantes." }, { status: 503 });
   }
 }

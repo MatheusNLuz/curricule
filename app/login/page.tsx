@@ -1,121 +1,81 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, Loader2, ArrowRight, Sparkles } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowRight01Icon, LockPasswordIcon, Mail01Icon, SparklesIcon, ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import { HugeIcon } from "@/components/ui/huge-icon";
 import { useToast } from "@/components/ui/custom-toast";
+import { getFetchErrorMessage, readApiError } from "@/lib/api-client";
+import { validateLogin, type FieldErrors } from "@/lib/form-validation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast({ title: "Erro", description: "Preencha todos os campos.", variant: "warning" });
-      return;
-    }
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage(null);
+    const validationErrors = validateLogin({ email, password });
+    setFieldErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) return;
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro ao realizar login");
-
-      toast({ title: "Bem-vindo de volta!", description: "Login realizado com sucesso.", variant: "success" });
-      router.push("/");
+      if (!response.ok) throw new Error(await readApiError(response, "Não foi possível entrar."));
+      toast({ title: "Bem-vindo de volta", description: "Sua jornada está pronta para continuar.", variant: "success" });
+      const requestedPath = searchParams.get("next");
+      const nextPath = requestedPath?.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : "/";
+      router.push(nextPath);
       router.refresh();
-    } catch (err: any) {
-      toast({ title: "Falha no Login", description: err.message, variant: "error" });
+    } catch (error: unknown) {
+      setFieldErrors({});
+      const message = getFetchErrorMessage(error, "Não foi possível entrar agora.");
+      setErrorMessage(message);
+      toast({ title: "Não foi possível entrar", description: message, variant: "error" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center px-4 py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/3 -translate-x-1/2 translate-y-1/2 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
+    <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-12 px-5 py-12 sm:px-8 lg:grid-cols-[0.85fr_1fr] lg:px-12">
+      <div className="hidden lg:block">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Volte para sua rota</p>
+        <h1 className="mt-4 max-w-[10ch] font-heading text-5xl font-semibold leading-[0.98] tracking-[-0.06em]">Seu próximo passo começa aqui.</h1>
+        <p className="mt-6 max-w-[36ch] text-[14px] leading-7 text-muted-foreground">Um espaço para dar forma ao que você já construiu e clareza ao que vem depois.</p>
+        <div className="mt-10 flex items-center gap-3 text-[12px] text-muted-foreground"><span className="grid size-9 place-items-center rounded-xl bg-soft-primary text-primary"><HugeIcon icon={SparklesIcon} size={17} /></span> Curriculy acompanha seu contexto.</div>
+      </div>
 
-      <div className="w-full max-w-md space-y-8 z-10">
-        <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600/15 border border-indigo-500/30 text-indigo-400">
-            <Sparkles className="h-6 w-6" />
-          </div>
-          <h2 className="mt-6 text-3xl font-bold tracking-tight font-heading">
-            Entrar no ATSForge
-          </h2>
-          <p className="mt-2 text-[13.5px] text-muted-foreground">
-            Otimização inteligente de currículos e perfis do LinkedIn.
-          </p>
-        </div>
-
-        <div className="surface rounded-2xl border border-border/80 p-8 shadow-2xl backdrop-blur-md bg-secondary/10">
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="text-[12.5px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5" /> Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                className="w-full h-10 px-3.5 rounded-lg border border-border bg-background text-[13px] transition-all focus:border-indigo-500 focus:outline-none"
-                placeholder="nome@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-[12.5px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5" /> Senha
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                className="w-full h-10 px-3.5 rounded-lg border border-border bg-background text-[13px] transition-all focus:border-indigo-500 focus:outline-none"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-10 mt-2 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 text-[13.5px] font-semibold text-white hover:bg-indigo-500 transition-all disabled:opacity-55 disabled:cursor-not-allowed shadow-md shadow-indigo-600/10 cursor-pointer"
-            >
-              {loading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Conectando...</>
-              ) : (
-                <><span className="flex-1 text-center pl-4">Entrar</span> <ArrowRight className="h-4 w-4 shrink-0" /></>
-              )}
-            </button>
+      <div className="mx-auto w-full max-w-md">
+        <div className="mb-7 lg:hidden"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Bem-vindo ao Curriculy</p><h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.05em]">Entre para continuar.</h1></div>
+        <div className="surface rounded-[24px] p-6 shadow-[0_24px_80px_rgba(108,74,163,0.10)] sm:p-8">
+          <div className="mb-8"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Seu espaço profissional</p><h2 className="mt-2 font-heading text-2xl font-semibold tracking-[-0.04em]">Entrar na conta</h2><p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Retome a jornada exatamente de onde parou.</p></div>
+          <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+            <Field label="E-mail" icon={Mail01Icon} htmlFor="email"><input id="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => { setEmail(event.target.value); setFieldErrors((current) => ({ ...current, email: undefined })); setErrorMessage(null); }} placeholder="voce@email.com" className="auth-input" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "login-email-error" : undefined} />{fieldErrors.email && <p id="login-email-error" className="text-[12px] leading-relaxed text-signal" role="alert">{fieldErrors.email}</p>}</Field>
+            <Field label="Senha" icon={LockPasswordIcon} htmlFor="password"><div className="relative"><input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => { setPassword(event.target.value); setFieldErrors((current) => ({ ...current, password: undefined })); setErrorMessage(null); }} placeholder="Sua senha" className="auth-input pr-11" aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "login-password-error" : undefined} /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"> <HugeIcon icon={showPassword ? ViewOffIcon : ViewIcon} size={17} /> </button></div>{fieldErrors.password && <p id="login-password-error" className="text-[12px] leading-relaxed text-signal" role="alert">{fieldErrors.password}</p>}</Field>
+            {errorMessage && <p id="login-form-error" className="rounded-xl border border-signal/25 bg-signal/10 px-3 py-2.5 text-[12px] leading-relaxed text-signal" role="alert">{errorMessage}</p>}
+            <button type="submit" disabled={loading} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">{loading ? "Conectando..." : "Entrar"}<HugeIcon icon={ArrowRight01Icon} size={17} /></button>
           </form>
-
-          <div className="mt-6 text-center border-t border-border/60 pt-4">
-            <p className="text-[12.5px] text-muted-foreground">
-              Não tem uma conta?{" "}
-              <Link href="/register" className="font-semibold text-indigo-400 hover:underline">
-                Cadastre-se gratuitamente
-              </Link>
-            </p>
-          </div>
+          <p className="mt-7 border-t border-border pt-5 text-center text-[12px] text-muted-foreground">Não tem uma conta? <Link href="/register" className="font-semibold text-primary hover:underline">Cadastre-se gratuitamente</Link></p>
         </div>
       </div>
     </div>
   );
+}
+
+function Field({ label, icon, htmlFor, children }: { label: string; icon: Parameters<typeof HugeIcon>[0]["icon"]; htmlFor: string; children: React.ReactNode }) {
+  return <div className="space-y-2"><label htmlFor={htmlFor} className="flex items-center gap-2 text-[12px] font-semibold text-foreground"><HugeIcon icon={icon} size={15} className="text-primary" /> {label}</label>{children}</div>;
 }

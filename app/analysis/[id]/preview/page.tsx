@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
-import { notFound } from "next/navigation";
-import { BasicAtsTemplate } from "@/components/preview/basic-ats-template";
-import { ModernAtsTemplate } from "@/components/preview/modern-ats-template";
+import { getSessionUser } from "@/lib/auth";
+import { notFound, redirect } from "next/navigation";
+import { PreviewTemplate } from "@/components/preview/preview-template";
 
 export default async function PreviewPage({
   params,
@@ -13,7 +13,12 @@ export default async function PreviewPage({
   const { id } = await params;
   const { export: isExport } = await searchParams;
 
-  const analysis = await prisma.analysis.findUnique({ where: { id } });
+  const session = isExport === "true" ? null : await getSessionUser();
+  if (isExport !== "true" && !session) redirect(`/login?next=${encodeURIComponent(`/analysis/${id}/preview`)}`);
+
+  const analysis = session
+    ? await prisma.analysis.findFirst({ where: { id, userId: session.userId } })
+    : await prisma.analysis.findUnique({ where: { id } });
   if (!analysis || !analysis.finalResumeJson) return notFound();
 
   const resume = JSON.parse(analysis.finalResumeJson);
@@ -22,16 +27,18 @@ export default async function PreviewPage({
   return (
     <>
       <style dangerouslySetInnerHTML={{__html: `
-        /* Remove o topbar/header do layout base durante o preview e impressão */
+        /* Remove a navegação do app durante o preview e impressão */
+        [data-app-shell-nav] { display: none !important; }
         header { display: none !important; }
         body { background: white !important; }
         main { padding: 0 !important; }
       `}} />
-      {analysis.selectedTemplate === "modern-ats" ? (
-        <ModernAtsTemplate resume={resume} isExport={isExportBool} language={analysis.selectedLanguage} />
-      ) : (
-        <BasicAtsTemplate resume={resume} isExport={isExportBool} language={analysis.selectedLanguage} />
-      )}
+      <PreviewTemplate
+        resume={resume}
+        templateId={analysis.selectedTemplate}
+        isExport={isExportBool}
+        language={analysis.selectedLanguage}
+      />
     </>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
+import { Alert02Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { HugeIcon } from "@/components/ui/huge-icon";
 
 export default function GlobalError({
   error,
@@ -17,22 +18,20 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <div className="flex h-[80vh] w-full flex-col items-center justify-center gap-4">
-      <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/20">
-        <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-500" />
+    <div className="flex min-h-[70vh] w-full flex-col items-center justify-center gap-4 px-5">
+      <div className="grid size-14 place-items-center rounded-2xl bg-signal/10 text-signal">
+        <HugeIcon icon={Alert02Icon} size={27} />
       </div>
-      <div className="text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-          Ops, algo deu errado!
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+      <div className="max-w-md space-y-2 text-center">
+        <h2 className="font-heading text-2xl font-semibold tracking-tight">Algo saiu do caminho.</h2>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
           Ocorreu um erro inesperado ao tentar processar sua solicitação. Por favor, tente novamente.
         </p>
       </div>
       <Button 
         onClick={() => reset()}
         variant="default"
-        className="mt-4"
+        className="mt-4 h-11 rounded-xl px-4"
       >
         Tentar Novamente
       </Button>

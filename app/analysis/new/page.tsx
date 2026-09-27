@@ -2,10 +2,13 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Upload, FileText, ArrowRight, ClipboardType, Loader2, CheckCircle2, X, MapPin } from "lucide-react";
+import { ArrowRight01Icon, Briefcase01Icon, CheckmarkCircle02Icon, ClipboardIcon, FileUploadIcon, Loading03Icon, MapPinIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/custom-toast";
+import { HugeIcon } from "@/components/ui/huge-icon";
+import { RouteLine } from "@/components/ui/route-line";
+import { getFetchErrorMessage, readApiError } from "@/lib/api-client";
 
 const MODE_LABELS: Record<string, string> = {
   MAKE_ATS_FRIENDLY: "Otimização para ATS",
@@ -36,7 +39,6 @@ function NewAnalysisContent() {
   const { toast } = useToast();
   const mode = searchParams.get("mode") || "MAKE_ATS_FRIENDLY";
   const requiresJob = mode === "COMPARE_AGAINST_JOB" || mode === "OPTIMIZE_FOR_JOB" || mode === "COVER_LETTER_ONLY";
-
   const [file, setFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -46,43 +48,34 @@ function NewAnalysisContent() {
   const [dragActive, setDragActive] = useState(false);
   const [linkedInLanguage, setLinkedInLanguage] = useState("pt-BR");
 
-  const selectedLocation = JOB_LOCATIONS.find(l => l.value === jobLocation);
+  const selectedLocation = JOB_LOCATIONS.find((location) => location.value === jobLocation);
+  const hasResume = Boolean(file || pastedText.trim());
+  const routeIndex = !hasResume ? 0 : requiresJob && (!jobDescription.trim() || !jobLocation) ? 1 : 2;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const f = e.target.files[0];
-      if (f.type !== "application/pdf") {
-        toast({ title: "Arquivo inválido", description: "Por favor, envie um PDF.", variant: "warning" });
-        return;
-      }
-      setFile(f);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+    if (selectedFile.type !== "application/pdf") {
+      toast({ title: "Arquivo inválido", description: "Por favor, envie um PDF.", variant: "warning" });
+      return;
     }
+    setFile(selectedFile);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
     setDragActive(false);
-    const f = e.dataTransfer.files?.[0];
-    if (f && f.type === "application/pdf") setFile(f);
+    const droppedFile = event.dataTransfer.files?.[0];
+    if (droppedFile?.type === "application/pdf") setFile(droppedFile);
   };
 
   const handleContinue = async () => {
     setLoading(true);
     try {
       const selectedLang = mode === "LINKEDIN_OPTIMIZATION" ? linkedInLanguage : (selectedLocation?.lang || "pt-BR");
-      
-      const analysisRes = await fetch("/api/analysis/create", {
-        method: "POST",
-        body: JSON.stringify({ mode, jobLocation, selectedLanguage: selectedLang }),
-        headers: { "Content-Type": "application/json" },
-      });
+      const analysisRes = await fetch("/api/analysis/create", { method: "POST", body: JSON.stringify({ mode, jobLocation, selectedLanguage: selectedLang }), headers: { "Content-Type": "application/json" } });
       if (!analysisRes.ok) {
-        let errStr = "Falha ao criar análise.";
-        try {
-           const err = await analysisRes.json();
-           if(err.error) errStr = err.error;
-        } catch(e) {}
-        throw new Error(errStr);
+        throw new Error(await readApiError(analysisRes, "Falha ao criar análise."));
       }
       const analysisData = await analysisRes.json();
 
@@ -90,31 +83,23 @@ function NewAnalysisContent() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("analysisId", analysisData.id);
-
         const uploadRes = await fetch("/api/upload-resume", { method: "POST", body: formData });
-        if (!uploadRes.ok) throw new Error("Falha ao fazer upload e extração do currículo.");
+        if (!uploadRes.ok) throw new Error(await readApiError(uploadRes, "Falha ao fazer upload e extração do currículo."));
         const uploadData = await uploadRes.json();
-        if (!uploadData?.file?.id) throw new Error("Upload falhou.");
+        if (!uploadData?.file?.id) throw new Error("O upload não retornou um arquivo válido.");
       } else if (activeTab === "paste" && pastedText.trim()) {
-        await fetch(`/api/analysis/${analysisData.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ originalResumeText: pastedText, parsedResumeText: pastedText }),
-          headers: { "Content-Type": "application/json" },
-        });
+        const resumeResponse = await fetch(`/api/analysis/${analysisData.id}`, { method: "PATCH", body: JSON.stringify({ originalResumeText: pastedText, parsedResumeText: pastedText }), headers: { "Content-Type": "application/json" } });
+        if (!resumeResponse.ok) throw new Error(await readApiError(resumeResponse, "Falha ao salvar o currículo."));
       }
 
       if (requiresJob && jobDescription.trim()) {
-        await fetch(`/api/analysis/${analysisData.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ jobDescription }),
-          headers: { "Content-Type": "application/json" },
-        });
+        const jobResponse = await fetch(`/api/analysis/${analysisData.id}`, { method: "PATCH", body: JSON.stringify({ jobDescription }), headers: { "Content-Type": "application/json" } });
+        if (!jobResponse.ok) throw new Error(await readApiError(jobResponse, "Falha ao salvar a descrição da vaga."));
       }
-
       router.push(`/analysis/${analysisData.id}`);
-    } catch (error: any) {
-      console.error(error);
-      toast({ title: "Erro", description: error.message || "Algo deu errado.", variant: "error", duration: 6000 });
+    } catch (error: unknown) {
+      const message = getFetchErrorMessage(error, "Algo deu errado.");
+      toast({ title: "Não foi possível continuar", description: message, variant: "error", duration: 6000 });
     } finally {
       setLoading(false);
     }
@@ -129,176 +114,39 @@ function NewAnalysisContent() {
   };
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-12 sm:px-6">
-      <div className="mb-8">
-        <p className="mb-1 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">{MODE_LABELS[mode]}</p>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          {mode === "LINKEDIN_OPTIMIZATION" ? "Envie seu perfil do LinkedIn" : "Envie seu currículo"}
-        </h1>
-        <p className="mt-1 text-[14px] text-muted-foreground">
-          {mode === "LINKEDIN_OPTIMIZATION" 
-            ? "Vamos extrair as informações do perfil e analisar o SEO/atratividade para recrutadores."
-            : "Vamos extrair o conteúdo e rodar a análise de IA."}
-        </p>
+    <div className="mx-auto max-w-5xl px-5 pb-28 pt-10 sm:px-8 lg:px-12 lg:pt-14">
+      <div className="max-w-3xl">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{MODE_LABELS[mode]}</p>
+        <h1 className="mt-3 max-w-[17ch] font-heading text-3xl font-semibold leading-tight tracking-[-0.05em] sm:text-4xl">{mode === "LINKEDIN_OPTIMIZATION" ? "Envie seu perfil do LinkedIn" : "Envie seu currículo"}</h1>
+        <p className="mt-3 max-w-[58ch] text-[14px] leading-7 text-muted-foreground">{mode === "LINKEDIN_OPTIMIZATION" ? "Vamos extrair as informações do perfil e analisar o SEO/atratividade para recrutadores." : "Vamos extrair o conteúdo e rodar a análise de IA."}</p>
       </div>
 
-      <div className="space-y-6">
-        {/* Resume Input */}
-        <div className="surface rounded-xl p-5">
-          <h2 className="mb-4 text-[14px] font-semibold">
-            {mode === "LINKEDIN_OPTIMIZATION" ? "Perfil do LinkedIn" : "Currículo"}
-          </h2>
-          <Tabs defaultValue="pdf" className="w-full" onValueChange={setActiveTab}>
-            <TabsList className="mb-4 grid w-full grid-cols-2 bg-secondary">
-              <TabsTrigger value="pdf" className="text-[13px] data-[state=active]:bg-background"><Upload className="mr-1.5 h-3.5 w-3.5" /> Upload de PDF</TabsTrigger>
-              <TabsTrigger value="paste" className="text-[13px] data-[state=active]:bg-background"><ClipboardType className="mr-1.5 h-3.5 w-3.5" /> Colar Texto</TabsTrigger>
-            </TabsList>
+      <RouteLine className="mt-10 max-w-3xl" activeIndex={routeIndex} steps={[{ label: "Seu material", description: "Currículo ou perfil" }, { label: "Seu contexto", description: requiresJob ? "Vaga e localidade" : "Uma escolha" }, { label: "Seu próximo passo", description: "A análise começa" }]} />
 
-            <TabsContent value="pdf">
-              <div
-                className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-10 text-center transition-colors ${
-                  dragActive ? "border-indigo-500 bg-indigo-500/5" : file ? "border-emerald-500/40 bg-emerald-500/5" : "border-border hover:border-muted-foreground/30"
-                }`}
-                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                onDragLeave={() => setDragActive(false)}
-                onDrop={handleDrop}
-              >
-                {file ? (
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                    <div className="text-left">
-                      <p className="text-[13px] font-medium">{file.name}</p>
-                      <p className="text-[12px] text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
-                    </div>
-                    <button onClick={() => setFile(null)} className="ml-2 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="mb-3 h-6 w-6 text-muted-foreground" />
-                    <label htmlFor="resume-upload" className="cursor-pointer">
-                      <span className="text-[13px] font-medium text-indigo-400 hover:underline">Procurar arquivos</span>
-                      <span className="text-[13px] text-muted-foreground"> ou arraste e solte</span>
-                      <input id="resume-upload" type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
-                    </label>
-                    <p className="mt-1 text-[11px] text-muted-foreground">PDF, max 10MB</p>
-                  </>
-                )}
+      <div className="mt-10 max-w-3xl space-y-5">
+        <section className="surface rounded-2xl p-5 sm:p-7">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Etapa 1</p><h2 className="mt-2 text-[17px] font-semibold">{mode === "LINKEDIN_OPTIMIZATION" ? "Seu perfil do LinkedIn" : "Seu currículo"}</h2><p className="mt-1 text-[12px] text-muted-foreground">Escolha o formato que for mais natural para você.</p></div><span className="grid size-10 place-items-center rounded-xl bg-soft-primary text-primary"><HugeIcon icon={FileUploadIcon} size={19} /></span></div>
+          <Tabs defaultValue="pdf" className="mt-6 w-full" onValueChange={setActiveTab}>
+            <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-secondary p-1"><TabsTrigger value="pdf" className="gap-2 rounded-lg text-[12px] data-[state=active]:bg-surface data-[state=active]:text-foreground"><HugeIcon icon={FileUploadIcon} size={15} /> Upload de PDF</TabsTrigger><TabsTrigger value="paste" className="gap-2 rounded-lg text-[12px] data-[state=active]:bg-surface data-[state=active]:text-foreground"><HugeIcon icon={ClipboardIcon} size={15} /> Colar Texto</TabsTrigger></TabsList>
+            <TabsContent value="pdf" className="mt-4">
+              <div className={`flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center transition-colors ${dragActive ? "border-primary bg-soft-primary" : file ? "border-route bg-route/10" : "border-border bg-background hover:border-primary/50"}`} onDragOver={(event) => { event.preventDefault(); setDragActive(true); }} onDragLeave={() => setDragActive(false)} onDrop={handleDrop}>
+                {file ? <div className="flex max-w-full items-center gap-3"><HugeIcon icon={CheckmarkCircle02Icon} size={22} className="text-route" /><div className="min-w-0 text-left"><p className="truncate text-[13px] font-semibold">{file.name}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p></div><button type="button" onClick={() => setFile(null)} aria-label="Remover arquivo" className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"><HugeIcon icon={Cancel01Icon} size={16} /></button></div> : <><HugeIcon icon={FileUploadIcon} size={25} className="mb-3 text-primary" /><label htmlFor="resume-upload" className="cursor-pointer text-[13px]"><span className="font-semibold text-primary hover:underline">Procurar arquivos</span><span className="text-muted-foreground"> ou arraste e solte</span><input id="resume-upload" type="file" accept="application/pdf" className="sr-only" onChange={handleFileChange} /></label><p className="mt-2 text-[11px] text-muted-foreground">PDF, max 10MB</p></>}
               </div>
             </TabsContent>
-
-            <TabsContent value="paste">
-              <Textarea
-                placeholder={mode === "LINKEDIN_OPTIMIZATION" 
-                  ? "Cole o texto do seu perfil do LinkedIn (Título, Sobre, Experiências)..." 
-                  : "Cole o texto completo do seu currículo..."}
-                className="min-h-[250px] resize-none bg-background text-[13px]"
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-              />
-              {pastedText.length > 0 && pastedText.length < 50 && (
-                <p className="mt-1 text-[11px] text-amber-400">Mínimo de 50 caracteres</p>
-              )}
-            </TabsContent>
+            <TabsContent value="paste" className="mt-4"><Textarea aria-label={mode === "LINKEDIN_OPTIMIZATION" ? "Texto do perfil do LinkedIn" : "Texto completo do currículo"} placeholder={mode === "LINKEDIN_OPTIMIZATION" ? "Cole o texto do seu perfil do LinkedIn (Título, Sobre, Experiências)..." : "Cole o texto completo do seu currículo..."} className="min-h-56 resize-y rounded-xl bg-background text-[13px] leading-relaxed" value={pastedText} onChange={(event) => setPastedText(event.target.value)} />{pastedText.length > 0 && pastedText.length < 50 && <p className="mt-2 text-[11px] text-signal">Mínimo de 50 caracteres</p>}</TabsContent>
           </Tabs>
-        </div>
+        </section>
 
-        {/* Job Description */}
-        {requiresJob && (
-          <div className="surface rounded-xl p-5">
-            <h2 className="mb-4 text-[14px] font-semibold">Descrição da Vaga</h2>
-            <Textarea
-              placeholder="Cole a descrição da vaga aqui..."
-              className="min-h-[180px] resize-none bg-background text-[13px]"
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-            />
-            {jobDescription.length > 0 && jobDescription.length < 50 && (
-              <p className="mt-1 text-[11px] text-amber-400">Mínimo de 50 caracteres</p>
-            )}
-          </div>
-        )}
+        {requiresJob && <section className="surface rounded-2xl p-5 sm:p-7"><div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-route/15 text-[#4e713f] dark:text-route"><HugeIcon icon={Briefcase01Icon} size={19} /></span><div><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Etapa 2</p><h2 className="mt-2 text-[17px] font-semibold">Descrição da Vaga</h2><p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">Cole a descrição da vaga para comparar seu currículo com o que ela pede.</p></div></div><Textarea aria-label="Descrição da vaga" placeholder="Cole a descrição da vaga aqui..." className="mt-6 min-h-48 resize-y rounded-xl bg-background text-[13px] leading-relaxed" value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} />{jobDescription.length > 0 && jobDescription.length < 50 && <p className="mt-2 text-[11px] text-signal">Mínimo de 50 caracteres</p>}<div className="mt-7 border-t border-border pt-6"><div className="flex items-start gap-3"><HugeIcon icon={MapPinIcon} size={18} className="mt-0.5 text-primary" /><div><h3 className="text-[14px] font-semibold">Onde é a vaga?</h3><p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">Selecione o país/região da vaga. Isso define o idioma, o formato do currículo e as convenções locais.</p></div></div><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{JOB_LOCATIONS.map((location) => <button type="button" key={location.value} onClick={() => setJobLocation(location.value)} className={`rounded-xl border px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${jobLocation === location.value ? "border-primary bg-soft-primary" : "border-border bg-background hover:border-primary/40"}`}><span className="block text-[12px] font-semibold">{location.label}</span><span className="mt-1 block text-[10px] leading-relaxed text-muted-foreground">{location.format}</span></button>)}</div>{!jobLocation && <p className="mt-3 text-[11px] text-signal">Selecione a localização da vaga para continuar</p>}</div></section>}
 
-        {/* Job Location */}
-        {requiresJob && (
-          <div className="surface rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="h-4 w-4 text-indigo-400" />
-              <h2 className="text-[14px] font-semibold">Onde é a vaga?</h2>
-            </div>
-            <p className="mb-4 text-[13px] text-muted-foreground">
-              Selecione o país/região da vaga. Isso define o idioma, o formato do currículo e as convenções locais.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {JOB_LOCATIONS.map((loc) => (
-                <button
-                  key={loc.value}
-                  onClick={() => setJobLocation(loc.value)}
-                  className={`rounded-lg border px-3 py-2.5 text-left transition-all text-[13px] ${
-                    jobLocation === loc.value
-                      ? "border-indigo-500 bg-indigo-500/10 text-foreground"
-                      : "border-border bg-secondary/30 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
-                  }`}
-                >
-                  <div className="font-medium">{loc.label}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{loc.format}</div>
-                </button>
-              ))}
-            </div>
-            {!jobLocation && (
-              <p className="mt-3 text-[11px] text-amber-400">Selecione a localização da vaga para continuar</p>
-            )}
-          </div>
-        )}
-        {/* LinkedIn Language Selection */}
-        {mode === "LINKEDIN_OPTIMIZATION" && (
-          <div className="surface rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="h-4 w-4 text-indigo-400" />
-              <h2 className="text-[14px] font-semibold">Qual o idioma do perfil?</h2>
-            </div>
-            <p className="mb-4 text-[13px] text-muted-foreground">
-              Selecione o idioma em que deseja que a IA avalie e gere o texto otimizado (Headline, Resumo e Experiências) para o seu LinkedIn.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {LANGUAGES.map((lang) => (
-                <button
-                  key={lang.value}
-                  onClick={() => setLinkedInLanguage(lang.value)}
-                  className={`rounded-lg border px-3 py-2.5 text-left transition-all text-[13px] ${
-                    linkedInLanguage === lang.value
-                      ? "border-indigo-500 bg-indigo-500/10 text-foreground"
-                      : "border-border bg-secondary/30 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
-                  }`}
-                >
-                  <div className="font-medium">{lang.label}</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{lang.format}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {mode === "LINKEDIN_OPTIMIZATION" && <section className="surface rounded-2xl p-5 sm:p-7"><div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-soft-primary text-primary"><HugeIcon icon={MapPinIcon} size={19} /></span><div><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Etapa 2</p><h2 className="mt-2 text-[17px] font-semibold">Qual o idioma do perfil?</h2><p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">Selecione o idioma em que deseja que a IA avalie e gere o texto otimizado (Headline, Resumo e Experiências) para o seu LinkedIn.</p></div></div><div className="mt-6 grid gap-2 sm:grid-cols-2">{LANGUAGES.map((language) => <button type="button" key={language.value} onClick={() => setLinkedInLanguage(language.value)} className={`rounded-xl border px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${linkedInLanguage === language.value ? "border-primary bg-soft-primary" : "border-border bg-background hover:border-primary/40"}`}><span className="block text-[12px] font-semibold">{language.label}</span><span className="mt-1 block text-[10px] text-muted-foreground">{language.format}</span></button>)}</div></section>}
 
-        {/* Submit */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleContinue}
-            disabled={!isValid() || loading}
-            className="inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {loading ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Processando...</> : <>Continuar <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></>}
-          </button>
-        </div>
+        <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between"><p className="text-[11px] leading-relaxed text-muted-foreground">Você poderá revisar o resultado antes de decidir o que usar.</p><button type="button" onClick={handleContinue} disabled={!isValid() || loading} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto">{loading ? <><HugeIcon icon={Loading03Icon} size={17} className="animate-spin" /> Processando...</> : <>Continuar <HugeIcon icon={ArrowRight01Icon} size={17} /> </>}</button></div>
       </div>
     </div>
   );
 }
 
 export default function NewAnalysisPage() {
-  return (
-    <Suspense fallback={<div className="flex h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
-      <NewAnalysisContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><HugeIcon icon={Loading03Icon} size={26} className="animate-spin text-primary" /></div>}><NewAnalysisContent /></Suspense>;
 }
