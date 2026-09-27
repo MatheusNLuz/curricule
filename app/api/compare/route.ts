@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { JobParseSchema, CompareSchema, JobParse, CompareAnalysis } from "@/lib/schemas/job-compare.schema";
+import { getSessionUser } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -36,7 +37,10 @@ export async function POST(req: Request) {
 
     if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
 
-    const analysis = await prisma.analysis.findUnique({ where: { id: analysisId } });
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
+    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId } });
     if (!analysis || !analysis.jobDescription || !analysis.parsedResumeText) {
       return NextResponse.json({ error: "Missing job description or parsed resume" }, { status: 400 });
     }
@@ -70,6 +74,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, comparison: validatedCompare });
   } catch (error) {
     console.error("Compare error:", error);
-    return NextResponse.json({ error: "Failed to compare job" }, { status: 500 });
+    return NextResponse.json({ error: "A comparação com a vaga não foi concluída. Tente novamente em instantes." }, { status: 503 });
   }
 }

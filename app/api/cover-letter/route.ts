@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { CoverLetterSchema, CoverLetterGen } from "@/lib/schemas/optimize.schema";
+import { getSessionUser } from "@/lib/auth";
 
 const COVER_LETTER_PROMPT = `You are an expert career coach. Given the optimized resume and the job description, write a compelling, concise cover letter.
 CRITICAL INSTRUCTIONS:
@@ -19,7 +20,10 @@ export async function POST(req: Request) {
     const { analysisId } = await req.json();
     if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
 
-    const analysis = await prisma.analysis.findUnique({ where: { id: analysisId } });
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
+    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId } });
     if (!analysis || (!analysis.finalResumeJson && !analysis.parsedResumeText) || !analysis.jobDescription) {
       return NextResponse.json({ error: "Resume and job description required" }, { status: 400 });
     }
@@ -39,6 +43,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, coverLetter: validated.content });
   } catch (error) {
     console.error("Cover letter error:", error);
-    return NextResponse.json({ error: "Failed to generate cover letter" }, { status: 500 });
+    return NextResponse.json({ error: "A carta de apresentação não pôde ser gerada. Tente novamente em instantes." }, { status: 503 });
   }
 }

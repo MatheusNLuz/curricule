@@ -14,6 +14,7 @@ import {
 } from "@/lib/schemas/analysis.schema";
 import { ScoreEngine } from "@/lib/ats/score-engine";
 import { GamificationEngine } from "@/lib/gamification/gamification-engine";
+import { getSessionUser } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -26,8 +27,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Analysis ID is required" }, { status: 400 });
     }
 
-    const analysisRecord = await prisma.analysis.findUnique({
-      where: { id: analysisId }
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
+    const analysisRecord = await prisma.analysis.findFirst({
+      where: { id: analysisId, userId: session.userId }
     });
 
     if (!analysisRecord || !analysisRecord.parsedResumeText) {
@@ -135,6 +139,6 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error("Error running analysis engine:", error);
-    return NextResponse.json({ error: "Failed to analyze resume" }, { status: 500 });
+    return NextResponse.json({ error: "A análise do currículo não foi concluída. Tente novamente em instantes." }, { status: 503 });
   }
 }

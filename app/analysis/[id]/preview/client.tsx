@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Printer, ChevronLeft } from "lucide-react";
+import { Loader2, Printer, ChevronLeft } from "@/components/ui/app-icon";
 import { useRouter } from "next/navigation";
 
 export function PreviewClient({ analysisId }: { analysisId: string }) {
@@ -32,41 +32,42 @@ export function PreviewClient({ analysisId }: { analysisId: string }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!resumeData) return <div className="p-8 text-white">No optimized resume found. Go back to the editor.</div>;
+  if (!resumeData) return <div className="min-h-screen bg-background p-6 text-foreground">Nenhum currículo otimizado encontrado. Volte ao editor.</div>;
 
   const { contact, summary, experience, education, skills, projects } = resumeData;
 
   return (
-    <div className="min-h-screen bg-zinc-900 pb-12">
+    <div className="min-h-screen bg-background pb-12">
       {/* Non-printable toolbar */}
-      <div className="sticky top-0 z-50 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/80 px-6 py-4 backdrop-blur-md print:hidden">
+      <div className="sticky top-0 z-50 flex flex-col gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-md print:hidden sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
         <button 
           onClick={() => router.push(`/analysis/${analysisId}/editor`)}
-          className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white"
+          className="inline-flex min-h-10 items-center gap-2 self-start text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <ChevronLeft className="h-4 w-4" /> Back to Editor
+          <ChevronLeft className="h-4 w-4" /> Voltar ao editor
         </button>
         <button 
           onClick={handlePrint}
-          className="flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          <Printer className="h-4 w-4" /> Export PDF
+          <Printer className="h-4 w-4" /> Exportar PDF
         </button>
       </div>
 
       {/* A4 Paper Container for Preview & Print */}
-      <div className="mx-auto mt-8 max-w-[850px] bg-white text-black shadow-2xl print:m-0 print:shadow-none">
+      <div className="mx-auto mt-4 max-w-[850px] overflow-x-auto px-3 sm:mt-8 sm:px-0 print:m-0 print:p-0">
+        <div className="bg-white text-black shadow-2xl print:shadow-none">
         {/* ATS Optimized Invisible Table Layout */}
         <table className="w-full border-collapse border-0 p-0 m-0" style={{ tableLayout: "fixed" }}>
           <tbody>
             <tr>
-              <td className="p-10 align-top">
+              <td className="p-5 align-top sm:p-10">
                 {/* Header */}
                 <div className="mb-6 text-center">
                   <h1 className="mb-1 text-3xl font-bold uppercase tracking-wide text-zinc-900">{contact.fullName}</h1>
@@ -84,7 +85,7 @@ export function PreviewClient({ analysisId }: { analysisId: string }) {
                 {summary && (
                   <div className="mb-5">
                     <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-900">
-                      Professional Summary
+                      Resumo profissional
                     </h2>
                     <p className="text-[13px] leading-relaxed text-zinc-800">{summary}</p>
                   </div>
@@ -94,14 +95,14 @@ export function PreviewClient({ analysisId }: { analysisId: string }) {
                 {experience && experience.length > 0 && (
                   <div className="mb-5">
                     <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-900">
-                      Experience
+                      Experiência
                     </h2>
                     {experience.map((exp: any, i: number) => (
                       <div key={i} className="mb-4 break-inside-avoid">
                         <div className="flex justify-between items-baseline mb-1">
                           <h3 className="text-[14px] font-bold text-zinc-900">{exp.title}</h3>
                           <span className="text-[12px] font-medium text-zinc-600">
-                            {exp.startDate} – {exp.current ? "Present" : exp.endDate}
+                            {exp.startDate} – {exp.current ? "Atual" : exp.endDate}
                           </span>
                         </div>
                         <div className="flex justify-between items-baseline mb-2">
@@ -122,7 +123,7 @@ export function PreviewClient({ analysisId }: { analysisId: string }) {
                 {projects && projects.length > 0 && (
                   <div className="mb-5">
                     <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-900">
-                      Projects
+                      Projetos
                     </h2>
                     {projects.map((proj: any, i: number) => (
                       <div key={i} className="mb-3 break-inside-avoid">
@@ -144,7 +145,7 @@ export function PreviewClient({ analysisId }: { analysisId: string }) {
                 {skills && skills.length > 0 && (
                   <div className="mb-5">
                     <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-900">
-                      Technical Skills
+                      Competências
                     </h2>
                     <div className="text-[13px] leading-relaxed text-zinc-800">
                       {skills.map((group: any, i: number) => (
@@ -160,7 +161,7 @@ export function PreviewClient({ analysisId }: { analysisId: string }) {
                 {education && education.length > 0 && (
                   <div className="mb-5">
                     <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-900">
-                      Education
+                      Formação
                     </h2>
                     {education.map((edu: any, i: number) => (
                       <div key={i} className="mb-2 break-inside-avoid flex justify-between items-baseline">
@@ -179,6 +180,7 @@ export function PreviewClient({ analysisId }: { analysisId: string }) {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Print styles */}

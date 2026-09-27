@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { OptimizedResumeSchema, OptimizedResume } from "@/lib/schemas/optimize.schema";
 import { getLinkedInSystemPrompt } from "@/lib/ai/prompts";
+import { getSessionUser } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -62,8 +63,11 @@ export async function POST(req: Request) {
     const { analysisId } = await req.json();
     if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
 
-    const analysis = await prisma.analysis.findUnique({
-      where: { id: analysisId },
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
+    const analysis = await prisma.analysis.findFirst({
+      where: { id: analysisId, userId: session.userId },
       include: { questions: true }
     });
 
@@ -155,6 +159,6 @@ Candidate's Extra Answers:\n${answersText || "None"}`;
     return NextResponse.json({ success: true, optimized: validated, finalScores: finalScoresObj });
   } catch (error) {
     console.error("Optimize error:", error);
-    return NextResponse.json({ error: "Failed to optimize resume" }, { status: 500 });
+    return NextResponse.json({ error: "A otimização não foi concluída. Tente novamente em instantes." }, { status: 503 });
   }
 }

@@ -15,8 +15,9 @@ import {
   AlertCircle,
   TrendingUp,
   Languages
-} from "lucide-react";
+} from "@/components/ui/app-icon";
 import { Badge } from "@/components/ui/badge";
+import { LinkedInLogo } from "@/components/ui/linkedin-logo";
 
 interface Props {
   analysis: any;
@@ -38,7 +39,7 @@ function CopyButton({ text }: { text: string }) {
       className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors shrink-0"
     >
       {copied ? (
-        <><Check className="h-3.5 w-3.5 text-emerald-400" /> Copiado!</>
+        <><Check className="h-3.5 w-3.5 text-route" /> Copiado!</>
       ) : (
         <><Copy className="h-3.5 w-3.5" /> Copiar</>
       )}
@@ -60,18 +61,21 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
     <div className="container mx-auto max-w-5xl px-4 py-8 sm:px-6 space-y-8 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-linkedin/10 text-linkedin dark:bg-linkedin/20" aria-hidden="true"><LinkedInLogo className="size-5" /></span>
+          <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight">Otimização de LinkedIn (SEO)</h1>
-          <p className="text-[13px] text-muted-foreground mt-0.5">Analise e melhore seu perfil para tech recruiters.</p>
+          <p className="text-[13px] text-muted-foreground mt-0.5">Analise e melhore seu perfil para ser encontrado pelas oportunidades certas.</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {gamification && (
-            <Badge variant="secondary" className="text-[12px] bg-blue-500/10 text-blue-400 border-blue-500/20 py-1 px-3">
+            <Badge variant="secondary" className="text-[12px] bg-linkedin/10 text-linkedin border-linkedin/20 py-1 px-3">
               Nível {gamification.level}: {gamification.levelName}
             </Badge>
           )}
           {analysis.detectedLanguage !== analysis.recommendedLanguage && (
-            <Badge variant="outline" className="text-[12px] text-amber-400 border-amber-500/20 bg-amber-500/5 py-1 px-3 flex items-center gap-1">
+            <Badge variant="outline" className="text-[12px] text-warning border-warning/20 bg-warning/5 py-1 px-3 flex items-center gap-1">
               <Languages className="h-3 w-3" /> Idioma Misto
             </Badge>
           )}
@@ -82,18 +86,18 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Main SEO Score */}
         <div className="surface rounded-xl p-6 flex flex-col justify-between items-center text-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-linkedin/5 rounded-full blur-2xl pointer-events-none" />
           <div className="w-full flex flex-col items-center">
             <p className="text-[12px] uppercase tracking-wider text-muted-foreground mb-4 font-semibold">Score Geral de SEO</p>
-            <div className="relative flex items-center justify-center h-32 w-32 rounded-full border-4 border-blue-500/20 bg-blue-500/5">
-              <span className="text-4xl font-bold font-mono text-blue-400">
+            <div className="relative flex items-center justify-center h-32 w-32 rounded-full border-4 border-linkedin/20 bg-linkedin/5">
+              <span className="text-4xl font-bold font-mono text-linkedin">
                 {scores?.overall || 0}
               </span>
               <span className="text-[12px] text-muted-foreground absolute bottom-4">/100</span>
             </div>
           </div>
           <div className="mt-6 w-full">
-            <div className="flex items-center gap-1.5 justify-center text-[13px] font-semibold text-blue-400">
+            <div className="flex items-center gap-1.5 justify-center text-[13px] font-semibold text-linkedin">
               <TrendingUp className="h-4 w-4" /> {scores?.overall >= 80 ? "PERFIL ALTAMENTE OTIMIZADO" : "PONTOS DE ATENÇÃO DETECTADOS"}
             </div>
             <p className="text-[11.5px] text-muted-foreground mt-2 leading-relaxed">
@@ -113,13 +117,13 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
                 <div className="flex justify-between items-center">
                   <span className="text-[13px] font-semibold text-foreground">{score.label}</span>
                   <span className={`font-mono text-[13px] font-bold ${
-                    score.val >= 80 ? "text-emerald-400" : score.val >= 60 ? "text-amber-400" : "text-red-400"
+                    score.val >= 80 ? "text-route" : score.val >= 60 ? "text-warning" : "text-signal"
                   }`}>{score.val}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                   <div 
                     className={`h-full transition-all duration-500 ${
-                      score.val >= 80 ? "bg-emerald-500" : score.val >= 60 ? "bg-amber-500" : "bg-red-500"
+                      score.val >= 80 ? "bg-route" : score.val >= 60 ? "bg-warning" : "bg-signal"
                     }`}
                     style={{ width: `${score.val}%` }} 
                   />
@@ -139,10 +143,10 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
           <div className="surface rounded-xl p-6 space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-3 justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-blue-400" />
+                <Sparkles className="h-4 w-4 text-linkedin" />
                 <h3 className="text-[15px] font-bold">Ideias de Título (Headline) Otimizado</h3>
               </div>
-              <Badge variant="outline" className="text-[10px] text-blue-400 border-blue-400/20 bg-blue-500/5">SEO Máximo</Badge>
+              <Badge variant="outline" className="text-[10px] text-linkedin border-linkedin/20 bg-linkedin/5">SEO Máximo</Badge>
             </div>
             <p className="text-[12.5px] text-muted-foreground leading-relaxed">
               O título abaixo do seu nome é a seção mais importante para a busca do LinkedIn. Use formatos que unam sua especialidade técnica a termos-chave procurados por recrutadores:
@@ -150,9 +154,9 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
             
             <div className="space-y-2.5 pt-2">
               {analysis?.headlineSuggestions?.map((headline: string, i: number) => (
-                <div key={i} className="flex items-start justify-between gap-4 rounded-lg bg-secondary/50 border border-border p-3 hover:border-blue-500/20 transition-all">
+                <div key={i} className="flex items-start justify-between gap-4 rounded-lg bg-secondary/50 border border-border p-3 hover:border-linkedin/20 transition-all">
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Opção {i + 1}</span>
+                    <span className="text-[10px] font-bold text-linkedin uppercase tracking-wider">Opção {i + 1}</span>
                     <p className="text-[13px] font-medium text-foreground leading-relaxed">{headline}</p>
                   </div>
                   <CopyButton text={headline} />
@@ -168,7 +172,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
                 onClick={() => setActiveTab("summary")}
                 className={`px-5 py-3.5 text-[13px] font-semibold flex items-center gap-2 border-b-2 transition-all ${
                   activeTab === "summary" 
-                    ? "border-blue-500 text-blue-400 bg-background/50" 
+                    ? "border-linkedin text-linkedin bg-background/50"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -178,7 +182,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
                 onClick={() => setActiveTab("experience")}
                 className={`px-5 py-3.5 text-[13px] font-semibold flex items-center gap-2 border-b-2 transition-all ${
                   activeTab === "experience" 
-                    ? "border-blue-500 text-blue-400 bg-background/50" 
+                    ? "border-linkedin text-linkedin bg-background/50"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -224,7 +228,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
                           
                           {exp.optimizedBullets && exp.optimizedBullets.length > 0 && (
                             <div className="space-y-2">
-                              <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">Descrição Otimizada para Copiar:</span>
+                              <span className="text-[11px] font-bold text-linkedin uppercase tracking-wider">Descrição Otimizada para Copiar:</span>
                               <div className="rounded bg-secondary/40 p-3 font-mono text-[12px] whitespace-pre-wrap leading-relaxed text-foreground/90 border border-border/30">
                                 {bulletsText}
                               </div>
@@ -237,7 +241,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
                               <ul className="space-y-1.5">
                                 {exp.tips.map((tip: string, j: number) => (
                                   <li key={j} className="text-[12px] text-muted-foreground flex items-start gap-2 leading-relaxed">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                                    <CheckCircle2 className="h-4 w-4 text-route shrink-0 mt-0.5" />
                                     <span>{tip}</span>
                                   </li>
                                 ))}
@@ -261,14 +265,14 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
           {/* SEO Keywords Tag Cloud */}
           <div className="surface rounded-xl p-5 space-y-3">
             <h3 className="text-[13.5px] font-bold flex items-center gap-2">
-              <Key className="h-4 w-4 text-blue-400" /> Keywords Recomendadas
+              <Key className="h-4 w-4 text-linkedin" /> Keywords Recomendadas
             </h3>
             <p className="text-[11.5px] text-muted-foreground leading-normal">
               Palavras-chave vitais no seu nicho de mercado. Certifique-se de que elas estejam distribuídas em suas competências e cargos no LinkedIn:
             </p>
             <div className="flex flex-wrap gap-1.5 pt-2">
               {analysis?.seoKeywords?.map((kw: string, i: number) => (
-                <span key={i} className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-400 border border-blue-500/10">
+                <span key={i} className="inline-flex items-center rounded-md bg-linkedin/10 px-2 py-1 text-[11px] font-medium text-linkedin border border-linkedin/10">
                   {kw}
                 </span>
               ))}
@@ -278,7 +282,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
           {/* Warnings & Language Consistency */}
           <div className="surface rounded-xl p-5 space-y-4">
             <h3 className="text-[13.5px] font-bold flex items-center gap-2">
-              <Languages className="h-4 w-4 text-blue-400" /> Idioma e Consistência
+              <Languages className="h-4 w-4 text-linkedin" /> Idioma e Consistência
             </h3>
             <div className="space-y-3">
               <div className="rounded-lg bg-secondary/50 p-3 space-y-1 text-[12.5px]">
@@ -288,7 +292,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
                 </div>
                 <div className="flex justify-between pt-1 border-t border-border/40 mt-1">
                   <span className="font-semibold text-muted-foreground">Recomendação:</span>
-                  <span className="font-bold text-blue-400">{analysis.recommendedLanguage === "pt-BR" ? "Focar em Português" : "Focar em Inglês"}</span>
+                  <span className="font-bold text-linkedin">{analysis.recommendedLanguage === "pt-BR" ? "Focar em Português" : "Focar em Inglês"}</span>
                 </div>
               </div>
 
@@ -297,13 +301,13 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-foreground">{issue.type}</span>
                     <Badge variant="outline" className={`text-[9px] px-1.5 ${
-                      issue.severity === "high" ? "text-red-400 border-red-400/20" :
-                      issue.severity === "medium" ? "text-amber-400 border-amber-400/20" :
+                      issue.severity === "high" ? "text-signal border-signal/20" :
+                      issue.severity === "medium" ? "text-warning border-warning/20" :
                       "text-muted-foreground"
                     }`}>{issue.severity === "high" ? "Grave" : issue.severity === "medium" ? "Médio" : "Leve"}</Badge>
                   </div>
                   <p className="text-muted-foreground leading-normal">{issue.description}</p>
-                  <p className="text-blue-400 font-medium">Ação: {issue.recommendation}</p>
+                  <p className="text-linkedin font-medium">Ação: {issue.recommendation}</p>
                 </div>
               ))}
             </div>
@@ -316,7 +320,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
               <ul className="space-y-1.5">
                 {analysis?.strengths?.map((s: string, i: number) => (
                   <li key={i} className="text-[12px] text-muted-foreground flex items-start gap-1.5 leading-normal">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-route shrink-0 mt-0.5" />
                     <span>{s}</span>
                   </li>
                 ))}
@@ -328,7 +332,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
               <ul className="space-y-1.5">
                 {analysis?.weaknesses?.map((w: string, i: number) => (
                   <li key={i} className="text-[12px] text-muted-foreground flex items-start gap-1.5 leading-normal">
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <AlertCircle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
                     <span>{w}</span>
                   </li>
                 ))}
@@ -346,7 +350,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
         </p>
         <button
           onClick={() => window.location.href = `/analysis/${analysisId}/editor`}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-[13.5px] font-semibold text-white hover:bg-blue-500 transition-colors shadow-sm cursor-pointer mt-2"
+          className="inline-flex items-center gap-2 rounded-lg bg-linkedin px-6 py-3 text-[13.5px] font-semibold text-linkedin-foreground hover:bg-linkedin/90 transition-colors shadow-sm cursor-pointer mt-2"
         >
           <Sparkles className="h-4 w-4" /> Responder Perguntas & Inserir Dados Reais
         </button>

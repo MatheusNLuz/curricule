@@ -10,7 +10,8 @@ datasource db {
 model User {
   id        String     @id @default(cuid())
   email     String     @unique
-  password  String
+  password  String?
+  neonAuthId String?   @unique
   name      String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
