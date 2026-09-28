@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getNeonAuth, hasNeonAuthConfig } from "@/lib/auth/server";
+import { hasNeonOAuthSessionCallback } from "@/lib/auth/oauth-callback";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/" || pathname === "/login" || pathname === "/register" || pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
+  if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
     return NextResponse.next();
   }
+
+  const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/register";
+  // Neon must exchange the OAuth verifier before the public home page can render the session.
+  const isHomeOAuthCallback =
+    pathname === "/" && hasNeonOAuthSessionCallback(request.url, request.headers.get("cookie"));
+  if (isPublicPage && !isHomeOAuthCallback) return NextResponse.next();
 
   if (pathname.includes("/preview") && request.nextUrl.searchParams.get("export") === "true") {
     return NextResponse.next();
