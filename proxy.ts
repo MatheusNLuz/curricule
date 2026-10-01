@@ -10,17 +10,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/register";
+  const isPublicPage = pathname === "/login" || pathname === "/register";
   // Neon must exchange the OAuth verifier before the public home page can render the session.
   const isHomeOAuthCallback =
     pathname === "/" && hasNeonOAuthSessionCallback(request.url, request.headers.get("cookie"));
-  if (isPublicPage && !isHomeOAuthCallback) return NextResponse.next();
+  if (isPublicPage) return NextResponse.next();
 
   if (pathname.includes("/preview") && request.nextUrl.searchParams.get("export") === "true") {
     return NextResponse.next();
   }
 
   if (!hasNeonAuthConfig()) {
+    if (pathname === "/") return NextResponse.next();
     if (pathname.startsWith("/api/")) {
       if (request.cookies.get("session")?.value) return NextResponse.next();
       return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
@@ -31,6 +32,13 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname === "/") {
+    const hasNeonAuthCookie = request.cookies
+      .getAll()
+      .some(({ name }) => name.startsWith("__Secure-neon-auth."));
+    if (!hasNeonAuthCookie && !isHomeOAuthCallback) return NextResponse.next();
   }
 
   const auth = getNeonAuth();

@@ -18,7 +18,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("match");
+  const [activeTab, setActiveTab] = useState("questions");
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});

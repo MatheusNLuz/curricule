@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import pdf from "pdf-parse";
+import { PDFParse } from "pdf-parse";
+import { CanvasFactory, getData } from "pdf-parse/worker";
 import { getSessionUser } from "@/lib/auth";
+
+PDFParse.setWorker(getData());
 
 export async function POST(req: Request) {
   try {
@@ -26,28 +29,15 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Polyfill DOM objects required by pdf-parse in serverless environments
-    if (typeof global !== "undefined") {
-      if (!global.DOMMatrix) {
-        global.DOMMatrix = class DOMMatrix {
-          a=1; b=0; c=0; d=1; e=0; f=0;
-        } as any;
-      }
-      if (!global.ImageData) {
-        global.ImageData = class ImageData {
-          data = new Uint8ClampedArray();
-          width = 0;
-          height = 0;
-        } as any;
-      }
-      if (!global.Path2D) {
-        global.Path2D = class Path2D {} as any;
-      }
+    // Parse in-memory and use pdf-parse's serverless worker/canvas support.
+    const parser = new PDFParse({ data: buffer, CanvasFactory });
+    let extractedText: string;
+    try {
+      const data = await parser.getText();
+      extractedText = data.text;
+    } finally {
+      await parser.destroy();
     }
-
-    // Parse PDF in-memory (no disk writes, required for Vercel)
-    const data = await pdf(buffer);
-    const extractedText = data.text;
 
     if (!extractedText || extractedText.trim() === "") {
       return NextResponse.json({ error: "Could not extract text from this PDF. It might be scanned or image-based." }, { status: 400 });
