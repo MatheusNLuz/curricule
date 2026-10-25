@@ -7,7 +7,7 @@ import { Loader2, AlertCircle, CheckCircle2, ArrowRight, ShieldAlert, BarChart3,
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/custom-toast";
 import { RouteLine } from "@/components/ui/route-line";
-import { getFetchErrorMessage, getLoginUrl, readApiError } from "@/lib/api-client";
+import { getFetchErrorMessage, getLoginUrl, readApiError, fetchAnalysisTask } from "@/lib/api-client";
 
 const LinkedInDashboard = dynamic(
   () => import("@/components/analysis/linkedin-dashboard").then((module) => module.LinkedInDashboard),
@@ -70,7 +70,7 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
   const handleGenerateCoverLetter = async () => {
     setGeneratingLetter(true);
     try {
-      const res = await fetch(`/api/cover-letter`, {
+      const res = await fetchAnalysisTask(`/api/cover-letter`, {
         method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }
       });
       if (!res.ok) throw new Error(await readApiError(res, "Falha ao gerar a carta de apresentação."));
@@ -111,7 +111,7 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
       if (record.mode === "COVER_LETTER_ONLY") {
         if (!record.coverLetter) {
           setStep("Gerando Carta de Apresentação...");
-          const resCl = await fetch(`/api/cover-letter`, {
+          const resCl = await fetchAnalysisTask(`/api/cover-letter`, {
             method: "POST", body: JSON.stringify({ analysisId }), signal
           });
           if (!resCl.ok) throw new Error(await readApiError(resCl, "Falha ao gerar carta de apresentação"));
@@ -126,13 +126,13 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
 
       if (!record.analysisJson) {
         setStep("Rodando análise de ATS...");
-        const r = await fetch("/api/analyze", { method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }, signal });
+        const r = await fetchAnalysisTask("/api/analyze", { method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }, signal });
         if (!r.ok) throw new Error(await readApiError(r, "Análise de ATS falhou"));
       }
 
       if (record.mode !== "MAKE_ATS_FRIENDLY" && record.jobDescription && !record.comparisonJson) {
         setStep("Comparando com a vaga...");
-        const r = await fetch("/api/compare", { method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }, signal });
+        const r = await fetchAnalysisTask("/api/compare", { method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }, signal });
         if (!r.ok) throw new Error(await readApiError(r, "Comparação falhou"));
       }
 
@@ -225,8 +225,8 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
   if (analysisData.mode === "LINKEDIN_OPTIMIZATION") {
     return (
       <LinkedInDashboard 
-        analysis={analysis} 
-        scores={scores} 
+        analysis={analysisData.finalResumeJson ? parse(analysisData.finalResumeJson) : analysis}
+        scores={finalScores || scores}
         gamification={gamification} 
         analysisId={analysisId} 
       />
@@ -240,6 +240,7 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
         <div>
           <h1 className="font-heading text-2xl font-semibold">Resultados da Análise</h1>
           <p className="text-[13px] text-muted-foreground">{analysisData.professionalTarget || "Otimização Geral"}</p>
+          <p className="mt-2 max-w-2xl text-xs leading-6 text-muted-foreground">As notas são estimativas de conteúdo da IA, não chances de contratação. A versão otimizada é reavaliada com os mesmos critérios.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {finalScores && (

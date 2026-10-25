@@ -1,5 +1,5 @@
 export function ModernAtsTemplate({ resume, isExport, language = "en-US" }: { resume: any, isExport: boolean, language?: string }) {
-  const isPT = language === "pt-BR";
+  const isPT = language.startsWith("pt-");
   const H = {
     PROFILE: isPT ? "Resumo Profissional" : "Profile",
     EXPERIENCE: isPT ? "Experiência Profissional" : "Experience",

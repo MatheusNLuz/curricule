@@ -27,11 +27,12 @@ A pessoa pode enviar um currículo em PDF ou colar seu texto, informar uma descr
 - O sistema existente oferece análise ATS, comparação com vaga, otimização completa, otimização de LinkedIn e geração de carta de apresentação.
 - Nesta etapa, o comportamento de análise, otimização e demais fluxos de backend deve permanecer inalterado.
 - A única exceção de backend autorizada nesta etapa é a migração da autenticação atual para Neon Auth.
-- A interface deve funcionar bem em telas móveis e desktop.
+- A interface deve seguir mobile first: começar por telas de 320–390 px, interação por toque e conteúdo em uma coluna; ampliar a composição para tablet e desktop.
 
 ## Brand Commitments
 
-- O produto se chama Curriculy.
+- O produto se chama Curricule.
+- O logotipo aprovado é o C com duas linhas de currículo organizado e lettering leve em minúsculas, disponível em `components/brand/curricule-logo.tsx` e `public/brand/`. Usar a versão completa na navegação e o símbolo em espaços reduzidos.
 - A assinatura de marca pode comunicar a ideia de um perfil profissional pronto para a próxima oportunidade.
 - A identidade visual deve evitar aparência genérica ou claramente gerada por IA.
 - A interface deve usar ReactBits e HugeIcons de forma coerente e intencional.
@@ -48,3 +49,4 @@ A pessoa pode enviar um currículo em PDF ou colar seu texto, informar uma descr
 - Preservar a veracidade das informações da candidatura.
 - Reduzir fricção para concluir uma candidatura de qualidade.
 - Priorizar clareza, confiança e uso confortável em dispositivos móveis.
+- Manter alvos de toque de pelo menos 44 px, evitar rolagem horizontal e validar no celular antes do desktop. Novos estilos responsivos devem usar a base móvel e ampliar com `min-width`.

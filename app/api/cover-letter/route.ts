@@ -1,48 +1,32 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
-import { CoverLetterSchema, CoverLetterGen } from "@/lib/schemas/optimize.schema";
 import { getSessionUser } from "@/lib/auth";
-
-const COVER_LETTER_PROMPT = `You are an expert career coach. Given the optimized resume and the job description, write a compelling, concise cover letter.
-CRITICAL INSTRUCTIONS:
-1. LANGUAGE MATCHING: Write the cover letter in the SAME LANGUAGE as the Job Description (e.g., if the job is in English, write in English. If Portuguese, Portuguese).
-2. NO EMAIL HEADERS/CONTACT INFO: DO NOT include phone numbers, emails, addresses, or generic "Dear Hiring Manager" / "Sincerely [Name]" blocks at the top/bottom. The cover letter will be attached to a profile that already has this contact info. Just write the core body paragraphs.
-3. TONE & STRUCTURE: Make it sound professional and engaging, focusing on technical matches, gap analysis, and the unique value proposition. It should NOT look like a raw email.
-
-Return ONLY valid JSON matching this exact structure:
-{
-  "content": "string"
-}`;
-
-export async function POST(req: Request) {
+import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
+import { CoverLetterSchema } from "@/lib/schemas/optimize.schema";
+import { readTruth, truthContext, truthSourceHash } from "@/lib/ats/truth-policy";
+import { verifyOutput } from "@/lib/ats/verify-output";
+import { runAnalysisTask } from "@/lib/analysis-task";
+import { languageLabel } from "@/lib/analysis-contract";
+import { apiError, HttpError } from "@/lib/http-error";
+export const maxDuration = 180;
+export async function POST(request: Request) {
   try {
-    const { analysisId } = await req.json();
-    if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
-
-    const session = await getSessionUser();
-    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
-
-    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId } });
-    if (!analysis || (!analysis.finalResumeJson && !analysis.parsedResumeText) || !analysis.jobDescription) {
-      return NextResponse.json({ error: "Resume and job description required" }, { status: 400 });
-    }
-
-    const resumeContent = analysis.finalResumeJson || analysis.parsedResumeText;
-    const payload = `Resume:\n${resumeContent}\n\nJob Description:\n${analysis.jobDescription}`;
-
-    const orchestrator = new AnalysisOrchestrator();
-    const rawLetter = await orchestrator.analyze<CoverLetterGen>(COVER_LETTER_PROMPT, payload);
-    const validated = CoverLetterSchema.parse(rawLetter);
-
-    await prisma.analysis.update({
-      where: { id: analysisId },
-      data: { coverLetter: validated.content }
+    const session = await getSessionUser(); if (!session) throw new HttpError(401, "Faça login para continuar.");
+    const { analysisId } = z.object({ analysisId: z.string() }).strict().parse(await request.json());
+    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId }, include: { questions: true } });
+    if (!analysis?.parsedResumeText || !analysis.jobDescription) throw new HttpError(400, "Informe seu currículo e a descrição da vaga.");
+    const review = readTruth(analysis.truthGuardJson);
+    if (review && review.sourceHash !== truthSourceHash(analysis)) throw new HttpError(409, "As respostas mudaram. Valide os fatos novamente.");
+    const facts = truthContext(review);
+    const confirmed = analysis.questions.filter(q => q.answer && q.confirmed).map(q => q.answer).join("\n") + "\n" + facts.approved.join("\n");
+    const result = await runAnalysisTask(analysisId, session.userId, "COVER_LETTER", [analysis.revision, analysis.truthGuardJson, analysis.selectedLanguage], async () => {
+      const letter = await new AnalysisOrchestrator().analyzeLocalized("Write a concise cover letter in " + languageLabel(analysis.selectedLanguage) + ". Return only JSON {\"content\":\"...\"}. Use only facts supported by ORIGINAL or CONFIRMED; never invent skills, metrics or qualifications from the job. Do not use REJECTED claims, even paraphrased. No contact blocks or email headers.", JSON.stringify({ original: analysis.parsedResumeText, confirmed, rejected: facts.rejected, job: analysis.jobDescription, optimized: analysis.finalResumeJson }), CoverLetterSchema, analysis.selectedLanguage);
+      await verifyOutput(analysis.parsedResumeText!, confirmed, letter.content, facts.rejected, "letter", analysis.selectedLanguage);
+      const updated = await prisma.analysis.updateMany({ where: { id: analysisId, revision: analysis.revision, truthGuardJson: analysis.truthGuardJson }, data: { coverLetter: letter.content } });
+      if (!updated.count) throw new HttpError(409, "O conteúdo mudou durante a geração. Tente novamente.");
+      return { success: true, coverLetter: letter.content };
     });
-
-    return NextResponse.json({ success: true, coverLetter: validated.content });
-  } catch (error) {
-    console.error("Cover letter error:", error);
-    return NextResponse.json({ error: "A carta de apresentação não pôde ser gerada. Tente novamente em instantes." }, { status: 503 });
-  }
+    return NextResponse.json(result);
+  } catch (error) { return apiError(error, "Não foi possível gerar a carta. Nenhum resultado anterior foi substituído."); }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowLeft, ArrowRight, Sparkles, Download, FileText, Briefcase, HelpCircle, PenTool, Layout } from "@/components/ui/app-icon";
 import { useToast } from "@/components/ui/custom-toast";
@@ -10,8 +10,11 @@ import { StructuredResumeEditor } from "@/components/editor/structured-resume-ed
 import { TruthGuardPanel } from "@/components/analysis/truth-guard-panel";
 import { PreviewTemplate } from "@/components/preview/preview-template";
 import { RouteLine } from "@/components/ui/route-line";
-import { getFetchErrorMessage, getLoginUrl, readApiError } from "@/lib/api-client";
+import { getFetchErrorMessage, getLoginUrl, readApiError, fetchAnalysisTask } from "@/lib/api-client";
 import { normalizeTemplateId } from "@/lib/preview-template";
+import type { ReviewedTruth } from "@/lib/ats/truth-policy";
+import type { OptimizedResume } from "@/lib/schemas/optimize.schema";
+import { ResumeVersions } from "@/components/editor/resume-versions";
 
 export function EditorClient({ analysisId }: { analysisId: string }) {
   const router = useRouter();
@@ -22,7 +25,8 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [truthGuardData, setTruthGuardData] = useState<any>(null);
+  const [truthGuardData, setTruthGuardData] = useState<ReviewedTruth | null>(null);
+  const [answerSaveStatus, setAnswerSaveStatus] = useState("");
   const [runningTruthGuard, setRunningTruthGuard] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -46,9 +50,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       const d = await res.json();
       setData(d);
       
-      if (d.mode === "LINKEDIN_OPTIMIZATION") {
-        setActiveTab("questions");
-      } else if (!d.comparisonJson && d.jobDescription) {
+      if (!d.comparisonJson && d.jobDescription) {
         // Needs match
       } else if (!d.questions || d.questions.length === 0) {
         // Generate questions if not exist
@@ -62,7 +64,6 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
         const initialAnswers: Record<string, string> = {};
         d.questions.forEach((q: any) => {
           if (q.answer) initialAnswers[q.id] = q.answer;
-          else if (q.suggestedAnswer) initialAnswers[q.id] = q.suggestedAnswer;
         });
         setAnswers(initialAnswers);
       }
@@ -76,7 +77,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   const fetchQuestions = async () => {
     setGeneratingQuestions(true);
     try {
-      const res = await fetch(`/api/smart-questions`, {
+      const res = await fetchAnalysisTask(`/api/smart-questions`, {
         method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }
       });
       if (!res.ok) throw new Error(await readApiError(res, "Não foi possível gerar as perguntas."));
@@ -108,7 +109,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       });
       if (!saveResponse.ok) throw new Error(await readApiError(saveResponse, "Não foi possível salvar suas respostas."));
 
-      const res = await fetch(`/api/truth-guard`, {
+      const res = await fetchAnalysisTask(`/api/truth-guard`, {
         method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }
       });
       if (!res.ok) throw new Error(await readApiError(res, "Falha ao verificar a integridade do conteúdo."));
@@ -122,7 +123,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
     }
   };
 
-  const handleOptimize = async () => {
+  const handleOptimize = async (decisions: Record<string, boolean>) => {
     setOptimizing(true);
     try {
       // First save typed answers
@@ -133,7 +134,10 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       });
       if (!saveResponse.ok) throw new Error(await readApiError(saveResponse, "Não foi possível salvar suas respostas."));
 
-      const res = await fetch(`/api/optimize`, {
+      const decisionResponse = await fetch("/api/truth-guard/decisions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId, sourceHash: truthGuardData?.sourceHash, decisions }) });
+      if (!decisionResponse.ok) throw new Error(await readApiError(decisionResponse, "Não foi possível salvar suas decisões."));
+
+      const res = await fetchAnalysisTask(`/api/optimize`, {
         method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }
       });
       if (!res.ok) throw new Error(await readApiError(res, "Falha ao otimizar o currículo."));
@@ -168,7 +172,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Curriculy_Resume_${analysisId}.pdf`;
+      a.download = `Curricule_Resume_${analysisId}.pdf`;
       a.click();
       toast({ title: "Exportado", description: "Seu PDF está pronto.", variant: "success" });
     } catch (error: unknown) {
@@ -181,7 +185,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   const handleGenerateCoverLetter = async () => {
     setGeneratingLetter(true);
     try {
-      const res = await fetch(`/api/cover-letter`, {
+      const res = await fetchAnalysisTask(`/api/cover-letter`, {
         method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }
       });
       if (!res.ok) throw new Error(await readApiError(res, "Falha ao gerar a carta de apresentação."));
@@ -195,17 +199,23 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
     }
   };
 
-  const handleSaveManualEdit = async (newData: any) => {
+  const handleSaveDraft = useCallback(async (newData: OptimizedResume) => {
+    const response = await fetch(`/api/analysis/${analysisId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ editorDraftJson: JSON.stringify(newData), revision: data?.revision }) });
+    if (!response.ok) throw new Error("Não foi possível salvar o rascunho.");
+  }, [analysisId, data?.revision]);
+
+  const handleSaveManualEdit = async (newData: OptimizedResume) => {
     try {
       const res = await fetch(`/api/analysis/${analysisId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ finalResumeJson: JSON.stringify(newData) }),
+        body: JSON.stringify({ finalResumeJson: JSON.stringify(newData), revision: data.revision }),
       });
       if (!res.ok) throw new Error(await readApiError(res, "Falha ao salvar as alterações."));
       await fetchData();
     } catch (error: unknown) {
       toast({ title: "Não foi possível salvar", description: getFetchErrorMessage(error, "Tente novamente em instantes."), variant: "error" });
+      throw error;
     }
   };
 
@@ -233,6 +243,19 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       toast({ title: "Template não salvo", description: getFetchErrorMessage(error, "Tente novamente em instantes."), variant: "error" });
     }
   };
+
+  useEffect(() => {
+    if (!questions.length) return;
+    const timer = setTimeout(async () => {
+      setAnswerSaveStatus("Salvando respostas…");
+      try {
+        const response = await fetch("/api/smart-questions/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId, answers }) });
+        if (!response.ok) throw new Error(await readApiError(response, "Respostas não salvas."));
+        setAnswerSaveStatus("Respostas salvas na sua conta.");
+      } catch { setAnswerSaveStatus("Não foi possível salvar. Mantenha esta aba aberta e tente validar os fatos novamente."); }
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [analysisId, answers, questions]);
 
   if (loading || !data) return (
     <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center px-5 py-16">
@@ -286,6 +309,10 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
         />
       </div>
 
+      <p role="status" className="mb-5 text-xs text-muted-foreground">{answerSaveStatus}</p>
+      <details className="mb-6 rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">Conferir o material original</summary><p className="mt-3 text-xs leading-6 text-muted-foreground">Compare as sugestões e a prévia com o conteúdo que você forneceu. Revise especialmente empresas, datas e resultados antes de usar.</p><pre className="mt-4 max-h-96 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7">{data.parsedResumeText}</pre></details>
+      {optimized && <ResumeVersions analysisId={analysisId} current={data.finalResumeJson} revision={data.revision} onRestore={fetchData} />}
+
       {isLinkedIn ? (
         <div className="space-y-6 animate-fade-in">
           <div className="surface rounded-2xl p-4 sm:p-6">
@@ -311,7 +338,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
                     {q.suggestedAnswer && (
                       <button
                         type="button"
-                        onClick={() => setAnswers({ ...answers, [q.id]: q.suggestedAnswer })}
+                        onClick={() => { setAnswers({ ...answers, [q.id]: q.suggestedAnswer }); setTruthGuardData(null); }}
                         className="mb-2 inline-flex min-h-9 items-center gap-1 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer"
                       >
                         <Sparkles className="h-3.5 w-3.5" />
@@ -323,7 +350,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
                       className="text-[13px] bg-background" 
                       placeholder="Sua resposta…"
                       value={answers[q.id] || ""}
-                      onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                      onChange={(e) => { setAnswers({ ...answers, [q.id]: e.target.value }); setTruthGuardData(null); }}
                     />
                   </div>
                 ))}
@@ -405,7 +432,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
                     {q.suggestedAnswer && (
                       <button
                         type="button"
-                        onClick={() => setAnswers({ ...answers, [q.id]: q.suggestedAnswer })}
+                        onClick={() => { setAnswers({ ...answers, [q.id]: q.suggestedAnswer }); setTruthGuardData(null); }}
                         className="mb-2 inline-flex min-h-9 items-center gap-1 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer"
                       >
                         <Sparkles className="h-3.5 w-3.5" />
@@ -417,7 +444,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
                       className="text-[13px] bg-background" 
                       placeholder="Sua resposta…"
                       value={answers[q.id] || ""}
-                      onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                      onChange={(e) => { setAnswers({ ...answers, [q.id]: e.target.value }); setTruthGuardData(null); }}
                     />
                   </div>
                 ))}
@@ -441,7 +468,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
 
         {optimized && (
           <TabsContent value="edit" className="space-y-6">
-            <StructuredResumeEditor initialData={optimized} onSave={handleSaveManualEdit} />
+            <StructuredResumeEditor key={data.revision} initialData={optimized} draftData={data.editorDraftJson ? JSON.parse(data.editorDraftJson) : undefined} onSave={handleSaveManualEdit} onDraftSave={handleSaveDraft} />
           </TabsContent>
         )}
 

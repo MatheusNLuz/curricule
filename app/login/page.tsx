@@ -76,11 +76,11 @@ export default function LoginPage() {
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Volte para sua rota</p>
         <h1 className="mt-4 max-w-[10ch] font-heading text-5xl font-semibold leading-[0.98] tracking-[-0.06em]">Seu próximo passo começa aqui.</h1>
         <p className="mt-6 max-w-[36ch] text-[14px] leading-7 text-muted-foreground">Um espaço para dar forma ao que você já construiu e clareza ao que vem depois.</p>
-        <div className="mt-10 flex items-center gap-3 text-[12px] text-muted-foreground"><span className="grid size-9 place-items-center rounded-xl bg-soft-primary text-primary"><HugeIcon icon={SparklesIcon} size={17} /></span> Curriculy acompanha seu contexto.</div>
+        <div className="mt-10 flex items-center gap-3 text-[12px] text-muted-foreground"><span className="grid size-9 place-items-center rounded-xl bg-soft-primary text-primary"><HugeIcon icon={SparklesIcon} size={17} /></span> Curricule acompanha seu contexto.</div>
       </div>
 
       <div className="mx-auto w-full max-w-md">
-        <div className="mb-7 lg:hidden"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Bem-vindo ao Curriculy</p><h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.05em]">Entre para continuar.</h1></div>
+        <div className="mb-7 lg:hidden"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Bem-vindo ao Curricule</p><h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.05em]">Entre para continuar.</h1></div>
         <div className="surface rounded-[24px] p-6 shadow-[0_24px_80px_rgba(108,74,163,0.10)] sm:p-8">
           <div className="mb-8"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Seu espaço profissional</p><h2 className="mt-2 font-heading text-2xl font-semibold tracking-[-0.04em]">Entrar na conta</h2><p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Retome sua análise exatamente de onde parou.</p></div>
           <button type="button" onClick={handleGoogleSignIn} disabled={loading || googleLoading} className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border bg-background px-4 text-[13px] font-semibold text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">

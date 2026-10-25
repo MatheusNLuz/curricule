@@ -1,58 +1,31 @@
-import { AiProviderInterface } from "./ai-provider.interface";
+import type { ZodType } from "zod";
+import type { AiProviderInterface } from "./ai-provider.interface";
 import { OpenRouterProvider } from "./openrouter-provider";
 import { NvidiaNimProvider } from "./nvidia-nim-provider";
+import { aiFailureMetadata } from "./provider-error";
+import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError } from "./output-language";
 
 export class AnalysisOrchestrator {
-  private primaryProvider: AiProviderInterface;
-  private secondaryProvider: AiProviderInterface;
-
-  constructor() {
-    this.primaryProvider = new OpenRouterProvider();
-    this.secondaryProvider = new NvidiaNimProvider();
-  }
-
-  // Basic implementation to fallback or use consensus
-  async analyze<T>(systemPrompt: string, userPrompt: string, schema?: any): Promise<T> {
-    try {
-      // For now, default to primary provider
-      return await this.primaryProvider.generateJson<T>({
-        systemPrompt,
-        userPrompt,
-        schema,
-      });
-    } catch (error) {
-      console.error(`Primary provider (${this.primaryProvider.name}) failed. Falling back.`, error);
-      
-      try {
-        return await this.secondaryProvider.generateJson<T>({
-          systemPrompt,
-          userPrompt,
-          schema,
-        });
-      } catch (fallbackError) {
-        console.error(`Secondary provider (${this.secondaryProvider.name}) failed.`, fallbackError);
-        throw new Error("All AI providers failed to generate analysis.");
+  constructor(private providers: AiProviderInterface[] = [new OpenRouterProvider(), new NvidiaNimProvider()]) {}
+  async analyzeLocalized<T>(systemPrompt: string, userPrompt: string, schema: ZodType<T>, language: string): Promise<T> {
+    const localizedPrompt = systemPrompt + "\n\n" + outputLanguagePolicy(language);
+    let languageRejected = false;
+    for (const provider of this.providers) {
+      // One bounded regeneration for a wrong-language response, then provider fallback.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const instruction = attempt === 0 ? localizedPrompt : localizedPrompt + "\nYour previous response failed language validation. Regenerate in the selected locale only. Review every prose field; preserve the original facts and machine enums.";
+          const value = schema.parse(await provider.generateJson<T>({ systemPrompt: instruction, userPrompt }));
+          await assertOutputLanguage(provider, value, language);
+          return value;
+        } catch (error) {
+          console.warn("Localized AI attempt failed", { provider: provider.name, locale: language, ...aiFailureMetadata(error) });
+          if (!(error instanceof OutputLanguageError)) break;
+          languageRejected = true;
+        }
       }
     }
-  }
-
-  // To be implemented: Multi-Model Consensus (Requirement 20)
-  async generateConsensus<T>(systemPrompt: string, userPrompt: string): Promise<{ primary: T; secondary: T; consensus: any }> {
-    const [primaryResult, secondaryResult] = await Promise.allSettled([
-      this.primaryProvider.generateJson<T>({ systemPrompt, userPrompt }),
-      this.secondaryProvider.generateJson<T>({ systemPrompt, userPrompt }),
-    ]);
-
-    if (primaryResult.status === "rejected" || secondaryResult.status === "rejected") {
-      throw new Error("One or both providers failed during consensus generation.");
-    }
-
-    // A consensus engine would merge them here. 
-    // Returning both for now.
-    return {
-      primary: primaryResult.value,
-      secondary: secondaryResult.value,
-      consensus: primaryResult.value, // Simplistic placeholder: defaults to primary
-    };
+    if (languageRejected) throw new OutputLanguageError();
+    throw new Error("AI providers unavailable or invalid language validation response");
   }
 }

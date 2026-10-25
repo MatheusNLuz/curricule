@@ -17,7 +17,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("curriculy-theme") as Theme | null;
+    const saved = (window.localStorage.getItem("curricule-theme") || window.localStorage.getItem("curriculy-theme")) as Theme | null;
     const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     setThemeState(saved === "dark" || saved === "light" ? saved : preferred);
     setHydrated(true);
@@ -27,7 +27,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.style.colorScheme = theme;
-    window.localStorage.setItem("curriculy-theme", theme);
+    window.localStorage.setItem("curricule-theme", theme);
   }, [theme, hydrated]);
 
   const value = useMemo<ThemeContextValue>(() => ({

@@ -16,6 +16,7 @@ import { AccountMenu, UserAvatar } from "@/components/app-shell/account-menu";
 import { HugeIcon } from "@/components/ui/huge-icon";
 import type { SessionUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { CurriculeLogo } from "@/components/brand/curricule-logo";
 
 const navigation = [
   { href: "/", label: "Início", icon: Home01Icon },
@@ -32,15 +33,17 @@ export function AppShellNav({ session }: { session: SessionUser | null }) {
   if (!session || isAuthRoute) {
     return (
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-8">
           <Brand />
+          {!isAuthRoute && <nav aria-label="Conheça o Curricule" className="hidden items-center gap-7 text-xs font-medium text-muted-foreground lg:flex"><Link href="/#recursos" className="hover:text-primary">O que você recebe</Link><Link href="/#na-pratica" className="hover:text-primary">Experimente</Link><Link href="/#como-funciona" className="hover:text-primary">Como funciona</Link><Link href="/#duvidas" className="hover:text-primary">Dúvidas</Link></nav>}
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            {!isAuthRoute && <><Link href="/login" className="inline-flex min-h-11 items-center rounded-lg px-2 py-2 text-xs font-semibold hover:text-primary sm:px-3">Entrar</Link><Link href="/register?next=%2Fanalysis%2Fnew" className="inline-flex min-h-11 items-center rounded-xl bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground sm:px-4">Começar</Link></>}
             {pathname === "/login" && (
-              <Link href="/register" className="inline-flex rounded-xl px-2 py-2 text-[12px] font-semibold text-primary transition-colors hover:bg-soft-primary sm:px-3 sm:text-[13px]">Criar conta</Link>
+              <Link href="/register" className="inline-flex min-h-11 items-center rounded-xl px-2 py-2 text-[12px] font-semibold text-primary transition-colors hover:bg-soft-primary sm:px-3 sm:text-[13px]">Criar conta</Link>
             )}
             {pathname === "/register" && (
-              <Link href="/login" className="inline-flex rounded-xl px-2 py-2 text-[12px] font-semibold text-primary transition-colors hover:bg-soft-primary sm:px-3 sm:text-[13px]">Entrar</Link>
+              <Link href="/login" className="inline-flex min-h-11 items-center rounded-xl px-2 py-2 text-[12px] font-semibold text-primary transition-colors hover:bg-soft-primary sm:px-3 sm:text-[13px]">Entrar</Link>
             )}
           </div>
         </div>
@@ -104,10 +107,10 @@ export function AppShellNav({ session }: { session: SessionUser | null }) {
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
+  const pathname = usePathname();
   return (
-    <Link href="/" className="group inline-flex items-center gap-3" aria-label="Curriculy, início">
-      <span className="grid size-10 place-items-center rounded-[14px] bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-transform group-hover:rotate-[-4deg]"><HugeIcon icon={File02Icon} size={20} strokeWidth={1.7} /></span>
-      <span className={cn("font-heading text-lg font-semibold tracking-[-0.04em]", compact && "text-base")}>Curriculy</span>
+    <Link href={pathname === "/" ? "#page-top" : "/"} className="group inline-flex min-h-11 items-center gap-2 sm:gap-3" aria-label="Curricule, início">
+      <CurriculeLogo className={cn("h-7 w-auto shrink-0 sm:h-8", compact && "sm:h-7")} aria-hidden="true" />
     </Link>
   );
 }

@@ -1,7 +1,7 @@
 export interface AiGenerateJsonParams {
   systemPrompt: string;
   userPrompt: string;
-  schema?: any; // The Zod schema object to validate against or pass to structured outputs
+  schema?: unknown;
 }
 
 export interface AiGenerateTextParams {

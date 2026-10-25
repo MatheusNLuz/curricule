@@ -152,11 +152,16 @@
   html {
     @apply font-sans;
     min-width: 320px;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+  }
+
+  #main-content {
+    scroll-margin-top: 4rem;
   }
 
   ::selection {

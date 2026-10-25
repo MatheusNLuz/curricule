@@ -1,17 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { OptimizedResume } from "@/lib/schemas/optimize.schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Save } from "@/components/ui/app-icon";
 import { useToast } from "@/components/ui/custom-toast";
 
-export function StructuredResumeEditor({ initialData, onSave }: { initialData: any, onSave: (data: any) => void }) {
+export function StructuredResumeEditor({ initialData, draftData, onSave, onDraftSave }: { initialData: OptimizedResume; draftData?: OptimizedResume; onSave: (data: OptimizedResume) => Promise<void>; onDraftSave: (data: OptimizedResume) => Promise<void> }) {
   const { toast } = useToast();
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState(draftData || initialData);
+  const [draftStatus, setDraftStatus] = useState(draftData ? "Rascunho recuperado. Salve para atualizar o PDF final." : "");
+  const [saving, setSaving] = useState(false);
+  const dirty = JSON.stringify(data) !== JSON.stringify(initialData);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = setTimeout(async () => {
+      setDraftStatus("Salvando rascunho…");
+      try { await onDraftSave(data); setDraftStatus("Rascunho salvo na sua conta. Salve as alterações para atualizar o PDF."); }
+      catch { setDraftStatus("Rascunho não salvo. Mantenha esta aba aberta e tente salvar novamente."); }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [data, dirty, onDraftSave]);
 
-  const handleContactChange = (field: string, value: string) => {
+  const handleContactChange = (field: keyof OptimizedResume["personalInfo"], value: string) => {
     setData({ ...data, personalInfo: { ...data.personalInfo, [field]: value } });
   };
 
@@ -19,28 +36,30 @@ export function StructuredResumeEditor({ initialData, onSave }: { initialData: a
     setData({ ...data, professionalSummary: value });
   };
 
-  const handleExperienceChange = (index: number, field: string, value: any) => {
-    const newExp = [...(data.experiences || [])];
-    newExp[index][field] = value;
+  const handleExperienceChange = <K extends keyof OptimizedResume["experiences"][number]>(index: number, field: K, value: OptimizedResume["experiences"][number][K]) => {
+    const newExp = data.experiences.map((entry, current) => current === index ? { ...entry, [field]: value } : entry);
     setData({ ...data, experiences: newExp });
   };
 
-  const handleSave = () => {
-    onSave(data);
-    toast({ title: "Salvo", description: "Alterações salvas com sucesso.", variant: "success" });
+  const handleSave = async () => {
+    setSaving(true);
+    try { await onSave(data); toast({ title: "Salvo", description: "Alterações confirmadas pelo servidor.", variant: "success" }); }
+    catch { /* The parent presents the error; keep the user's local edit intact. */ }
+    finally { setSaving(false); }
   };
 
   if (!data) return null;
 
   return (
     <div className="surface space-y-8 rounded-2xl p-4 sm:p-6">
+      <p role="status" className="text-xs text-muted-foreground">{draftStatus}</p>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Ajustar estrutura</h2>
           <p className="text-[13px] text-muted-foreground">Edite os campos livremente. Eles serão atualizados no PDF final.</p>
         </div>
-        <Button onClick={handleSave} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto">
-          <Save className="mr-2 h-4 w-4" /> Salvar alterações
+        <Button onClick={handleSave} disabled={saving} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto">
+          <Save className="mr-2 h-4 w-4" /> {saving ? "Salvando…" : "Salvar alterações"}
         </Button>
       </div>
 
@@ -88,7 +107,7 @@ export function StructuredResumeEditor({ initialData, onSave }: { initialData: a
       <div className="space-y-4">
         <h3 className="text-[14px] font-semibold border-b border-border pb-2">Experiência Profissional</h3>
         <div className="space-y-6">
-          {(data.experiences || []).map((exp: any, i: number) => (
+          {(data.experiences || []).map((exp, i: number) => (
             <div key={i} className="p-4 bg-secondary/30 rounded-lg border border-border space-y-4 relative">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">

@@ -14,7 +14,7 @@ export class ScoreEngine {
       if (issue.severity === "low") atsPenalty -= 3;
     });
 
-    let dataPenalty = analysis.sensitiveDataWarnings.length * -5;
+    const dataPenalty = analysis.sensitiveDataWarnings.length * -5;
 
     let impactScore = analysis.scores.impact;
     if (analysis.strengths.some(s => s.toLowerCase().includes("metric") || s.toLowerCase().includes("result"))) {

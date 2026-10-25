@@ -8,7 +8,7 @@ Focus on missing skills, lack of metrics, and unclear experience.
 Return only valid JSON matching the provided schema.`;
 
 export class SmartQuestionEngine {
-  static async generate(resumeText: string, jobDescription: string, matrix: RequirementMatrix): Promise<SmartQuestionGen> {
+  static async generate(resumeText: string, jobDescription: string, matrix: RequirementMatrix, language: string): Promise<SmartQuestionGen> {
     const orchestrator = new AnalysisOrchestrator();
     
     // Only pass requirements that are missing or not confirmed
@@ -30,9 +30,11 @@ ${JSON.stringify(gaps, null, 2)}
 
 Generate questions to fill these gaps without encouraging the candidate to lie.`;
 
-    const rawResult = await orchestrator.analyze<SmartQuestionGen>(
+    const rawResult = await orchestrator.analyzeLocalized<SmartQuestionGen>(
       QUESTION_SYSTEM_PROMPT,
-      userPrompt
+      userPrompt,
+      SmartQuestionSchema,
+      language
     );
     
     return SmartQuestionSchema.parse(rawResult);

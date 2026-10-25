@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const ResumeAnalysisSchema = z.object({
-  detectedLanguage: z.enum(["pt-BR", "en-US", "unknown"]).catch("unknown"),
-  recommendedLanguage: z.enum(["pt-BR", "en-US"]).catch("pt-BR"),
+  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "unknown"]).catch("unknown"),
+  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB"]).catch("pt-BR"),
   detectedSeniority: z.enum(["junior", "mid", "senior", "lead", "unknown"]).catch("unknown"),
   recommendedLength: z.object({
     pages: z.string().default("1"),
@@ -25,22 +25,22 @@ export const ResumeAnalysisSchema = z.object({
   sectionsFound: z.array(z.string()).default([]),
   sectionsMissing: z.array(z.string()).default([]),
   scores: z.object({
-    overall: z.number().default(0),
-    ats: z.number().default(0),
-    structure: z.number().default(0),
-    clarity: z.number().default(0),
-    keywords: z.number().default(0),
-    impact: z.number().default(0),
-    perceivedSeniority: z.number().default(0),
-    internationalCompatibility: z.number().optional(),
+    overall: z.number().min(0).max(100).default(0),
+    ats: z.number().min(0).max(100).default(0),
+    structure: z.number().min(0).max(100).default(0),
+    clarity: z.number().min(0).max(100).default(0),
+    keywords: z.number().min(0).max(100).default(0),
+    impact: z.number().min(0).max(100).default(0),
+    perceivedSeniority: z.number().min(0).max(100).default(0),
+    internationalCompatibility: z.number().min(0).max(100).optional(),
   }),
 });
 
 export type ResumeAnalysis = z.infer<typeof ResumeAnalysisSchema>;
 
 export const LinkedInAnalysisSchema = z.object({
-  detectedLanguage: z.enum(["pt-BR", "en-US", "unknown"]).catch("unknown"),
-  recommendedLanguage: z.enum(["pt-BR", "en-US"]).catch("pt-BR"),
+  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "unknown"]).catch("unknown"),
+  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB"]).catch("pt-BR"),
   detectedSeniority: z.enum(["junior", "mid", "senior", "lead", "unknown"]).catch("unknown"),
   strengths: z.array(z.string()).default([]),
   weaknesses: z.array(z.string()).default([]),
@@ -60,11 +60,11 @@ export const LinkedInAnalysisSchema = z.object({
     recommendation: z.string(),
   })).default([]),
   scores: z.object({
-    overall: z.number().default(0),
-    headline: z.number().default(0),
-    summary: z.number().default(0),
-    experiences: z.number().default(0),
-    seo: z.number().default(0),
+    overall: z.number().min(0).max(100).default(0),
+    headline: z.number().min(0).max(100).default(0),
+    summary: z.number().min(0).max(100).default(0),
+    experiences: z.number().min(0).max(100).default(0),
+    seo: z.number().min(0).max(100).default(0),
   }),
 });
 

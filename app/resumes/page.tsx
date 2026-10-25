@@ -6,22 +6,29 @@ import { getSessionUser } from "@/lib/auth";
 import { formatResumeLibraryItem, RESUME_ANALYSIS_MODES } from "@/lib/resume-library";
 import { HugeIcon } from "@/components/ui/huge-icon";
 import { DownloadResumeButton } from "@/components/resumes/download-resume-button";
+import { historyQuery, HISTORY_PAGE_SIZE } from "@/lib/history-query";
 
 export const dynamic = "force-dynamic";
 
-export default async function ResumesPage() {
+export default async function ResumesPage({ searchParams }: { searchParams: Promise<{ q?: string; cursor?: string }> }) {
   const session = await getSessionUser();
   if (!session) redirect("/login?next=%2Fresumes");
 
-  const resumes = await prisma.analysis.findMany({
+  const query = historyQuery(await searchParams);
+  const results = await prisma.analysis.findMany({
     where: {
       userId: session.userId,
       mode: { in: [...RESUME_ANALYSIS_MODES] },
       finalResumeJson: { not: null },
+      ...(query.q ? { professionalTarget: { contains: query.q, mode: "insensitive" as const } } : {}),
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: HISTORY_PAGE_SIZE + 1,
+    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
     select: { id: true, professionalTarget: true, mode: true, createdAt: true, jobDescription: true },
   });
+  const resumes = results.slice(0, HISTORY_PAGE_SIZE);
+  const next = new URLSearchParams({ q: query.q, cursor: resumes.at(-1)?.id || "" });
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-24 pt-10 sm:px-8 lg:px-12 lg:pt-14">
@@ -35,6 +42,7 @@ export default async function ResumesPage() {
         </Link>
       </div>
 
+      <form action="/resumes" className="mt-6 flex flex-wrap gap-3"><label className="flex flex-1 flex-col gap-2 text-sm">Buscar currículo<input name="q" maxLength={120} defaultValue={query.q} className="h-11 rounded-lg border border-border bg-background px-3" placeholder="Nome da candidatura…" /></label><button type="submit" className="self-end rounded-lg border border-border px-4 py-3 text-sm">Buscar</button></form>
       {resumes.length === 0 ? (
         <div className="surface mt-8 rounded-2xl p-10 text-center sm:p-14">
           <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-soft-primary text-primary"><HugeIcon icon={File02Icon} size={23} /></span>
@@ -77,6 +85,7 @@ export default async function ResumesPage() {
           })}
         </ul>
       )}
+      <nav aria-label="Paginação da biblioteca" className="mt-6 flex justify-between text-sm">{query.cursor ? <Link href={"/resumes?q=" + encodeURIComponent(query.q)}>Primeira página</Link> : <span />}{results.length > HISTORY_PAGE_SIZE && <Link href={"/resumes?" + next}>Próxima página</Link>}</nav>
     </div>
   );
 }

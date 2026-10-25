@@ -6,15 +6,18 @@ import { prisma } from "@/lib/db";
 import { getNeonAuth } from "@/lib/auth/server";
 import { getPreferredProfileName } from "@/lib/user-profile";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "atsforge-default-ultra-secure-key-32chars-minimum"
-);
+function jwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) return null;
+  return new TextEncoder().encode(secret);
+}
 
 export type SessionUser = {
   userId: string;
   email: string;
   name?: string | null;
   image?: string | null;
+  role?: string;
 };
 
 export async function hashPassword(password: string): Promise<string> {
@@ -26,16 +29,21 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export async function signToken(payload: { userId: string; email: string }) {
+  const secret = jwtSecret();
+  if (!secret) throw new Error("JWT_SECRET must contain at least 32 characters");
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(JWT_SECRET);
+    .sign(secret);
 }
 
 export async function verifyToken(token: string) {
+  const secret = jwtSecret();
+  if (!secret) return null;
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    if (typeof payload.userId !== "string" || typeof payload.email !== "string") return null;
     return payload as SessionUser;
   } catch {
     return null;
@@ -59,16 +67,17 @@ export const getSessionUser = cache(async function getSessionUser() {
         ? await prisma.user.update({
             where: { id: existingUser.id },
             data: { neonAuthId: neonUser.id, name: getPreferredProfileName(existingUser.name, neonUser.name) },
-            select: { id: true, email: true, name: true },
+            select: { id: true, email: true, name: true, role: true, status: true },
           })
         : await prisma.user.create({
             data: { neonAuthId: neonUser.id, email: neonUser.email, name: neonUser.name || null, password: null },
-            select: { id: true, email: true, name: true },
+            select: { id: true, email: true, name: true, role: true, status: true },
           });
 
-      return { userId: user.id, email: user.email, name: user.name, image: neonUser.image ?? null } satisfies SessionUser;
-    } catch (error) {
-      console.error("Erro ao consultar sessão Neon Auth:", error);
+      if (user.status !== "ACTIVE") return null;
+      return { userId: user.id, email: user.email, name: user.name, role: user.role, image: neonUser.image ?? null } satisfies SessionUser;
+    } catch {
+      console.error("Não foi possível validar a sessão.");
       return null;
     }
   }
@@ -76,5 +85,9 @@ export const getSessionUser = cache(async function getSessionUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
-  return verifyToken(token);
+  const verified = await verifyToken(token);
+  if (!verified) return null;
+  const user = await prisma.user.findUnique({ where: { id: verified.userId }, select: { id: true, email: true, name: true, role: true, status: true } });
+  if (!user || user.status !== "ACTIVE") return null;
+  return { userId: user.id, email: user.email, name: user.name, role: user.role } satisfies SessionUser;
 });

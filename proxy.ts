@@ -5,6 +5,8 @@ import { hasNeonOAuthSessionCallback } from "@/lib/auth/oauth-callback";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // Public delivery endpoint; the handler authenticates the provider signature over raw bytes.
+  if (pathname === "/api/billing/webhook") return NextResponse.next();
 
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
     return NextResponse.next();
@@ -15,10 +17,6 @@ export async function proxy(request: NextRequest) {
   const isHomeOAuthCallback =
     pathname === "/" && hasNeonOAuthSessionCallback(request.url, request.headers.get("cookie"));
   if (isPublicPage) return NextResponse.next();
-
-  if (pathname.includes("/preview") && request.nextUrl.searchParams.get("export") === "true") {
-    return NextResponse.next();
-  }
 
   if (!hasNeonAuthConfig()) {
     if (pathname === "/") return NextResponse.next();
@@ -53,6 +51,7 @@ export const config = {
     "/analysis/:path*",
     "/history/:path*",
     "/settings/:path*",
+    "/admin/:path*",
     "/api/:path*",
   ],
 };

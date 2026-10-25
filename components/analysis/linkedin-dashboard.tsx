@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { languageLabel } from "@/lib/analysis-contract";
 import { 
   Copy, 
   Check, 
@@ -65,7 +66,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-linkedin/10 text-linkedin dark:bg-linkedin/20" aria-hidden="true"><LinkedInLogo className="size-5" /></span>
           <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight">Otimização de LinkedIn (SEO)</h1>
-          <p className="text-[13px] text-muted-foreground mt-0.5">Analise e melhore seu perfil para ser encontrado pelas oportunidades certas.</p>
+          <p className="text-[13px] text-muted-foreground mt-0.5">Revise as sugestões antes de copiar para o LinkedIn. As notas são estimativas de conteúdo, não previsões de contratação.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -76,7 +77,7 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
           )}
           {analysis.detectedLanguage !== analysis.recommendedLanguage && (
             <Badge variant="outline" className="text-[12px] text-warning border-warning/20 bg-warning/5 py-1 px-3 flex items-center gap-1">
-              <Languages className="h-3 w-3" /> Idioma Misto
+              <Languages className="h-3 w-3" /> Tradução solicitada
             </Badge>
           )}
         </div>
@@ -288,11 +289,11 @@ export function LinkedInDashboard({ analysis, scores, gamification, analysisId }
               <div className="rounded-lg bg-secondary/50 p-3 space-y-1 text-[12.5px]">
                 <div className="flex justify-between">
                   <span className="font-semibold text-muted-foreground">Idioma Detectado:</span>
-                  <span className="font-bold">{analysis.detectedLanguage === "pt-BR" ? "Português" : analysis.detectedLanguage === "en-US" ? "Inglês" : "Misto / Outro"}</span>
+                  <span className="font-bold">{analysis.detectedLanguage === "unknown" ? "Não identificado" : languageLabel(analysis.detectedLanguage)}</span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-border/40 mt-1">
-                  <span className="font-semibold text-muted-foreground">Recomendação:</span>
-                  <span className="font-bold text-linkedin">{analysis.recommendedLanguage === "pt-BR" ? "Focar em Português" : "Focar em Inglês"}</span>
+                  <span className="font-semibold text-muted-foreground">Idioma escolhido:</span>
+                  <span className="font-bold text-linkedin">{languageLabel(analysis.recommendedLanguage)}</span>
                 </div>
               </div>
 

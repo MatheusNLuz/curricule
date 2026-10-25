@@ -13,10 +13,67 @@ model User {
   password  String?
   neonAuthId String?   @unique
   name      String?
+  role      String     @default("USER")
+  status    String     @default("ACTIVE")
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
   analyses  Analysis[]
+  usage     AnalysisUsage[]
+  billingCustomers BillingCustomer[]
+  entitlements BillingEntitlement[]
+  adminActions AdminAudit[]
+}
+
+model AdminAudit {
+  id String @id @default(cuid())
+  actorId String?
+  targetUserId String
+  action String
+  details String
+  createdAt DateTime @default(now())
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([createdAt])
+  @@index([targetUserId, createdAt])
+}
+
+model BillingCustomer {
+  id String @id @default(cuid())
+  userId String
+  provider String
+  externalCustomerId String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, provider])
+  @@unique([provider, externalCustomerId])
+}
+
+model BillingEntitlement {
+  id String @id @default(cuid())
+  userId String
+  provider String
+  externalReference String
+  key String @default("analysis")
+  source String
+  status String
+  validUntil DateTime?
+  lastEventAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, externalReference])
+  @@index([userId, key, status])
+}
+
+model BillingWebhook {
+  id String @id @default(cuid())
+  provider String
+  eventId String
+  type String
+  payloadHash String
+  occurredAt DateTime
+  processedAt DateTime @default(now())
+  @@unique([provider, eventId])
 }
 
 model Analysis {
@@ -33,6 +90,7 @@ model Analysis {
   jobLocation           String?
   initialScores         String?
   finalScores           String?
+  finalAssessmentJson   String?
   analysisJson          String?
   jobParseJson          String?
   comparisonJson        String?
@@ -41,6 +99,12 @@ model Analysis {
   gamificationJson      String?
   finalResumeJson       String?
   coverLetter           String?
+  jobUrl                String?
+  profileUrl            String?
+  draftJson             String?
+  editorDraftJson       String?
+  clientRequestId       String?  @unique
+  revision              Int      @default(0)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -48,6 +112,11 @@ model Analysis {
   files                 FileAsset[]
   questions             SmartQuestion[]
   exports               PdfExport[]
+  revisions             ResumeRevision[]
+  tasks                 AnalysisTask[]
+  usage                 AnalysisUsage[]
+
+  @@index([userId, createdAt, id])
 }
 
 model SmartQuestion {
@@ -88,4 +157,40 @@ model PdfExport {
   createdAt   DateTime @default(now())
 
   analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+}
+
+model ResumeRevision {
+  id          String @id @default(cuid())
+  analysisId  String
+  content     String
+  source      String
+  createdAt   DateTime @default(now())
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  @@index([analysisId, createdAt])
+}
+
+model AnalysisTask {
+  id          String @id @default(cuid())
+  analysisId  String
+  userId      String
+  kind        String
+  inputHash   String
+  status      String
+  token       String
+  leaseUntil  DateTime
+  resultJson  String?
+  updatedAt   DateTime @updatedAt
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  @@unique([analysisId, kind])
+}
+
+model AnalysisUsage {
+  id          String @id @default(cuid())
+  analysisId  String?
+  userId      String
+  kind        String
+  createdAt   DateTime @default(now())
+  analysis    Analysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
 }
