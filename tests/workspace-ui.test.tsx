@@ -62,6 +62,15 @@ test("dashboard, history and library scope every collection to the signed-in own
   assert.match(renderToStaticMarkup(elements[2]), /Pontuação da versão atual indisponível/);
   assert.equal(ownerReads.length, 3);
 });
+test("breadcrumb identifies the current workspace page without repeating its root", () => {
+  pathname = "/dashboard";
+  const dashboardNav = renderToStaticMarkup(<ThemeProvider><AppShellNav session={account} /></ThemeProvider>);
+  assert.match(dashboardNav, /aria-label="Caminho da página"/);
+  assert.match(dashboardNav, />Curricule<.*aria-current="page">Dashboard/);
+  pathname = "/analysis/new";
+  const analysisNav = renderToStaticMarkup(<ThemeProvider><AppShellNav session={account} /></ThemeProvider>);
+  assert.match(analysisNav, /aria-current="page">Nova análise/);
+});
 test("score panel shows actual decreases and missing values without fixed predictions", () => {
   const lower = renderToStaticMarkup(<ResumeAnalysisView {...props} finalScores={{ ...assessment.scores, overall: 48 }} />);
   assert.match(lower, /Nota geral inicial: 55/);

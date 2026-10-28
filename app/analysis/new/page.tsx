@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ObjectiveGuide } from "@/components/home/objective-guide";
 import { AnalysisModeGrid } from "@/components/home/analysis-mode-grid";
 import { SourceLinkInput } from "@/components/analysis/source-link-input";
 import { useToast } from "@/components/ui/custom-toast";
@@ -122,11 +121,11 @@ function NewAnalysisContent() {
       router.push("/analysis/" + id);
     } catch (error) { toast({ title: "Não foi possível continuar", description: error instanceof Error ? error.message : "Tente novamente.", variant: "error" }); setLoading(false); }
   }
-  if (!mode) return <WorkspacePage><PageHeading title="Vamos preparar seu próximo passo." description="Escolha o objetivo que faz sentido para o seu momento."/><ObjectiveGuide/><details><summary className="min-h-11 cursor-pointer text-sm font-semibold">Ver todos os objetivos</summary><AnalysisModeGrid/></details></WorkspacePage>;
+  if (!mode) return <WorkspacePage><PageHeading title="Vamos preparar seu próximo passo." description="Escolha o objetivo que faz sentido para o seu momento."/><AnalysisModeGrid/></WorkspacePage>;
   if (!hydrated) return <div className="p-8" role="status">{saveStatus || "Recuperando seu rascunho…"}</div>;
   const hasMaterial = activeTab === "pdf" ? !!file || storedPdf : hasSourceText(pastedText) && (activeTab !== "link" || profileReviewed);
   const validJob = !requiresJob || (hasSourceText(jobDescription) && (jobInput !== "link" || jobReviewed));
-  return <WorkspacePage><PageHeading title={isLinkedIn?"Vamos melhorar seu LinkedIn.":"Vamos preparar seu próximo passo."} description="Traga seu material. Você confere o conteúdo antes de continuar."><Link href="/analysis/new" className="textLink">Alterar objetivo <ArrowRight size={15}/></Link></PageHeading><Journey current={0}/><div className="formLayout formLayoutSingle"><div className="legacyPanels space-y-5">
+  return <WorkspacePage className="newAnalysisPage"><PageHeading title={isLinkedIn?"Vamos melhorar seu LinkedIn.":"Vamos preparar seu próximo passo."} description="Traga seu material. Você confere o conteúdo antes de continuar."><Link href="/analysis/new" className="textLink">Alterar objetivo <ArrowRight size={15}/></Link></PageHeading><Journey current={0}/><div className="formLayout formLayoutSingle"><div className="legacyPanels space-y-5">
     <label className="flex flex-col gap-2 text-sm font-medium">Nome desta candidatura ou análise<Input maxLength={120} value={title} onChange={event => setTitle(event.target.value)} placeholder="Ex.: Analista financeiro — Empresa" /></label>
     <section className="sheet padded flex flex-col gap-5 rounded-2xl p-5 sm:p-7"><h2 className="materialTitle text-lg font-semibold">{isLinkedIn && <LinkedInLogo size={24} />}{isLinkedIn ? "Seu perfil no LinkedIn" : "Seu currículo"}</h2>
       <Tabs value={activeTab} onValueChange={value => setActiveTab(value as MaterialTab)}>

@@ -45,6 +45,13 @@ test("job form offers a link or pasted description and a separate output locale"
   assert.match(html, /Espanha/);
   assert.doesNotMatch(html, /Link do seu perfil do LinkedIn/);
 });
+test("objective selection immediately shows all analysis options", () => {
+  mode = "";
+  const html = renderToStaticMarkup(React.createElement(NewAnalysisPage));
+  assert.match(html, /Otimizar para ATS/);
+  assert.match(html, /Otimizar LinkedIn/);
+  assert.doesNotMatch(html, /Um ponto de partida|Ver todos os objetivos/);
+});
 test("LinkedIn form starts with public profile URL and includes PDF/text alternatives", () => {
   mode = "LINKEDIN_OPTIMIZATION";
   const html = renderToStaticMarkup(React.createElement(NewAnalysisPage));
