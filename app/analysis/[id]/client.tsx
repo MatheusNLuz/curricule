@@ -7,7 +7,7 @@ import { parseAnalysisJson, type AnalysisView } from "@/lib/analysis-view";
 import type { ResumeAnalysis, LinkedInAnalysis } from "@/lib/schemas/analysis.schema";
 import { Loader2, AlertCircle, FileText } from "@/components/ui/app-icon";
 import { ResumeAnalysisView } from "@/components/analysis/resume-analysis-view";
-import { WorkspacePage, PageHeading, Sheet, FactualNote } from "@/components/workspace/workspace-ui";
+import { WorkspacePage, PageHeading, Sheet } from "@/components/workspace/workspace-ui";
 import { useToast } from "@/components/ui/custom-toast";
 import { RouteLine } from "@/components/ui/route-line";
 import { getFetchErrorMessage, getLoginUrl, readApiError, fetchAnalysisTask } from "@/lib/api-client";
@@ -200,7 +200,7 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
   const finalScores=parseAnalysisJson<Record<string,number>>(analysisData.finalScores);
 
   if (analysisData.mode === "COVER_LETTER_ONLY") {
-    return <WorkspacePage><PageHeading title="Uma apresentação com a sua voz." description="Conecte sua experiência à oportunidade. Revise o tom e os fatos antes de enviar.">{analysisData.coverLetter&&<button onClick={handleDownloadCoverLetter} className="button primary"><FileText size={17}/>Baixar carta (.txt)</button>}</PageHeading><div className="letterLayout"><Sheet className="letterSheet"><div className="letterMeta"><span>Carta de apresentação</span><span>Texto para sua revisão</span></div><p className="sourceText">{analysisData.coverLetter||"Nenhuma carta gerada ainda."}</p></Sheet><aside className="contextAside"><h2>Antes de enviar.</h2><p>Confira o nome da empresa, o tom da apresentação e as informações da sua trajetória.</p><FactualNote/></aside></div></WorkspacePage>;
+    return <WorkspacePage><PageHeading title="Uma apresentação com a sua voz." description="Conecte sua experiência à oportunidade. Revise o tom e os fatos antes de enviar.">{analysisData.coverLetter&&<button onClick={handleDownloadCoverLetter} className="button primary"><FileText size={17}/>Baixar carta (.txt)</button>}</PageHeading><div className="letterLayout"><Sheet className="letterSheet"><div className="letterMeta"><span>Carta de apresentação</span><span>Texto para sua revisão</span></div><p className="sourceText">{analysisData.coverLetter||"Nenhuma carta gerada ainda."}</p></Sheet><aside className="contextAside"><h2>Antes de enviar.</h2><p>Confira o nome da empresa, o tom da apresentação e as informações da sua trajetória.</p></aside></div></WorkspacePage>;
   }
 
   if (analysisData.mode === "LINKEDIN_OPTIMIZATION") {

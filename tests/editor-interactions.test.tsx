@@ -16,7 +16,18 @@ const {EditorClient}=await import("../app/analysis/[id]/editor/client");
 const {SourceLinkInput}=await import("../components/analysis/source-link-input");
 const {TaskProgress}=await import("../components/analysis/task-progress");
 const {notifyTaskActivity}=await import("../lib/task-events");
+const {FlagPicker}=await import("../components/ui/flag-picker");
 test.afterEach(()=>{cleanup();mock.restoreAll();dom.window.localStorage.clear();destinations.length=0;});
+
+test("flag picker lets a user choose a supported country while future options stay disabled",async()=>{
+  function Example(){const [value,setValue]=React.useState("BR");return <FlagPicker label="País" value={value} onChange={setValue} options={[{value:"BR",label:"Brasil",country:"BR"},{value:"PT",label:"Portugal",country:"PT"},{value:"ES",label:"Espanha — em preparação",country:"ES",disabled:true}]} />;}
+  render(<Example/>);
+  const user=userEvent.setup({document:dom.window.document});
+  await user.click(screen.getByText("Brasil",{selector:"summary span"}));
+  assert.equal((screen.getByRole("radio",{name:"Espanha — em preparação"}) as HTMLInputElement).disabled,true);
+  await user.click(screen.getByText("Portugal",{selector:"label span"}));
+  assert.match(screen.getByText("Portugal",{selector:"summary span"}).textContent || "",/Portugal/);
+});
 
 test("progress polling pauses in hidden tabs and wakes immediately for task activity",async context=>{
   context.mock.timers.enable({apis:["setTimeout"]});

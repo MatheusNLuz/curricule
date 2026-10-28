@@ -59,6 +59,7 @@ test("dashboard, history and library scope every collection to the signed-in own
     assert.match(html, /Atendimento ao cliente/);
     assert.doesNotMatch(html, /Ana Martins|Empresa Exemplo/);
   }
+  assert.match(renderToStaticMarkup(elements[2]), /Ver pontuação da revisão/);
   assert.equal(ownerReads.length, 3);
 });
 test("score panel shows actual decreases and missing values without fixed predictions", () => {
@@ -66,13 +67,25 @@ test("score panel shows actual decreases and missing values without fixed predic
   assert.match(lower, /Nota geral inicial: 55/);
   assert.match(lower, /Nota da versão reavaliada: 48/);
   assert.doesNotMatch(lower, /Previsão|Projeção|subiu de|85 %|90 %/);
+  const initial = renderToStaticMarkup(<ResumeAnalysisView {...props} record={{...props.record,finalResumeJson:null}} />);
+  assert.match(initial, /Detalhes da pontuação/);
+  assert.match(initial, /Clareza/);
+  assert.doesNotMatch(initial, /Ver detalhes da pontuação/);
   const zero = renderToStaticMarkup(<ResumeAnalysisView {...props} record={{...props.record,finalResumeJson:null}} scores={{ overall: 0 }} />);
-  assert.match(zero, /<strong>0<span>\/100/);
+  assert.match(zero, /class="resultScoreValue">0<span>\/100/);
   const missing = renderToStaticMarkup(<ResumeAnalysisView {...props} scores={null} />);
-  assert.match(missing, /<strong>—<span>\/100/);
+  assert.match(missing, /Nota atual indisponível/);
   const edited=renderToStaticMarkup(<ResumeAnalysisView {...props}/>);
   assert.match(edited,/Edição salva; nota ainda não atualizada/);
+  assert.match(edited,/Nota atual indisponível/);
+  assert.match(edited,/Reavalie a versão salva para atualizar a nota/);
+  assert.match(edited,/Avaliação inicial: <strong>55\/100/);
   assert.match(edited,/Baixar PDF/);assert.match(edited,/Baixar DOCX/);
+  assert.match(edited,/1 ponto identificado/);
+  assert.match(edited,/Atendimento por chat/);
+  assert.doesNotMatch(edited,/Requisitos da vaga não comprovam sua experiência/);
+  assert.match(edited,/Compatibilidade com a vaga/);
+  assert.match(edited,/Pontos fortes e melhorias/);
 });
 
 test("reassessed recommendations and evidence belong to the same version as the final score",()=>{
@@ -108,8 +121,9 @@ test("render production components with synthetic records for isolated browser l
   // Tuple values are individual render roots, not JSX siblings in a rendered list.
   /* eslint-disable react/jsx-key */
   const pages: [string, string, React.ReactNode][] = [
-    ["dashboard", "/dashboard", await dashboard()], ["nova", "/analysis/new", <NewAnalysis />],
+    ["dashboard", "/dashboard", await dashboard()], ["nova", "/analysis/new", <NewAnalysis />], ["nova-linkedin", "/analysis/new", <NewAnalysis />],
     ["resultado", "/analysis/example", <ResumeAnalysisView {...props} />],
+    ["resultado-inicial", "/analysis/example", <ResumeAnalysisView {...props} record={{...props.record,finalResumeJson:null}} />],
     ["perguntas", "/analysis/example/editor", <WorkspacePage><ReviewQuestions questions={[{ id: "q1", question: "Além do e-mail, você também atendia por chat?", reason: "Esse requisito não foi identificado no seu currículo.", answerType: "text" }]} answers={{}} generating={false} validating={false} truth={null} onAnswer={noop} onValidate={noop} onApprove={async () => {}} onEditAnswers={noop} onRetry={noop} /></WorkspacePage>],
     ["editor", "/analysis/example/editor", <WorkspacePage><ResumeEditingWorkspace language="pt-BR" initialData={resume} onSave={async () => {}} onDraftSave={async () => {}} /></WorkspacePage>],
     ["linkedin", "/analysis/example", <LinkedInDashboard analysis={linkedin} scores={linkedin.scores} analysisId="example" />],
@@ -121,9 +135,14 @@ test("render production components with synthetic records for isolated browser l
     ["auditoria", "/admin/audit", <WorkspacePage>{await audit.default()}</WorkspacePage>],
     ["acesso", "/settings/billing", await billing.default()],
   ];
+  const originalRecord = { ...record };
+  Object.assign(record, { finalResumeJson: null, analysisJson: null, professionalTarget: "Minha candidatura" });
+  pages.push(["dashboard-rascunho", "/dashboard", await dashboard()]);
+  Object.assign(record, originalRecord);
   /* eslint-enable react/jsx-key */
   for (const [name, path, element] of pages) {
     pathname = path;
+    mode = name === "nova-linkedin" ? "LINKEDIN_OPTIMIZATION" : "OPTIMIZE_FOR_JOB";
     const html = renderToStaticMarkup(<ThemeProvider><AppShellNav session={account} /><main className="workspaceMain">{element}</main></ThemeProvider>);
     for (const theme of ["light", "dark"]) writeFileSync(`${output}/${name}-${theme}.html`, `<!doctype html><html lang="pt-BR" class="${theme === "dark" ? "dark" : ""}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="/app.css" rel="stylesheet"><title>Componentes aplicados · ${name} · dados fictícios</title></head><body class="bg-background text-foreground font-sans">${html}</body></html>`);
   }
