@@ -166,7 +166,7 @@ export async function POST(req: Request) {
       payload = `Resume Text:\n${analysis.parsedResumeText}\n\n${historyBlock}`;
     }
 
-    prompt += "\nAdapt questions to the candidate's actual profession. Never require invented metrics; explicitly permit 'I do not know' or 'I have not done this'. Suggestions are unconfirmed until the candidate chooses and submits them. Use boolean for a neutral yes/no question, multiple_choice for one option, multiple_select for several options, and text for open questions. Only include relevant neutral options, never assume a suggestion is a fact.";
+    prompt += "\nAdapt questions to the candidate's actual profession. Never require invented metrics; explicitly permit 'I do not know' or 'I have not done this'. Suggestions are unconfirmed until the candidate chooses and submits them. Use boolean for a neutral yes/no question, multiple_choice for one option, multiple_select for several options, and text for open questions. Include at most eight relevant neutral options of at most 100 characters each; never assume a suggestion is a fact.";
     const rawQuestions = await orchestrator.analyzeLocalized<SmartQuestionGen>(prompt, payload, SmartQuestionSchema, analysis.selectedLanguage);
     const validated = SmartQuestionSchema.parse(rawQuestions);
 
