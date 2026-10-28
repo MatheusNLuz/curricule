@@ -1,4 +1,6 @@
 import { boundedJson } from "@/lib/read-bounded-body";
+import { answerForReview } from "@/lib/question-answer";
+import { resumeRegionGuidance } from "@/lib/resume/region-guidance";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -33,9 +35,9 @@ export async function POST(request: Request) {
     const facts = truthContext(review);
     facts.approved=[...new Set([...facts.approved,...storedConfirmedClaims(analysis.confirmedClaimsJson)])];
     facts.rejected=[...new Set([...facts.rejected,...storedRejectedClaims(analysis.rejectedClaimsJson)])];
-    const answers = analysis.questions.filter(q => q.answer && q.confirmed).map(q => q.question + ": " + q.answer).join("\n");
+    const answers = analysis.questions.filter(q => q.confirmed).map(q => ({ question: q.question, answer: answerForReview(q.answer) })).filter(q => q.answer).map(q => q.question + ": " + q.answer).join("\n");
     const confirmed = answers + "\nExplicitly confirmed by candidate:\n" + facts.approved.join("\n");
-    const result = await runAnalysisTask(analysisId, session.userId, "OPTIMIZE", [review, analysis.revision, analysis.selectedLanguage, analysis.jobLocation,analysis.rejectedClaimsJson,analysis.confirmedClaimsJson], async () => {
+    const result = await runAnalysisTask(analysisId, session.userId, "OPTIMIZE", [review, analysis.revision, analysis.selectedLanguage, analysis.jobLocation,resumeRegionGuidance(analysis.jobLocation),analysis.rejectedClaimsJson,analysis.confirmedClaimsJson], async () => {
       const ai = new AnalysisOrchestrator();
       const payload = JSON.stringify({ original: analysis.parsedResumeText, confirmed, rejected: facts.rejected, job: analysis.jobDescription, language: languageLabel(analysis.selectedLanguage), region: analysis.jobLocation });
       let optimized: unknown, assessment: unknown, finalScores: unknown;
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
         finalScores = (assessment as z.infer<typeof LinkedInAnalysisSchema>).scores;
         optimized = { ...generated, scores: finalScores };
       } else {
-        const generated = await ai.analyzeLocalized(REWRITE + "\nOutput language: " + languageLabel(analysis.selectedLanguage) + ". Regional conventions: " + (analysis.jobLocation || "BR") + ". No personal ID numbers or unconfirmed personal data.", payload, OptimizedResumeSchema, analysis.selectedLanguage);
+        const generated = await ai.analyzeLocalized(REWRITE + "\nOutput language: " + languageLabel(analysis.selectedLanguage) + ". Optional regional guidance: " + resumeRegionGuidance(analysis.jobLocation) + " These are not universal rules; prioritize the vacancy and candidate's choices. Never invent facts, add personal ID numbers or unconfirmed personal data. The selected output language is independent of region.", payload, OptimizedResumeSchema, analysis.selectedLanguage);
         const text = resumeText(generated,analysis.selectedLanguage);
         await verifyOutput(analysis.parsedResumeText!, confirmed, text, facts.rejected,"resume",analysis.selectedLanguage);
         const evaluation = await ai.analyzeLocalized(ATS_ANALYZER_SYSTEM_PROMPT, generateAtsAnalyzerUserPrompt(text, analysis.professionalTarget || "General", analysis.mode, analysis.selectedLanguage), resumeAssessmentSchema(text), analysis.selectedLanguage);

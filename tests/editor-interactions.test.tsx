@@ -5,6 +5,7 @@ import { JSDOM } from "jsdom";
 import { OptimizedResumeSchema } from "../lib/schemas/optimize.schema";
 const dom=new JSDOM("<!doctype html><html><body></body></html>",{url:"http://localhost/",pretendToBeVisual:true});
 Object.defineProperty(globalThis,"navigator",{value:dom.window.navigator,configurable:true});
+Object.defineProperty(globalThis,"self",{value:dom.window,configurable:true});
 Object.assign(globalThis,{window:dom.window,localStorage:dom.window.localStorage,document:dom.window.document,HTMLElement:dom.window.HTMLElement,HTMLInputElement:dom.window.HTMLInputElement,Node:dom.window.Node,Event:dom.window.Event,MutationObserver:dom.window.MutationObserver,getComputedStyle:dom.window.getComputedStyle.bind(dom.window),requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window)});
 const destinations:string[]=[];const router={push:(value:string)=>destinations.push(value),replace:()=>{},refresh:()=>{}};const toast=()=>{};
 mock.module("next/navigation.js",{namedExports:{useRouter:()=>router,useSearchParams:()=>new URLSearchParams(),usePathname:()=>"/analysis/test/editor"}});
@@ -17,7 +18,19 @@ const {SourceLinkInput}=await import("../components/analysis/source-link-input")
 const {TaskProgress}=await import("../components/analysis/task-progress");
 const {notifyTaskActivity}=await import("../lib/task-events");
 const {FlagPicker}=await import("../components/ui/flag-picker");
+const {ReviewQuestions}=await import("../components/analysis/review-questions");
+const {answerForReview}=await import("../lib/question-answer");
 test.afterEach(()=>{cleanup();mock.restoreAll();dom.window.localStorage.clear();destinations.length=0;});
+
+test("conditional and multi-select answers preserve edits while excluding declined details",async()=>{
+  let latest:Record<string,string>={};
+  function Example(){const [answers,setAnswers]=React.useState<Record<string,string>>({});latest=answers;return <ReviewQuestions questions={[{id:"yesno",question:"Usou chat?",reason:"Detalhes",answerType:"boolean"},{id:"choices",question:"Canais?",reason:"Detalhes",answerType:"multiple_select",options:["Chat","E-mail"]}]} answers={answers} generating={false} validating={false} truth={null} onAnswer={(id,value)=>setAnswers(current=>({...current,[id]:value}))} onValidate={()=>{}} onApprove={async()=>{}} onEditAnswers={()=>{}} onRetry={()=>{}}/>;}
+  render(<Example/>);const user=userEvent.setup({document:dom.window.document});
+  await user.click(screen.getByRole("button",{name:"Sim"}));await user.type(screen.getByLabelText("Conte mais sobre isso"),"Atendi clientes");
+  await user.click(screen.getByRole("button",{name:"Não"}));assert.equal(answerForReview(latest.yesno),"Não.");
+  await user.click(screen.getByRole("button",{name:"Sim"}));assert.equal((screen.getByLabelText("Conte mais sobre isso") as HTMLTextAreaElement).value,"Atendi clientes");
+  await user.click(screen.getByRole("button",{name:"Chat"}));await user.click(screen.getByRole("button",{name:"E-mail"}));assert.equal(answerForReview(latest.choices),"Chat; E-mail");
+});
 
 test("flag picker lets a user choose a supported country while future options stay disabled",async()=>{
   function Example(){const [value,setValue]=React.useState("BR");return <FlagPicker label="País" value={value} onChange={setValue} options={[{value:"BR",label:"Brasil",country:"BR"},{value:"PT",label:"Portugal",country:"PT"},{value:"ES",label:"Espanha — em preparação",country:"ES",disabled:true}]} />;}

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { SmartQuestionSchema, SmartQuestionGen } from "@/lib/schemas/questions-truth.schema";
+import { answerForReview } from "@/lib/question-answer";
 import { getSessionUser } from "@/lib/auth";
 import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
 import { apiError } from "@/lib/http-error";
@@ -11,10 +12,8 @@ import type { SmartQuestion } from "@prisma/client";
 const QUESTIONS_WITH_JOB_PROMPT = `You are an expert technical recruiter and ATS specialist.
 Based on the gap analysis between the resume and the job description, generate smart questions to ask the candidate. You can generate up to 8 questions if necessary.
 Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
-CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for the STAR method (Situation, Task, Action, Result) with numbers.
-
 Focus on:
-1. QUANTITATIVE IMPACT/METRICS (Mandatory): Ask for numbers, percentages, team size, database volume, server load, or performance gains. (e.g., "What was the percentage increase?", "How many users did it support?").
+1. Relevant context and, when appropriate, whether measurable results exist; explicitly allow no or unknown.
 2. MISSING GAPS (CRITICAL): You MUST explicitly list ALL missing mandatory skills found in the Gap Analysis and ask the candidate if they have experience with them. Do not omit any missing skill. If there are many missing skills, group them intelligently, but EVERY SINGLE MISSING SKILL must be mentioned in at least one question.
 3. CLARIFICATION: Ask about important missing context (e.g., details of their roles, projects, or education).
 
@@ -24,7 +23,7 @@ Focus on:
       "question": "string",
       "reason": "string",
       "category": "experience" | "skill" | "education",
-      "answerType": "text" | "boolean" | "multiple_choice",
+      "answerType": "text" | "boolean" | "multiple_choice" | "multiple_select",
       "options": ["string"] (optional),
       "suggestedAnswer": "string" (optional - ONLY if candidate's history contains the answer)
     }
@@ -39,11 +38,9 @@ Use the user-selected output locale for every question, reason, option and sugge
 const QUESTIONS_GENERAL_PROMPT = `You are an expert technical recruiter and ATS specialist.
 Based on the parsed resume text, generate 3-5 smart questions to ask the candidate to help improve their resume for general ATS screening.
 Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
-CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for the STAR method (Situation, Task, Action, Result) with numbers.
-
 Focus on:
-1. QUANTITATIVE IMPACT/METRICS (Mandatory): Ask for numbers, percentages, team size, database volume, or performance gains to replace soft descriptions with quantifiable results. (e.g., "What was the percentage increase?", "How many users did it support?").
-2. MISSING TECH/CONTEXT: Ask for missing tools, methodologies, or project scopes that could make the experience bullets stronger.
+1. Relevant context and, when appropriate, whether measurable results exist; explicitly allow no or unknown.
+2. Ask about relevant tools or context without assuming a technical profession.
 
 {
   "questions": [
@@ -51,7 +48,7 @@ Focus on:
       "question": "string",
       "reason": "string",
       "category": "experience" | "skill" | "education",
-      "answerType": "text" | "boolean" | "multiple_choice",
+      "answerType": "text" | "boolean" | "multiple_choice" | "multiple_select",
       "options": ["string"] (optional),
       "suggestedAnswer": "string" (optional - ONLY if candidate's history contains the answer)
     }
@@ -66,8 +63,7 @@ Use the user-selected output locale for every question, reason, option and sugge
 const QUESTIONS_LINKEDIN_PROMPT = `You are an expert LinkedIn Profile optimizer and technical recruiter.
 Based on the parsed LinkedIn profile text, generate 3-5 smart questions to help the user optimize their profile for recruiter search results.
 Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
-CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for real metrics, numbers, percentages, or achievements for their experiences to replace any draft/hallucinated placeholders.
-(e.g., "Qual foi o impacto percentual na melhoria de performance no cargo X?", "Quantas pessoas faziam parte da equipe?", "Quantos sistemas legados você migrou?").
+Ask whether measurable results exist only when relevant, allowing a negative or unknown answer.
 
 {
   "questions": [
@@ -75,7 +71,7 @@ CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You mu
       "question": "string",
       "reason": "string",
       "category": "experience" | "skill" | "education",
-      "answerType": "text" | "boolean" | "multiple_choice",
+      "answerType": "text" | "boolean" | "multiple_choice" | "multiple_select",
       "options": ["string"] (optional),
       "suggestedAnswer": "string" (optional - ONLY if candidate's history contains the answer)
     }
@@ -148,7 +144,7 @@ export async function POST(req: Request) {
       historyBlock = "--- PAST KNOWLEDGE BASE FOR THIS CANDIDATE ---\n";
       historyBlock += "CRITICAL: DO NOT use these past questions/answers as requirements for the current job. The current job requirements are ONLY in the 'Gap Analysis' section. Use this knowledge base EXCLUSIVELY to extract facts about the candidate to pre-fill the 'suggestedAnswer' field for the NEW questions you generate.\n\n";
       pastAnsweredQuestions.forEach(pq => {
-        historyBlock += `Past Fact/Answer from Candidate: ${pq.answer}\n(Context of what was asked: ${pq.question})\n\n`;
+        historyBlock += `Past Fact/Answer from Candidate: ${answerForReview(pq.answer)}\n(Context of what was asked: ${pq.question})\n\n`;
       });
       historyBlock += "----------------------------------------------\n";
     }
@@ -170,7 +166,7 @@ export async function POST(req: Request) {
       payload = `Resume Text:\n${analysis.parsedResumeText}\n\n${historyBlock}`;
     }
 
-    prompt += "\nAdapt questions to the candidate's actual profession. Never require invented metrics; explicitly permit 'I do not know' or 'I have not done this'. Suggestions are unconfirmed until the candidate chooses and submits them.";
+    prompt += "\nAdapt questions to the candidate's actual profession. Never require invented metrics; explicitly permit 'I do not know' or 'I have not done this'. Suggestions are unconfirmed until the candidate chooses and submits them. Use boolean for a neutral yes/no question, multiple_choice for one option, multiple_select for several options, and text for open questions. Only include relevant neutral options, never assume a suggestion is a fact.";
     const rawQuestions = await orchestrator.analyzeLocalized<SmartQuestionGen>(prompt, payload, SmartQuestionSchema, analysis.selectedLanguage);
     const validated = SmartQuestionSchema.parse(rawQuestions);
 

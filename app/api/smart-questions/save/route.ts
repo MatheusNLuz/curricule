@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { apiError, HttpError } from "@/lib/http-error";
+import { answerForReview, isMalformedStructuredAnswer, readStructuredAnswer } from "@/lib/question-answer";
 export async function POST(request: Request) {
   try {
     const session = await getSessionUser(); if (!session) throw new HttpError(401, "Faça login para continuar.");
@@ -14,8 +15,11 @@ export async function POST(request: Request) {
       if (Object.keys(answers).some(id => !analysis.questions.some(q => q.id === id))) throw new HttpError(400, "Pergunta inválida para esta análise.");
       let changed = false;
       for (const [id, answer] of Object.entries(answers)) {
+        const question = analysis.questions.find(q => q.id === id)!;
+        const structured = readStructuredAnswer(answer);
+        if (isMalformedStructuredAnswer(answer) || (structured && ((structured.kind === "boolean") !== (question.answerType === "boolean") || (structured.kind === "choice" && !["multiple_choice", "multiple_select"].includes(question.answerType))))) throw new HttpError(400, "Resposta inválida para esta pergunta.");
         if (analysis.questions.find(q => q.id === id)?.answer === answer) continue;
-        await tx.smartQuestion.update({ where: { id }, data: { answer, confirmed: !!answer.trim() } }); changed = true;
+        await tx.smartQuestion.update({ where: { id }, data: { answer, confirmed: !!answerForReview(answer) } }); changed = true;
       }
       if (changed) await tx.analysis.update({ where: { id: analysisId }, data: { truthGuardJson: null, revision: { increment: 1 } } });
     });
