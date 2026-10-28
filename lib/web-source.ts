@@ -96,7 +96,7 @@ export function extractSourceText(html: string, kind: SourceKind) {
       const parent = stack.at(-1);
       const json = name === "script" && attrs.type === "application/ld+json";
       const classes = attrs.class || "";
-      stack.push({ name, skip: !!parent?.skip || /sign-in-modal|signup|authwall/.test(classes) || ["script", "style", "nav", "footer", "header", "noscript", "svg", "form"].includes(name), main: !!parent?.main || name === "main" || name === "article", profile: !!parent?.profile || /(?:top-card-layout__(?:title|headline)|pp-section\s+(?:summary|experience|education)|experience__list|education__list)/.test(classes), title: !!parent?.title || name === "title", json });
+      stack.push({ name, skip: !!parent?.skip || /sign-in-modal|signup|authwall/.test(classes) || ["script", "style", "nav", "footer", "header", "noscript", "svg", "form", "button"].includes(name), main: !!parent?.main || name === "main" || name === "article", profile: !!parent?.profile || /(?:top-card-layout__(?:title|headline)|pp-section\s+(?:summary|experience|education)|experience__list|education__list)/.test(classes), title: !!parent?.title || name === "title", json });
       if (json) script = "";
       if (["p", "div", "li", "h1", "h2", "h3", "br"].includes(name)) { all.push("\n"); main.push("\n"); profile.push("\n"); }
     },
@@ -110,7 +110,9 @@ export function extractSourceText(html: string, kind: SourceKind) {
   }, { decodeEntities: true });
   parser.write(html); parser.end();
   const entries = blocks.flatMap(block => { try { return structuredEntries(JSON.parse(block)); } catch { return []; } });
-  const job = entries.find(entry => [entry["@type"]].flat().includes("JobPosting"));
+  const jobs = entries.filter(entry => [entry["@type"]].flat().includes("JobPosting"));
+  if (kind === "job" && jobs.length > 1) throw new SourceError("A página contém mais de uma vaga. Abra uma vaga específica ou cole a descrição para continuar.");
+  const job = jobs[0];
   let text = main.join("").trim().length >= 200 ? main.join("") : all.join("");
   const publicProfile = kind === "linkedin" && profile.join("").trim().length >= 200;
   if (publicProfile) text = profile.join("");

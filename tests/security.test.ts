@@ -43,6 +43,13 @@ test("job extraction prefers JobPosting structured description and strips markup
   const result = extractSourceText('<html><head><title>Portal de vagas</title><script type="application/ld+json">' + JSON.stringify({ "@graph": [{ "@type": "JobPosting", title: "Analista financeiro", description }] }) + '</script></head><body><nav>Menu</nav><main>Carregando</main></body></html>', "job");
   assert.equal(result.title, "Analista financeiro"); assert.match(result.text, /Formação/); assert.doesNotMatch(result.text, /<p>|Menu|Carregando/);
 });
+test("job extraction avoids interface buttons and ambiguous lists of structured jobs", () => {
+  const text = "Responsabilidades: " + "Apoiar clientes e organizar pedidos com a equipe. ".repeat(6);
+  const result = extractSourceText(`<main><h1>Vaga</h1><p>${text}</p><button>Show more</button></main>`, "job");
+  assert.doesNotMatch(result.text, /Show more/);
+  const jobs = [{ "@type": "JobPosting", description: text }, { "@type": "JobPosting", description: text }];
+  assert.throws(() => extractSourceText(`<script type="application/ld+json">${JSON.stringify(jobs)}</script>`, "job"), /mais de uma vaga/);
+});
 test("mixed DNS records are rejected and DNS resolution obeys cancellation", async () => {
   const controller = new AbortController();
   await assert.rejects(() => resolvePublicHost("public.example", controller.signal, async () => [{ address: "8.8.8.8", family: 4 }, { address: "10.0.0.1", family: 4 }]));
