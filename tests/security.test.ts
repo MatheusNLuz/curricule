@@ -59,6 +59,12 @@ test("LinkedIn-style semantic description excludes surrounding interface and pre
   assert.match(result.text,/Desenvolver e manter/);assert.match(result.text,/Conhecimento em HTML/);assert.match(result.responsibilities || "",/Desenvolver/);assert.doesNotMatch(result.text,/Save|Show more|More jobs|Use AI/);
   assert.throws(()=>extractSourceText(`<main><div class="description__text">${detail}</div><div class="description__text">${detail}</div></main>`,"job"),/mais de uma descrição/);
 });
+test("requirements keep an adjacent translated heading and its full list", () => {
+  const detail = "Graduação concluída ou em andamento. Conhecimentos em HTML5, CSS3 e JavaScript. ".repeat(3);
+  const html = `<main><div class="description__text"><h2>Requirements</h2><h2>O que você precisa para assumir o desafio</h2><p>${detail}</p><p>Inglês intermediário.</p><h2>Benefícios</h2><p>Plano de saúde.</p></div></main>`;
+  const result = extractSourceText(html,"job");
+  assert.match(result.requirements || "",/Graduação concluída/);assert.match(result.requirements || "",/Inglês intermediário/);assert.doesNotMatch(result.requirements || "",/Plano de saúde/);
+});
 test("mixed DNS records are rejected and DNS resolution obeys cancellation", async () => {
   const controller = new AbortController();
   await assert.rejects(() => resolvePublicHost("public.example", controller.signal, async () => [{ address: "8.8.8.8", family: 4 }, { address: "10.0.0.1", family: 4 }]));
