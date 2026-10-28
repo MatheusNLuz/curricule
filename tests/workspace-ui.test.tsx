@@ -59,7 +59,7 @@ test("dashboard, history and library scope every collection to the signed-in own
     assert.match(html, /Atendimento ao cliente/);
     assert.doesNotMatch(html, /Ana Martins|Empresa Exemplo/);
   }
-  assert.match(renderToStaticMarkup(elements[2]), /Ver pontuação da revisão/);
+  assert.match(renderToStaticMarkup(elements[2]), /Pontuação da versão atual indisponível/);
   assert.equal(ownerReads.length, 3);
 });
 test("score panel shows actual decreases and missing values without fixed predictions", () => {

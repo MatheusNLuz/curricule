@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatResumeLibraryItem, isResumeAnalysisMode, makeResumePdfFilename } from "./resume-library.ts";
+import { formatResumeLibraryItem, isResumeAnalysisMode, makeResumePdfFilename, revisedResumeScore } from "./resume-library.ts";
+
+test("accepts only valid scores for the reassessed version, including zero", () => {
+  assert.equal(revisedResumeScore('{"overall":0}'), 0);
+  assert.equal(revisedResumeScore('{"overall":85}'), 85);
+  for (const value of [null, "bad", "{}", '{"overall":"90"}', '{"overall":101}', '{"overall":-1}']) {
+    assert.equal(revisedResumeScore(value), null);
+  }
+});
 
 test("formats an untitled generated resume with a useful label and optional vacancy context", () => {
   assert.deepEqual(

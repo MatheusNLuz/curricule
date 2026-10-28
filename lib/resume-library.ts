@@ -14,6 +14,18 @@ export const RESUME_ANALYSIS_MODES = [
 
 const JOB_EXCERPT_LIMIT = 132;
 
+export function revisedResumeScore(raw: string | null): number | null {
+  if (!raw) return null;
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object" || !("overall" in value)) return null;
+    const score = value.overall;
+    return typeof score === "number" && Number.isFinite(score) && score >= 0 && score <= 100 ? score : null;
+  } catch {
+    return null;
+  }
+}
+
 export function isResumeAnalysisMode(mode: string): mode is (typeof RESUME_ANALYSIS_MODES)[number] {
   return RESUME_ANALYSIS_MODES.includes(mode as (typeof RESUME_ANALYSIS_MODES)[number]);
 }
