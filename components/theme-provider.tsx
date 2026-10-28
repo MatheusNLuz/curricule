@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
 
@@ -12,28 +12,34 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
-  const [hydrated, setHydrated] = useState(false);
+const subscribeToHydration = () => () => {};
+const clientHydrated = () => true;
+const serverHydrated = () => false;
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem("curriculy-theme") as Theme | null;
-    const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    setThemeState(saved === "dark" || saved === "light" ? saved : preferred);
-    setHydrated(true);
-  }, []);
+function preferredTheme(): Theme {
+  try {
+    const saved = window.localStorage.getItem("curricule-theme") || window.localStorage.getItem("curriculy-theme");
+    if (saved === "dark" || saved === "light") return saved;
+  } catch { /* Storage can be unavailable in private or restricted browsers. */ }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [chosenTheme, setThemeState] = useState<Theme | null>(null);
+  const hydrated = useSyncExternalStore(subscribeToHydration, clientHydrated, serverHydrated);
+  const theme = chosenTheme ?? (hydrated ? preferredTheme() : "light");
 
   useEffect(() => {
     if (!hydrated) return;
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.style.colorScheme = theme;
-    window.localStorage.setItem("curriculy-theme", theme);
+    try { window.localStorage.setItem("curricule-theme", theme); } catch { /* Keep theme switching available without storage. */ }
   }, [theme, hydrated]);
 
   const value = useMemo<ThemeContextValue>(() => ({
     theme,
     setTheme: setThemeState,
-    toggleTheme: () => setThemeState((current) => current === "dark" ? "light" : "dark"),
+    toggleTheme: () => setThemeState(theme === "dark" ? "light" : "dark"),
   }), [theme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

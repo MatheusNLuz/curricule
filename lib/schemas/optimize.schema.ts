@@ -28,6 +28,11 @@ export const OptimizedResumeSchema = z.object({
     category: z.string().default(""),
     items: z.array(z.string()).default([]),
   })).default([]),
+  projects: z.array(z.object({
+    name: z.string().default(""), description: z.array(z.string()).default([]),
+    url: z.string().default(""), startDate: z.string().default(""), endDate: z.string().default(""),
+  })).optional(),
+  languages: z.array(z.object({ name: z.string().default(""), proficiency: z.string().default("") })).optional(),
   certifications: z.array(z.object({
     name: z.string().default(""),
     issuer: z.string().default(""),

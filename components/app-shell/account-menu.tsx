@@ -6,6 +6,7 @@ import { getProfileInitials, getSafeProfileImage } from "@/lib/user-profile";
 import type { SessionUser } from "@/lib/auth";
 import { HugeIcon } from "@/components/ui/huge-icon";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export function AccountMenu({ session }: { session: SessionUser }) {
   const [open, setOpen] = useState(false);
@@ -61,6 +62,10 @@ export function AccountMenu({ session }: { session: SessionUser }) {
             </div>
           </div>
           <div className="my-1 h-px bg-border" />
+          <Link href="/settings/account" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Sua conta e dados</Link>
+          <Link href="/help" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Ajuda e solicitações</Link>
+          <Link href="/settings/billing" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Acesso e cobrança</Link>
+          {session.role === "ADMIN" && <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs font-semibold text-primary hover:bg-secondary">Administração</Link>}
           <form action="/logout" method="post">
             <button type="submit" className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-signal transition-colors hover:bg-signal/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/40">
               <HugeIcon icon={Logout01Icon} size={16} />

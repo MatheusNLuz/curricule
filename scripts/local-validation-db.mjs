@@ -1,0 +1,18 @@
+import EmbeddedPostgres from 'embedded-postgres';
+import { existsSync,mkdirSync,writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { resolve } from 'node:path';
+import { parseEnv } from 'node:util';
+import { readFileSync } from 'node:fs';
+const folder=resolve('scratch/evolution/local-postgres');
+const settings='scratch/evolution/local-database.env';
+mkdirSync('scratch/evolution',{recursive:true});
+const previous=existsSync(settings)?parseEnv(readFileSync(settings,'utf8')):{};
+const password=previous.LOCAL_PG_PASSWORD||randomBytes(32).toString('hex');
+const db=new EmbeddedPostgres({databaseDir:folder,user:'postgres',password,port:55432,persistent:true,authMethod:'scram-sha-256',postgresFlags:['-h','127.0.0.1'],initdbFlags:['--locale=C','--encoding=UTF8'],onLog:()=>{},onError:()=>{}});
+if(!existsSync(resolve(folder,'PG_VERSION')))await db.initialise();
+await db.start();
+const url=`postgresql://postgres:${password}@127.0.0.1:55432/postgres`;
+writeFileSync(settings,`DATABASE_URL=${JSON.stringify(url)}\nDIRECT_URL=${JSON.stringify(url)}\nLOCAL_PG_PASSWORD=${JSON.stringify(password)}\n`);
+console.info('PostgreSQL local de homologação pronto em 127.0.0.1:55432. Apenas dados fictícios; Ctrl+C encerra o processo.');
+setInterval(()=>{},30000);

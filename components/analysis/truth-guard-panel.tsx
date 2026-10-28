@@ -1,108 +1,16 @@
 "use client";
-
 import { useState } from "react";
-import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, ArrowRight } from "@/components/ui/app-icon";
 import { Button } from "@/components/ui/button";
+import type { ReviewedTruth } from "@/lib/ats/truth-policy";
 
-export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { truthGuardData: any, onApprove: () => void, onEditAnswers: () => void }) {
-  const [approvedClaims, setApprovedClaims] = useState<Record<string, boolean>>({});
-
-  if (!truthGuardData || !truthGuardData.claims) return null;
-
-  const toggleApproval = (index: number) => {
-    setApprovedClaims({ ...approvedClaims, [index]: !approvedClaims[index] });
-  };
-
-  const hasUnreviewedLowConfidence = truthGuardData.claims.some(
-    (c: any, i: number) => c.source === "low_confidence_inference" && approvedClaims[i] === undefined
-  );
-
-  return (
-    <div className="surface rounded-xl p-6 border border-warning/30">
-      <div className="flex items-center gap-2 mb-4">
-        <ShieldAlert className="w-5 h-5 text-warning" />
-        <h2 className="text-[16px] font-semibold">Truth Guard: Revisão de Fatos</h2>
-      </div>
-      
-      <p className="text-[13px] text-muted-foreground mb-6">
-        A IA identificou algumas informações que não estão explicitamente claras no seu currículo original. 
-        Para manter a integridade, você deve aprovar ou rejeitar estas adições antes de reescrevermos o currículo.
-      </p>
-
-      <div className="space-y-4 mb-6">
-        {truthGuardData.claims.map((claim: any, i: number) => {
-          if (claim.source === "confirmed_by_resume" || claim.source === "confirmed_by_user") {
-            return (
-              <div key={i} className="flex gap-3 p-3 rounded-lg bg-route/10 border border-route/20">
-                <ShieldCheck className="w-4 h-4 text-route shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[13px] font-medium text-route">{claim.claim}</p>
-                  <p className="text-[11px] text-route/70 mt-0.5">{claim.explanation}</p>
-                </div>
-              </div>
-            );
-          }
-          
-          if (claim.source === "forbidden_to_use" || claim.source === "missing") {
-            return (
-              <div key={i} className="flex gap-3 p-3 rounded-lg bg-signal/10 border border-signal/20">
-                <AlertTriangle className="w-4 h-4 text-signal shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[13px] font-medium text-signal line-through">{claim.claim}</p>
-                  <p className="text-[11px] text-signal/70 mt-0.5">{claim.explanation}</p>
-                </div>
-              </div>
-            );
-          }
-
-          // Low confidence inference
-          const isApproved = approvedClaims[i];
-          return (
-            <div key={i} className={`flex gap-3 p-4 rounded-lg border transition-colors ${isApproved ? 'bg-primary/10 border-primary/30' : 'bg-warning/5 border-warning/20'}`}>
-              <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${isApproved ? 'text-primary' : 'text-warning'}`} />
-              <div className="flex-1">
-                <p className="text-[13px] font-medium mb-1">{claim.claim}</p>
-                <p className="text-[11px] text-muted-foreground mb-3">{claim.explanation}</p>
-                
-                <div className="flex items-center gap-2">
-                  <Button 
-                    size="sm" 
-                    variant={isApproved === true ? "default" : "outline"}
-                    className={isApproved === true ? "bg-primary text-primary-foreground" : ""}
-                    onClick={() => setApprovedClaims({ ...approvedClaims, [i]: true })}
-                  >
-                    Aprovar Adição
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={isApproved === false ? "destructive" : "outline"}
-                    onClick={() => setApprovedClaims({ ...approvedClaims, [i]: false })}
-                  >
-                    Rejeitar
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex justify-between pt-4 border-t border-border mt-6">
-        <Button 
-          variant="outline"
-          onClick={onEditAnswers} 
-          className="text-muted-foreground"
-        >
-          Voltar e Editar Respostas
-        </Button>
-        <Button 
-          onClick={onApprove} 
-          disabled={hasUnreviewedLowConfidence}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
-        >
-          {hasUnreviewedLowConfidence ? "Revise as inferências acima" : "Aprovar e Reescrever Currículo"} <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
-      </div>
-    </div>
-  );
+export function TruthGuardPanel({ truthGuardData, onApprove, onEditAnswers }: { truthGuardData: ReviewedTruth; onApprove: (decisions: Record<string, boolean>) => Promise<void>; onEditAnswers: () => void }) {
+  const [decisions, setDecisions] = useState<Record<string, boolean>>(truthGuardData.decisions || {});
+  const [pending, setPending] = useState(false);
+  const incomplete = truthGuardData.claims.some((claim, index) => claim.source === "low_confidence_inference" && decisions[index] === undefined);
+  async function approve() { setPending(true); try { await onApprove(decisions); } finally { setPending(false); } }
+  return <section className="surface flex flex-col gap-5 rounded-xl border border-border p-5">
+    <div><h2 className="text-lg font-semibold">Revisão de fatos</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Confirme apenas o que você pode sustentar. Suas rejeições serão salvas e aplicadas à reescrita e à carta. Requisitos da vaga não comprovam experiência.</p></div>
+    {truthGuardData.claims.map((claim, index) => <div key={index} className="rounded-lg bg-secondary/40 p-4"><p className="text-sm font-medium">{claim.claim}</p><p className="mt-2 text-xs leading-6 text-muted-foreground">{claim.explanation}</p>{claim.source === "low_confidence_inference" ? <div className="mt-3 flex flex-wrap gap-2"><Button variant={decisions[index] === true ? "default" : "outline"} aria-pressed={decisions[index] === true} disabled={pending} onClick={() => setDecisions(current => ({ ...current, [index]: true }))}>Confirmo esse fato</Button><Button variant={decisions[index] === false ? "destructive" : "outline"} aria-pressed={decisions[index] === false} disabled={pending} onClick={() => setDecisions(current => ({ ...current, [index]: false }))}>Rejeitar</Button></div> : <p className="mt-2 text-xs font-medium">{["missing", "forbidden_to_use"].includes(claim.source) ? "Bloqueado — não será usado. Se a informação for real, esclareça nas respostas e valide novamente." : "Confirmado nas fontes informadas."}</p>}</div>)}
+    <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:justify-between"><Button variant="outline" disabled={pending} onClick={onEditAnswers}>Editar respostas</Button><Button disabled={pending || incomplete} onClick={approve}>{pending ? "Verificando e reescrevendo…" : incomplete ? "Revise as inferências acima" : "Salvar decisões e otimizar"}</Button></div>
+  </section>;
 }

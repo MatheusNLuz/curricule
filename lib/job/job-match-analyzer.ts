@@ -9,7 +9,7 @@ Use "not_confirmed" if a skill might be known but lacks evidence.
 Return only valid JSON matching the provided schema.`;
 
 export class JobMatchAnalyzer {
-  static async compare(resumeText: string, jobDescription: string): Promise<RequirementMatrix> {
+  static async compare(resumeText: string, jobDescription: string, language: string): Promise<RequirementMatrix> {
     const orchestrator = new AnalysisOrchestrator();
     
     const userPrompt = `
@@ -25,9 +25,11 @@ ${jobDescription}
 
 Compare them and return the requirement matrix.`;
 
-    const rawResult = await orchestrator.analyze<RequirementMatrix>(
+    const rawResult = await orchestrator.analyzeLocalized<RequirementMatrix>(
       COMPARISON_SYSTEM_PROMPT,
-      userPrompt
+      userPrompt,
+      RequirementMatrixSchema,
+      language
     );
     
     return RequirementMatrixSchema.parse(rawResult);

@@ -21,7 +21,7 @@ Return ONLY valid JSON matching this exact structure:
 }`;
 
 export class TruthGuard {
-  static async evaluate(resumeText: string, userAnswers: string, proposedChanges: string): Promise<TruthGuardGen> {
+  static async evaluate(resumeText: string, userAnswers: string, proposedChanges: string, rejected: string[] = [], language = "pt-BR"): Promise<TruthGuardGen> {
     const orchestrator = new AnalysisOrchestrator();
     
     const userPrompt = `
@@ -40,11 +40,16 @@ PROPOSED CHANGES/NEW CONTENT TO ADD:
 ${proposedChanges}
 """
 
-Evaluate all proposed claims. Block anything not strictly supported by the original resume or user answers.`;
+EXPLICITLY REJECTED CLAIMS (must not appear, including paraphrases, even if mentioned in sources):
+${JSON.stringify(rejected)}
 
-    const rawResult = await orchestrator.analyze<TruthGuardGen>(
+Evaluate EVERY factual claim in the proposed content, including metrics, employers, dates and qualifications. Block anything not strictly supported by the original resume or user answers. Do not treat job requirements as evidence about the candidate. Return at least one claim for nonempty content.`;
+
+    const rawResult = await orchestrator.analyzeLocalized<TruthGuardGen>(
       TRUTH_GUARD_SYSTEM_PROMPT,
-      userPrompt
+      userPrompt,
+      TruthGuardSchema,
+      language
     );
     
     return TruthGuardSchema.parse(rawResult);

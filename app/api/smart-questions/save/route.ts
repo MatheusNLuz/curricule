@@ -1,31 +1,24 @@
+import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-
-export async function POST(req: Request) {
+import { apiError, HttpError } from "@/lib/http-error";
+export async function POST(request: Request) {
   try {
-    const { analysisId, answers } = await req.json();
-    if (!analysisId || !answers) {
-      return NextResponse.json({ error: "Missing analysisId or answers" }, { status: 400 });
-    }
-
-    const session = await getSessionUser();
-    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
-
-    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId }, select: { id: true } });
-    if (!analysis) return NextResponse.json({ error: "Análise não encontrada." }, { status: 404 });
-
-    // answers is an object: { [questionId]: answerText }
-    for (const [qId, answer] of Object.entries(answers)) {
-      await prisma.smartQuestion.updateMany({
-        where: { id: qId, analysisId },
-        data: { answer: answer as string }
-      });
-    }
-
+    const session = await getSessionUser(); if (!session) throw new HttpError(401, "Faça login para continuar.");
+    const { analysisId, answers } = z.object({ analysisId: z.string(), answers: z.record(z.string(), z.string().max(5000)) }).strict().parse(await boundedJson(request));
+    await prisma.$transaction(async tx => {
+      const analysis = await tx.analysis.findFirst({ where: { id: analysisId, userId: session.userId }, include: { questions: true } });
+      if (!analysis) throw new HttpError(404, "Análise não encontrada.");
+      if (Object.keys(answers).some(id => !analysis.questions.some(q => q.id === id))) throw new HttpError(400, "Pergunta inválida para esta análise.");
+      let changed = false;
+      for (const [id, answer] of Object.entries(answers)) {
+        if (analysis.questions.find(q => q.id === id)?.answer === answer) continue;
+        await tx.smartQuestion.update({ where: { id }, data: { answer, confirmed: !!answer.trim() } }); changed = true;
+      }
+      if (changed) await tx.analysis.update({ where: { id: analysisId }, data: { truthGuardJson: null, revision: { increment: 1 } } });
+    });
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error saving smart question answers:", error);
-    return NextResponse.json({ error: "Não foi possível salvar suas respostas. Tente novamente." }, { status: 503 });
-  }
+  } catch (error) { return apiError(error); }
 }

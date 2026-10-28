@@ -12,7 +12,7 @@ export class ResumeRewriter {
   static async rewrite(
     originalText: string,
     jobDescription: string | null,
-    userAnswers: any,
+    userAnswers: unknown,
     truthGuard: TruthGuardGen | null,
     targetLanguage: string
   ): Promise<StructuredResume> {
@@ -38,9 +38,11 @@ ${truthGuard ? JSON.stringify(truthGuard, null, 2) : "N/A"}
 
 Rewrite the resume into the structured JSON format. Maximize impact without lying.`;
 
-    const rawResult = await orchestrator.analyze<StructuredResume>(
+    const rawResult = await orchestrator.analyzeLocalized<StructuredResume>(
       REWRITE_SYSTEM_PROMPT,
-      userPrompt
+      userPrompt,
+      StructuredResumeSchema,
+      targetLanguage
     );
     
     return StructuredResumeSchema.parse(rawResult);

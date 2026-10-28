@@ -1,0 +1,30 @@
+import type { SVGProps } from "react";
+
+const letterC = "M55 7H31C17.2 7 6 18.2 6 32s11.2 25 25 25h24L46 47H31c-8.3 0-15-6.7-15-15s6.7-15 15-15h15Z";
+
+function Emblem() {
+  return <><path d={letterC} fill="#5D4FD0" /><rect x="26" y="25" width="27" height="6" rx="3" fill="#5D4FD0" /><rect x="26" y="36" width="19" height="6" rx="3" fill="#897AE4" /></>;
+}
+
+/** Original vector lettering. No font download or font dependency. */
+function Wordmark() {
+  return <g transform="translate(78 0) scale(.88 1)" fill="none" stroke="currentColor" strokeWidth="4.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 28c-3-3-6-3.5-9-2.5C2 27 .5 31 .5 36s2 9 6.5 10c3 1 6 .5 9-2.5" />
+    <path d="M25 26v12c0 5 3 8 8.5 8s8.5-3 8.5-8V26" />
+    <path d="M53 46V26m0 7c2-6 6-8 11-7" />
+    <path d="M74 46V26m0 7c2-6 6-8 11-7" />
+    <path d="M96 27v19" /><circle cx="96" cy="17.5" r="2.8" fill="currentColor" stroke="none" />
+    <path d="M123 28c-3-3-6-3.5-9-2.5-5 1.5-6.5 5.5-6.5 10.5s2 9 6.5 10c3 1 6 .5 9-2.5" />
+    <path d="M132 26v12c0 5 3 8 8.5 8s8.5-3 8.5-8V26" />
+    <path d="M161 17v23c0 4 2 6 6 6" />
+    <path d="M177 35h17c0-6-3-9.5-8-9.5-6 0-9.5 4.5-9.5 10.5s3.5 10.5 9.5 10.5c3.5 0 6-1 8-3.5" />
+  </g>;
+}
+
+export function CurriculeLogo(props: SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 252 64" width="252" height="64" role="img" aria-label="Curricule" {...props}><Emblem /><Wordmark /></svg>;
+}
+
+export function CurriculeMark(props: SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" {...props}><Emblem /></svg>;
+}

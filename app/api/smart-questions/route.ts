@@ -1,11 +1,16 @@
+import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { SmartQuestionSchema, SmartQuestionGen } from "@/lib/schemas/questions-truth.schema";
 import { getSessionUser } from "@/lib/auth";
+import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
+import { apiError } from "@/lib/http-error";
+import type { SmartQuestion } from "@prisma/client";
 
 const QUESTIONS_WITH_JOB_PROMPT = `You are an expert technical recruiter and ATS specialist.
 Based on the gap analysis between the resume and the job description, generate smart questions to ask the candidate. You can generate up to 8 questions if necessary.
+Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
 CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for the STAR method (Situation, Task, Action, Result) with numbers.
 
 Focus on:
@@ -27,12 +32,13 @@ Focus on:
 }
 
 CRITICAL FOR 'suggestedAnswer':
-If the 'Previous Answers History' provided in the payload contains information that partially or fully answers the question you are generating, you MUST fill the 'suggestedAnswer' field with that exact information so the candidate doesn't have to re-type it. Otherwise, omit the field entirely.
+If the 'Previous Answers History' provided in the payload contains information that partially or fully answers the question you are generating, you MUST fill the 'suggestedAnswer' field with that exact factual information, faithfully translated into the selected output locale so the candidate doesn't have to re-type it. Otherwise, omit the field entirely.
 
-CRITICAL: Generate everything in Portuguese (pt-BR).`;
+Use the user-selected output locale for every question, reason, option and suggested answer.`;
 
 const QUESTIONS_GENERAL_PROMPT = `You are an expert technical recruiter and ATS specialist.
 Based on the parsed resume text, generate 3-5 smart questions to ask the candidate to help improve their resume for general ATS screening.
+Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
 CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for the STAR method (Situation, Task, Action, Result) with numbers.
 
 Focus on:
@@ -53,12 +59,13 @@ Focus on:
 }
 
 CRITICAL FOR 'suggestedAnswer':
-If the 'Previous Answers History' provided in the payload contains information that partially or fully answers the question you are generating, you MUST fill the 'suggestedAnswer' field with that exact information so the candidate doesn't have to re-type it. Otherwise, omit the field entirely.
+If the 'Previous Answers History' provided in the payload contains information that partially or fully answers the question you are generating, you MUST fill the 'suggestedAnswer' field with that exact factual information, faithfully translated into the selected output locale so the candidate doesn't have to re-type it. Otherwise, omit the field entirely.
 
-CRITICAL: Generate everything in Portuguese (pt-BR).`;
+Use the user-selected output locale for every question, reason, option and suggested answer.`;
 
 const QUESTIONS_LINKEDIN_PROMPT = `You are an expert LinkedIn Profile optimizer and technical recruiter.
 Based on the parsed LinkedIn profile text, generate 3-5 smart questions to help the user optimize their profile for recruiter search results.
+Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
 CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for real metrics, numbers, percentages, or achievements for their experiences to replace any draft/hallucinated placeholders.
 (e.g., "Qual foi o impacto percentual na melhoria de performance no cargo X?", "Quantas pessoas faziam parte da equipe?", "Quantos sistemas legados você migrou?").
 
@@ -75,48 +82,58 @@ CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You mu
   ]
 }
 
-CRITICAL: Generate everything in Portuguese (pt-BR).`;
+Use the user-selected output locale for every question, reason, option and suggested answer.`;
 
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 export async function POST(req: Request) {
   try {
-    const { analysisId } = await req.json();
+    const { analysisId } = await boundedJson(req);
     if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
 
     const session = await getSessionUser();
     if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
+    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId } });
+    if (!analysis) return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
 
     // 1. Return existing questions if already generated
     const existingQuestions = await prisma.smartQuestion.findMany({
       where: { analysisId, analysis: { userId: session.userId } }
     });
     if (existingQuestions.length > 0) {
+      // Localize legacy generated fields once. Never rewrite candidate answers or confirmations.
+      const localized = await runAnalysisTask(analysisId, session.userId, "QUESTIONS_LOCALIZE", [existingQuestions.map(q => q.id).sort(), analysis.selectedLanguage], async () => {
+        const ordered = [...existingQuestions].sort((a, b) => a.id.localeCompare(b.id));
+        const source = ordered.map(q => ({ question: q.question, reason: q.reason, category: q.category, answerType: q.answerType, options: q.options ? JSON.parse(q.options) : undefined, suggestedAnswer: q.suggestedAnswer || undefined }));
+        const schema = SmartQuestionSchema.refine(value => value.questions.length === ordered.length && value.questions.every((q, i) => q.category === source[i].category && q.answerType === source[i].answerType), "Preserve question order, count and machine fields");
+        const translated = await new AnalysisOrchestrator().analyzeLocalized("Faithfully translate these existing questions into the selected locale. Preserve their exact order, count, meaning, category and answerType. Do not generate new questions or facts. Preserve already-correct text. Return JSON {questions:[{question,reason,category,answerType,options?,suggestedAnswer?}]}. Options and suggestedAnswer are prose and must also use the selected locale.", JSON.stringify({ questions: source }), schema, analysis.selectedLanguage);
+        const questions = translated.questions.map((q, i) => ({ ...q, id: ordered[i].id }));
+        await commitTask(tx=>Promise.all(questions.map(q => tx.smartQuestion.update({ where: { id: q.id }, data: { question: q.question, reason: q.reason, options: q.options ? JSON.stringify(q.options) : null, suggestedAnswer: q.suggestedAnswer || null } }))));
+        return questions;
+      });
+      const translatedById = new Map(localized.map(q => [q.id, q]));
       // Map database format to API format (options parsed from JSON string)
       const mapped = existingQuestions.map(q => ({
         id: q.id,
-        question: q.question,
-        reason: q.reason,
+        question: translatedById.get(q.id)!.question,
+        reason: translatedById.get(q.id)!.reason,
         category: q.category,
         answerType: q.answerType,
-        options: q.options ? JSON.parse(q.options) : undefined,
+        options: translatedById.get(q.id)!.options,
         answer: q.answer,
-        suggestedAnswer: q.suggestedAnswer,
+        suggestedAnswer: translatedById.get(q.id)!.suggestedAnswer,
       }));
       return NextResponse.json({ success: true, questions: mapped });
     }
 
-    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId } });
-    if (!analysis) {
-      return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
-    }
-
+    const result = await runAnalysisTask(analysisId, session.userId, "QUESTIONS", [analysis.parsedResumeText, analysis.comparisonJson, analysis.selectedLanguage], async () => {
     // 2. Fetch past answered questions for the SAME USER to reuse answers
-    let pastAnsweredQuestions: any[] = [];
+    let pastAnsweredQuestions: SmartQuestion[] = [];
     if (analysis.userId) {
       pastAnsweredQuestions = await prisma.smartQuestion.findMany({
         where: { 
-          answer: { not: null },
+          answer: { not: null }, confirmed: true,
           AND: [{ answer: { not: "" } }],
           analysisId: { not: analysisId },
           analysis: { userId: analysis.userId }
@@ -153,13 +170,14 @@ export async function POST(req: Request) {
       payload = `Resume Text:\n${analysis.parsedResumeText}\n\n${historyBlock}`;
     }
 
-    const rawQuestions = await orchestrator.analyze<SmartQuestionGen>(prompt, payload);
+    prompt += "\nAdapt questions to the candidate's actual profession. Never require invented metrics; explicitly permit 'I do not know' or 'I have not done this'. Suggestions are unconfirmed until the candidate chooses and submits them.";
+    const rawQuestions = await orchestrator.analyzeLocalized<SmartQuestionGen>(prompt, payload, SmartQuestionSchema, analysis.selectedLanguage);
     const validated = SmartQuestionSchema.parse(rawQuestions);
 
-    const savedQuestions: any[] = [];
-    // Save to DB
+    const savedQuestions: { id: string; question: string; reason: string; category: string; answerType: string; options: string[] | undefined; suggestedAnswer: string | null }[] = [];
+    await commitTask(async tx=>{
     for (const q of validated.questions) {
-      const dbQ = await prisma.smartQuestion.create({
+      const dbQ = await tx.smartQuestion.create({
         data: {
           analysisId,
           question: q.question,
@@ -181,9 +199,11 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ success: true, questions: savedQuestions });
+    });
+    return { success: true, questions: savedQuestions };
+    });
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("Smart questions error:", error);
-    return NextResponse.json({ error: "As perguntas não puderam ser geradas. Tente novamente em instantes." }, { status: 503 });
+    return apiError(error, "As perguntas não puderam ser geradas. Tente novamente em instantes.");
   }
 }

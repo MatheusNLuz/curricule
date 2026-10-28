@@ -5,87 +5,277 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  password  String?
-  neonAuthId String?   @unique
-  name      String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id               String   @id @default(cuid())
+  email            String   @unique
+  password         String?
+  neonAuthId       String?  @unique
+  name             String?
+  role             String   @default("USER")
+  status           String   @default("ACTIVE")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  analyticsConsent Boolean  @default(false)
 
-  analyses  Analysis[]
+  analyses         Analysis[]
+  usage            AnalysisUsage[]
+  billingCustomers BillingCustomer[]
+  entitlements     BillingEntitlement[]
+  adminActions     AdminAudit[]
+  aiInvocations    AiInvocation[]
+  productEvents    ProductEvent[]
+  supportRequests  SupportRequest[]
+}
+
+model AdminAudit {
+  id           String   @id @default(cuid())
+  actorId      String?
+  targetUserId String
+  action       String
+  details      String
+  createdAt    DateTime @default(now())
+  actor        User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([targetUserId, createdAt])
+}
+
+model BillingCustomer {
+  id                 String   @id @default(cuid())
+  userId             String
+  provider           String
+  externalCustomerId String
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@unique([provider, externalCustomerId])
+}
+
+model BillingEntitlement {
+  id                String    @id @default(cuid())
+  userId            String
+  provider          String
+  externalReference String
+  key               String    @default("analysis")
+  source            String
+  status            String
+  validUntil        DateTime?
+  lastEventAt       DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalReference])
+  @@index([userId, key, status])
+}
+
+model BillingWebhook {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String
+  type        String
+  payloadHash String
+  occurredAt  DateTime
+  processedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
 }
 
 model Analysis {
-  id                    String   @id @default(cuid())
-  userId                String?
-  mode                  String
-  professionalTarget    String?
-  selectedLanguage      String
-  selectedTemplate      String
-  resumeInputType       String
-  originalResumeText    String?
-  parsedResumeText      String?
-  jobDescription        String?
-  jobLocation           String?
-  initialScores         String?
-  finalScores           String?
-  analysisJson          String?
-  jobParseJson          String?
-  comparisonJson        String?
-  consensusJson         String?
-  truthGuardJson        String?
-  gamificationJson      String?
-  finalResumeJson       String?
-  coverLetter           String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  userId              String?
+  mode                String
+  professionalTarget  String?
+  selectedLanguage    String
+  selectedTemplate    String
+  resumeInputType     String
+  originalResumeText  String?
+  parsedResumeText    String?
+  jobDescription      String?
+  jobLocation         String?
+  initialScores       String?
+  finalScores         String?
+  finalAssessmentJson String?
+  analysisJson        String?
+  jobParseJson        String?
+  comparisonJson      String?
+  consensusJson       String?
+  truthGuardJson      String?
+  gamificationJson    String?
+  finalResumeJson     String?
+  finalReviewJson     String?
+  rejectedClaimsJson  String?
+  confirmedClaimsJson String?
+  coverLetter         String?
+  jobUrl              String?
+  profileUrl          String?
+  draftJson           String?
+  editorDraftJson     String?
+  clientRequestId     String?  @unique
+  applicationStatus   String   @default("PREPARING")
+  parentAnalysisId    String?
+  importedSourceJson  String?
+  revision            Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  user                  User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  files                 FileAsset[]
-  questions             SmartQuestion[]
-  exports               PdfExport[]
+  user          User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files         FileAsset[]
+  questions     SmartQuestion[]
+  exports       PdfExport[]
+  revisions     ResumeRevision[]
+  tasks         AnalysisTask[]
+  usage         AnalysisUsage[]
+  aiInvocations AiInvocation[]
+
+  @@index([userId, createdAt, id])
+  @@index([userId, updatedAt, id])
 }
 
 model SmartQuestion {
-  id          String   @id @default(cuid())
-  analysisId String
-  question   String
-  reason     String
-  category   String
-  answerType String
-  options    String?
-  answer     String?
+  id              String   @id @default(cuid())
+  analysisId      String
+  question        String
+  reason          String
+  category        String
+  answerType      String
+  options         String?
+  answer          String?
   suggestedAnswer String?
-  confirmed  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  confirmed       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
 }
 
 model FileAsset {
-  id          String   @id @default(cuid())
+  id         String   @id @default(cuid())
   analysisId String
-  type        String
-  fileName    String
-  mimeType    String
-  path        String
-  size        Int
-  createdAt   DateTime @default(now())
+  type       String
+  fileName   String
+  mimeType   String
+  path       String
+  size       Int
+  createdAt  DateTime @default(now())
 
-  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
 }
 
 model PdfExport {
-  id          String   @id @default(cuid())
+  id         String   @id @default(cuid())
   analysisId String
-  fileName    String
-  path        String
-  createdAt   DateTime @default(now())
+  fileName   String
+  path       String
+  createdAt  DateTime @default(now())
 
-  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+}
+
+model ResumeRevision {
+  id         String   @id @default(cuid())
+  analysisId String
+  content    String
+  source     String
+  createdAt  DateTime @default(now())
+  analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId, createdAt])
+}
+
+model AnalysisTask {
+  id         String   @id @default(cuid())
+  analysisId String
+  userId     String
+  kind       String
+  inputHash  String
+  status     String
+  token      String
+  leaseUntil DateTime
+  resultJson String?
+  updatedAt  DateTime @updatedAt
+  analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@unique([analysisId, kind])
+  @@index([userId, status, leaseUntil])
+  @@index([status, leaseUntil])
+}
+
+model AnalysisUsage {
+  id          String    @id @default(cuid())
+  analysisId  String?
+  userId      String
+  kind        String
+  status      String    @default("STARTED")
+  completedAt DateTime?
+  elapsedMs   Int?
+  errorCode   String?
+  createdAt   DateTime  @default(now())
+  analysis    Analysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model AiInvocation {
+  id           String    @id @default(cuid())
+  userId       String
+  analysisId   String?
+  kind         String
+  provider     String
+  model        String
+  status       String
+  elapsedMs    Int
+  inputTokens  Int?
+  outputTokens Int?
+  costUsd      Float?
+  estimated    Boolean   @default(false)
+  errorCode    String?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysis     Analysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt, status])
+  @@index([userId, createdAt])
+}
+
+model ProductEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  visitorId String?
+  name      String
+  source    String
+  device    String
+  value     Float?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt, name])
+}
+
+model SupportRequest {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  message   String
+  reference String?
+  status    String   @default("OPEN")
+  reply     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model SecurityRateLimit {
+  key       String   @id
+  count     Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }

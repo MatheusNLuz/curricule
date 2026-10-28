@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+/.next-validation/
+/.next-original-review/
+/.next-production-review/
 /out/
 
 # production
@@ -23,6 +26,7 @@
 # misc
 .DS_Store
 *.pem
+*.key
 
 # debug
 npm-debug.log*
@@ -32,6 +36,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -49,3 +54,5 @@ dev.db
 storage/
 scratch/
 *.pdf
+# Local visual QA evidence can contain account information.
+/.impeccable/review/

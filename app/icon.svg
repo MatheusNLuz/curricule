@@ -1,6 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
-  <title>Curriculy</title>
-  <rect width="64" height="64" rx="16" fill="#5D4FD0"/>
-  <path d="M22 14h14l10 10v25a5 5 0 0 1-5 5H22a5 5 0 0 1-5-5V19a5 5 0 0 1 5-5Z" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linejoin="round"/>
-  <path d="M36 14v10h10M25 34h12M25 42h12" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Curricule"><path d="M55 7H31C17.2 7 6 18.2 6 32s11.2 25 25 25h24L46 47H31c-8.3 0-15-6.7-15-15s6.7-15 15-15h15Z" fill="#5D4FD0"></path><rect x="26" y="25" width="27" height="6" rx="3" fill="#5D4FD0"></rect><rect x="26" y="36" width="19" height="6" rx="3" fill="#897AE4"></rect></svg>

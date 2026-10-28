@@ -7,12 +7,14 @@ Identify the hard skills, soft skills, required experience, and technologies acc
 Return only valid JSON matching the provided schema.`;
 
 export class JobParser {
-  static async parse(jobDescription: string): Promise<JobParse> {
+  static async parse(jobDescription: string, language: string): Promise<JobParse> {
     const orchestrator = new AnalysisOrchestrator();
     
-    const rawResult = await orchestrator.analyze<JobParse>(
+    const rawResult = await orchestrator.analyzeLocalized<JobParse>(
       JOB_PARSER_SYSTEM_PROMPT,
-      `Job Description:\n"""\n${jobDescription}\n"""\n\nExtract all the requirements into the JSON schema.`
+      `Job Description:\n"""\n${jobDescription}\n"""\n\nExtract all the requirements into the JSON schema.`,
+      JobParseSchema,
+      language
     );
     
     return JobParseSchema.parse(rawResult);

@@ -1,0 +1,1 @@
+export function acquisitionSource(value:string|null){const normalized=(value||"").toLowerCase();return (["google","linkedin","instagram","facebook","email"] as const).find(source=>source===normalized)||(value?"other":"direct");}

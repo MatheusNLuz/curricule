@@ -1,42 +1,32 @@
+import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { TruthGuard } from "@/lib/ats/truth-guard";
 import { getSessionUser } from "@/lib/auth";
-
-export const maxDuration = 60;
-
-export async function POST(req: Request) {
+import { TruthGuard } from "@/lib/ats/truth-guard";
+import { storedConfirmedClaims,storedRejectedClaims,truthSourceHash } from "@/lib/ats/truth-policy";
+import { apiError, HttpError } from "@/lib/http-error";
+import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
+export const maxDuration = 180;
+export async function POST(request: Request) {
   try {
-    const { analysisId } = await req.json();
-    if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
-
-    const session = await getSessionUser();
-    if (!session) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
-
-    const analysis = await prisma.analysis.findFirst({
-      where: { id: analysisId, userId: session.userId },
-      include: { questions: true }
+    const session = await getSessionUser(); if (!session) throw new HttpError(401, "Faça login para continuar.");
+    const { analysisId } = z.object({ analysisId: z.string() }).strict().parse(await boundedJson(request));
+    const analysis = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId }, include: { questions: true } });
+    if (!analysis) throw new HttpError(404, "Análise não encontrada.");
+    const hash = truthSourceHash(analysis);
+    const rejected=storedRejectedClaims(analysis.rejectedClaimsJson);
+    const result = await runAnalysisTask(analysisId, session.userId, "TRUTH", [hash,analysis.rejectedClaimsJson,analysis.confirmedClaimsJson], async () => {
+      const answers = analysis.questions.filter(q => q.answer).map(q => q.question + ": " + q.answer).join("\n")+"\n"+storedConfirmedClaims(analysis.confirmedClaimsJson).join("\n");
+      const comparison = analysis.comparisonJson ? JSON.parse(analysis.comparisonJson) : null;
+      const additions = { answers, unconfirmedJobRequirements: comparison?.missingMandatorySkills || [] };
+      const report = { ...await TruthGuard.evaluate(analysis.parsedResumeText || "", answers, JSON.stringify(additions), rejected, analysis.selectedLanguage), sourceHash: hash, decisions: {} };
+      await commitTask(async tx=>{
+        const updated=await tx.analysis.updateMany({where:{id:analysisId,revision:analysis.revision},data:{truthGuardJson:JSON.stringify(report)}});
+        if(!updated.count)throw new HttpError(409,"As respostas mudaram durante a validação. Valide os fatos novamente.");
+      });
+      return report;
     });
-
-    if (!analysis) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-    const answersText = analysis.questions.filter(q => q.answer).map(q => `Q: ${q.question}\nA: ${q.answer}`).join("\n");
-    const proposed = analysis.comparisonJson ? JSON.parse(analysis.comparisonJson).missingMandatorySkills?.join(", ") || "" : "";
-
-    const truthGuardResult = await TruthGuard.evaluate(
-      analysis.parsedResumeText || "",
-      answersText || "No user answers.",
-      proposed || "No proposed additions."
-    );
-
-    await prisma.analysis.update({
-      where: { id: analysisId },
-      data: { truthGuardJson: JSON.stringify(truthGuardResult) }
-    });
-
-    return NextResponse.json({ success: true, truthGuard: truthGuardResult });
-  } catch (error) {
-    console.error("Truth Guard error:", error);
-    return NextResponse.json({ error: "Não foi possível verificar a integridade do conteúdo. Tente novamente." }, { status: 503 });
-  }
+    return NextResponse.json({ success: true, truthGuard: result });
+  } catch (error) { return apiError(error); }
 }

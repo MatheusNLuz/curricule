@@ -1,78 +1,52 @@
-import { Add01Icon, Briefcase01Icon, FileUploadIcon, SparklesIcon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
-import { AnalysisModeGrid } from "@/components/home/analysis-mode-grid";
-import { HugeIcon } from "@/components/ui/huge-icon";
-import { Reveal } from "@/components/ui/reveal";
-import { RouteLine } from "@/components/ui/route-line";
+import { ArrowDown, ArrowDownToLine, ArrowRight, ArrowUpRight, Check, CheckCheck, FileCheck2, FileText, History, Link2, ListChecks, MessageSquareText, PencilLine, ShieldCheck } from "lucide-react";
+import { redirect } from "next/navigation";
 import { getHomeRedirect } from "@/lib/home-route";
 import { getSessionUser } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { ProductTour } from "@/components/home/product-tour";
+import { GoalPicker } from "@/components/home/goal-picker";
+import { DeferredResumeDemo as ResumeDemo } from "@/components/home/deferred-resume-demo";
+import { CurriculeLogo } from "@/components/brand/curricule-logo";
+import styles from "./landing.module.css";
+
+const start = "/register?next=%2Fanalysis%2Fnew";
+const questions = [
+  ["O que posso fazer com o Curricule?", "Você pode analisar e revisar seu currículo, comparar seu material com uma vaga, preparar uma candidatura direcionada, gerar uma carta de apresentação e receber sugestões para o LinkedIn. Escolha o objetivo de acordo com o seu momento."],
+  ["Posso colocar o link da vaga?", "Sim. Cole o link para tentar importar a descrição pública, confira o texto extraído e confirme antes de usar. Se o site exigir login ou impedir a leitura, cole a descrição diretamente."],
+  ["O Curricule também analisa meu LinkedIn?", "Sim. Informe o link público do perfil, cole o conteúdo ou envie o PDF exportado do LinkedIn. A leitura por link depende do conteúdo disponibilizado publicamente. Você revisa as sugestões e as aplica no seu perfil; o Curricule não publica por você."],
+  ["Preciso ter uma vaga em mente?", "Não. Você pode começar com uma análise geral do currículo, com foco em clareza, organização e conteúdo. Quando encontrar uma oportunidade, poderá comparar os requisitos com a sua experiência."],
+  ["Funciona para a minha área?", "Você pode enviar materiais de diferentes áreas profissionais. A análise depende da qualidade e do contexto das informações que você fornecer. Quanto mais específico for seu objetivo, mais contexto haverá para as recomendações."],
+  ["A IA vai inventar experiências para mim?", "As recomendações devem se apoiar no material enviado e nas respostas que você confirmar. O fluxo inclui revisão de afirmações e edição final. A IA pode cometer erros: confira cargos, datas, habilidades e resultados antes de usar o conteúdo."],
+  ["Consigo baixar o currículo?", "Sim. Nos fluxos de currículo, você pode revisar o conteúdo no editor, escolher um dos modelos disponíveis e exportar em PDF. As sugestões para o LinkedIn ficam disponíveis para você copiar e aplicar no seu perfil."],
+  ["Uma nota alta garante entrevista?", "Não. Os indicadores são estimativas do conteúdo, não previsões de aprovação. O Curricule ajuda a preparar sua candidatura; a seleção depende dos critérios da empresa e de outros fatores."],
+];
 
 export default async function Home() {
-  const session = await getSessionUser();
-  const destination = getHomeRedirect(session);
+  const destination = getHomeRedirect(await getSessionUser());
   if (destination) redirect(destination);
+  return <div className={styles.landing}>
+    <section className={styles.hero}>
+      <div className={styles.heroCopy}><h1>Uma candidatura à altura da <em>sua história.</em></h1><p>Seu currículo, a vaga que você quer e seu LinkedIn, com mais direção. Use IA para entender o que melhorar e preparar materiais que representam sua experiência.</p><div className={styles.actions}><Link className={styles.primary} href={start}>Preparar minha candidatura <ArrowUpRight size={18} aria-hidden="true" /></Link><a className={styles.textLink} href="#seu-momento">Encontrar meu ponto de partida <ArrowDown size={15} aria-hidden="true" /></a></div><div className={styles.heroAssurances}><span><Check size={14} aria-hidden="true" /> Você revisa antes de usar</span><span><Check size={14} aria-hidden="true" /> PDF, texto ou link público</span></div></div>
+      <ProductTour />
+    </section>
+    <div className={styles.inputRail}><p>Comece com o que você já tem.</p><div><span><FileText size={17} aria-hidden="true" /> Seu currículo</span><ArrowRight size={15} aria-hidden="true" /><span><Link2 size={17} aria-hidden="true" /> Uma vaga ou perfil</span><ArrowRight size={15} aria-hidden="true" /><span><FileCheck2 size={17} aria-hidden="true" /> Um próximo passo mais claro</span></div></div>
 
-  return (
-    <div className="mx-auto max-w-6xl px-5 pb-24 pt-8 sm:px-8 sm:pt-10 lg:px-12 lg:pt-12">
-      <Reveal>
-        <section className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <h1 className="max-w-[14ch] font-heading text-[clamp(2.5rem,5vw,4.25rem)] font-semibold leading-[0.98] tracking-[-0.055em]">
-              Escolha seu próximo passo.
-            </h1>
-            <p className="mt-5 max-w-[48ch] text-[15px] leading-7 text-muted-foreground sm:text-base">
-              Escolha uma rota para melhorar seu currículo, entender uma vaga ou preparar uma candidatura mais forte.
-            </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link href="/analysis/new" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[13px] font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
-                <HugeIcon icon={Add01Icon} size={18} /> Nova análise
-              </Link>
-              <a href="#rotas" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-surface px-5 text-[13px] font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-soft-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
-                Ver possibilidades
-              </a>
-            </div>
-          </div>
+    <section id="seu-momento" className={styles.goalsSection}><div className={styles.sectionIntro}><h2>Em que momento<br />você está?</h2><p>Da primeira revisão à candidatura para aquela vaga. Escolha o que precisa de atenção agora.</p></div><GoalPicker /></section>
 
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
-            <div className="absolute -right-12 -top-12 size-40 rounded-full bg-soft-primary opacity-50 blur-2xl" aria-hidden="true" />
-            <div className="relative">
-              <h2 className="max-w-[18ch] font-heading text-2xl font-semibold leading-tight tracking-[-0.04em]">Comece pelo ponto que mais pede atenção.</h2>
-              <p className="mt-3 max-w-[52ch] text-[13px] leading-relaxed text-muted-foreground">Você não precisa resolver tudo de uma vez. Escolha uma rota e avance com contexto.</p>
-              <RouteLine className="mt-6" activeIndex={0} steps={[{ label: "Material", description: "Seu currículo" }, { label: "Oportunidade", description: "Sua direção" }, { label: "Ação", description: "Seu próximo passo" }]} />
-              <div className="mt-6 flex items-center gap-3 border-t border-border pt-4 text-[12px] text-muted-foreground">
-                <HugeIcon icon={FileUploadIcon} size={17} className="text-primary" />
-                <span>PDF ou texto colado. Você escolhe como começar.</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </Reveal>
+    <section id="recursos" className={styles.deliverables}><div className={styles.sectionIntro}><h2>Mais do que uma análise.<br /><em>Material para seguir em frente.</em></h2><p>Entenda os pontos de atenção e trabalhe nas sugestões até chegar a uma versão que você queira apresentar.</p></div><div className={styles.outputGrid}>
+      <article className={styles.outputMain}><div className={styles.outputMainCopy}><h3>Do diagnóstico<br />ao seu próximo PDF.</h3><p>Reúna suas informações, esclareça o que falta e revise o texto em um editor. Você decide quando o material está pronto.</p><ul><li><ListChecks size={17} aria-hidden="true" /> Análise de estrutura e conteúdo</li><li><MessageSquareText size={17} aria-hidden="true" /> Perguntas sobre sua experiência</li><li><PencilLine size={17} aria-hidden="true" /> Editor para os ajustes finais</li><li><ArrowDownToLine size={17} aria-hidden="true" /> Modelos e exportação em PDF</li></ul></div><div className={styles.outputDocument} aria-label="Exemplo ilustrativo de organização de um currículo"><div className={styles.outputDocTop}><FileText size={17} aria-hidden="true" /><span>Currículo revisado</span><CheckCheck size={16} aria-hidden="true" /></div><h4>Ana Martins</h4><p>Assistente de atendimento</p><div className={styles.docSection}>Experiência profissional</div><p>Atendimento a clientes por e-mail e esclarecimento de dúvidas.</p><p className={styles.docHighlight}>Organização de pedidos em planilhas Excel.</p><div className={styles.docSection}>Competências</div><div className={styles.documentTags}><span>Atendimento</span><span>Excel</span></div><div className={styles.docFooter}><ShieldCheck size={14} aria-hidden="true" /> Exemplo fictício · revise antes de usar</div></div></article>
+      <article className={styles.letterOutput}><MessageSquareText size={23} aria-hidden="true" /><h3>Uma carta que conecta<br />trajetória e oportunidade.</h3><p>Prepare uma apresentação a partir do seu currículo e da descrição da vaga. Ajuste o tom e revise os fatos antes de enviar.</p><div className={styles.letterExcerpt}><span>Trecho ilustrativo</span><p>“Minha experiência com atendimento por e-mail e organização de pedidos se conecta às atividades descritas para a posição…”</p></div></article>
+      <article className={styles.versionOutput}><History size={23} aria-hidden="true" /><h3>Seu material evolui.<br />Você acompanha.</h3><p>Consulte seu histórico de análises, compare revisões do currículo e retome o trabalho quando precisar.</p><div className={styles.versionTrack}><span>Original</span><ArrowRight size={15} aria-hidden="true" /><span>Revisão</span><ArrowRight size={15} aria-hidden="true" /><span>Sua versão</span></div><Link href={start} className={styles.textLink}>Criar meu espaço <ArrowUpRight size={16} aria-hidden="true" /></Link></article>
+    </div></section>
 
-      <section id="rotas" className="mt-10 scroll-mt-8">
-        <div className="flex flex-col justify-between gap-3 border-b border-border pb-5 sm:flex-row sm:items-end">
-          <div>
-            <h2 className="font-heading text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">Ações disponíveis</h2>
-          </div>
-          <p className="max-w-[34ch] text-[12px] leading-relaxed text-muted-foreground sm:text-right">Escolha o tipo de ajuda que você precisa agora.</p>
-        </div>
-        <AnalysisModeGrid />
-      </section>
+    <section id="na-pratica" className={styles.writingSection}><div><h2>A diferença aparece<br />na forma de contar.</h2><p>Às vezes, a experiência já está no seu currículo. O que falta é uma escrita que deixe mais claro o que você fez.</p><p className={styles.writingPrinciple}><ShieldCheck size={20} aria-hidden="true" /> Os mesmos fatos. Uma leitura mais direta.</p><p className={styles.writingNote}>Explore exemplos de diferentes áreas. As demonstrações são ilustrativas e não executam uma análise de IA.</p></div><ResumeDemo /></section>
 
-      <Reveal delay={120}>
-        <section className="mt-20 grid gap-6 border-t border-border pt-8 sm:grid-cols-3">
-          {[
-            { icon: FileUploadIcon, label: "Traga o que você já tem", text: "Comece com um PDF ou cole seu currículo." },
-            { icon: Briefcase01Icon, label: "Dê contexto ao caminho", text: "Inclua uma vaga quando quiser comparar possibilidades." },
-            { icon: SparklesIcon, label: "Saia com uma ação", text: "Encontre o ponto mais importante para o próximo passo." },
-          ].map((item, index) => (
-            <div key={item.label} className="flex gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-soft-primary text-primary"><HugeIcon icon={item.icon} size={17} /></span>
-              <div><p className="text-[13px] font-semibold">{index + 1}. {item.label}</p><p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{item.text}</p></div>
-            </div>
-          ))}
-        </section>
-      </Reveal>
-    </div>
-  );
+    <section id="como-funciona" className={styles.process}><div className={styles.processHeading}><h2>Um caminho claro,<br />do começo ao envio.</h2><Link href={start} className={styles.textLink}>Começar minha análise <ArrowUpRight size={17} aria-hidden="true" /></Link></div><ol>{[["Traga seu material", "Envie um PDF, cole o texto ou importe o conteúdo de um link público. Confira o que foi lido antes de continuar."], ["Encontre o que melhorar", "Escolha o objetivo, leia as recomendações e responda às perguntas com informações reais da sua experiência."], ["Revise e use", "Ajuste o resultado. Exporte seu currículo em PDF ou leve as sugestões para seu perfil e sua candidatura."]].map(([title, description], index) => <li key={title}><span>{index + 1}</span><h3>{title}</h3><p>{description}</p></li>)}</ol></section>
+
+    <section className={styles.controlSection}><div><ShieldCheck size={33} strokeWidth={1.5} aria-hidden="true" /><h2>A IA ajuda a escrever.<br />A história continua sua.</h2><p>Uma boa candidatura não precisa de experiências inventadas. Precisa apresentar melhor o que você pode sustentar.</p></div><ul><li><Check size={18} aria-hidden="true" /><div><h3>Você confere a fonte</h3><p>O texto importado aparece para revisão. Se a página não permitir a leitura, use texto ou PDF.</p></div></li><li><Check size={18} aria-hidden="true" /><div><h3>Você confirma as informações</h3><p>Perguntas e revisão de afirmações ajudam a identificar o que precisa da sua confirmação.</p></div></li><li><Check size={18} aria-hidden="true" /><div><h3>Você dá a palavra final</h3><p>Ajuste cargos, datas, descrições e tom. Confira tudo antes de enviar ou publicar.</p></div></li></ul></section>
+
+    <section id="duvidas" className={styles.faq}><div><h2>Vamos tirar<br />as dúvidas?</h2><p>O que saber antes de começar a preparar sua próxima candidatura.</p></div><div>{questions.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
+    <section className={styles.finalCta}><div className={styles.finalMark} aria-hidden="true"><FileCheck2 size={30} strokeWidth={1.4} /></div><h2>Você já tem uma história.<br /><em>Vamos preparar o próximo capítulo?</em></h2><p>Comece pelo currículo, pela vaga ou pelo seu LinkedIn. Um objetivo de cada vez, com mais clareza para seguir.</p><Link href={start} className={styles.primary}>Começar minha candidatura <ArrowUpRight size={19} aria-hidden="true" /></Link><span className={styles.finalNote}>Já tem uma conta? <Link href="/login">Entre no seu espaço</Link></span></section>
+    <footer className={styles.footer}><div><Link href="/" className={styles.footerBrand}><CurriculeLogo className={styles.footerLogo} /></Link><p>Clareza para sua próxima candidatura.</p></div><nav aria-label="Rodapé"><a href="#recursos">O que você recebe</a><a href="#como-funciona">Como funciona</a><a href="#duvidas">Dúvidas</a><Link href="/login">Entrar</Link><Link href="/privacy">Privacidade</Link><Link href="/help">Ajuda</Link></nav><p className={styles.footerNote}>As recomendações usam IA e precisam da sua revisão. Nenhuma análise garante entrevista ou contratação.</p></footer>
+  </div>;
 }
