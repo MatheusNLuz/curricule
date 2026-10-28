@@ -45,8 +45,8 @@ Follow the mandatory output language selected by the user, including all descrip
 
 Return ONLY valid JSON matching this exact structure, with no markdown formatting or extra text:
 {
-  "detectedLanguage": "pt-BR" | "pt-PT" | "en-US" | "en-GB" | "unknown",
-  "recommendedLanguage": "pt-BR" | "pt-PT" | "en-US" | "en-GB",
+  "detectedLanguage": "pt-BR" | "pt-PT" | "en-US" | "en-GB" | "es-ES" | "unknown",
+  "recommendedLanguage": "pt-BR" | "pt-PT" | "en-US" | "en-GB" | "es-ES",
   "detectedSeniority": "junior" | "mid" | "senior" | "lead" | "unknown",
   "recommendedLength": { "pages": "string", "reason": "string" },
   "atsIssues": [
@@ -124,8 +124,8 @@ All descriptive text in your JSON response (such as descriptions, recommendation
 
 Return ONLY valid JSON matching this exact structure, with no markdown formatting or extra text:
 {
-  "detectedLanguage": "pt-BR" | "pt-PT" | "en-US" | "en-GB" | "unknown",
-  "recommendedLanguage": "pt-BR" | "pt-PT" | "en-US" | "en-GB",
+  "detectedLanguage": "pt-BR" | "pt-PT" | "en-US" | "en-GB" | "es-ES" | "unknown",
+  "recommendedLanguage": "pt-BR" | "pt-PT" | "en-US" | "en-GB" | "es-ES",
   "detectedSeniority": "junior" | "mid" | "senior" | "lead" | "unknown",
   "strengths": ["string"],
   "weaknesses": ["string"],

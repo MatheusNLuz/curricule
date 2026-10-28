@@ -10,12 +10,14 @@ const regionalConventions = {
   "pt-PT": "Use European Portuguese: equipa, ficheiros, telemóvel. Do not use Brazilian wording for these concepts.",
   "en-US": "Use American spelling: organized, analyzed, optimized, color, center. Do not use British spellings.",
   "en-GB": "Use British spelling with -ise/-ised: organised, analysed, optimised, colour, centre. For this product's house style do NOT use Oxford -ize/-ized spellings, even where a dictionary accepts them.",
+  "es-ES": "Use Spanish as used in Spain, with natural professional vocabulary and spelling.",
 } as const;
 const incompatibleProse = {
   "pt-BR": /\b(?:a|da|uma|pela|na) equipa\b/iu,
   "pt-PT": /\b(?:a|da|uma|pela|na) equipe\b/iu,
   "en-US": /\b(?:organised|organising|analysed|analysing|optimised|optimising)\b/iu,
   "en-GB": /\b(?:organized|organizing|analyzed|analyzing|optimized|optimizing)\b/iu,
+  "es-ES": /\b(?:experiência profissional|formação acadêmica|professional experience|professional summary)\b/iu,
 } as const;
 const preservedFields = new Set(["name", "company", "institution", "issuer", "email", "phone", "linkedin", "portfolio", "location", "startDate", "endDate", "date", "foundText", "detectedLanguage", "recommendedLanguage", "detectedSeniority", "severity", "source", "category", "answerType"]);
 

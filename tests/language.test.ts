@@ -29,6 +29,7 @@ for (const [locale, prose] of Object.entries({
   "pt-PT": "Organizei os ficheiros e trabalhei com a equipa.",
   "en-US": "I organized the files and analyzed the results.",
   "en-GB": "I organised the files and analysed the results.",
+  "es-ES": "Organicé los archivos y trabajé con el equipo.",
 })) {
   test(`selected ${locale} governs generation and audit despite foreign source and job location`, async () => {
     const output = { content: prose, recommendedLanguage: locale };

@@ -1,14 +1,15 @@
 import type { OptimizedResume } from "../schemas/optimize.schema";
 
 export function resumeLabels(language = "pt-BR") {
-  return language.startsWith("pt-") ? { summary: "Resumo profissional", experience: "Experiência profissional", skills: "Competências", education: "Formação acadêmica", certifications: "Certificações", projects: "Projetos", languages: "Idiomas", present: "Atual" }
+  return language === "es-ES" ? { summary: "Perfil profesional", experience: "Experiencia profesional", skills: "Competencias", education: "Formación académica", certifications: "Certificaciones", projects: "Proyectos", languages: "Idiomas", present: "Actualidad" }
+    : language.startsWith("pt-") ? { summary: "Resumo profissional", experience: "Experiência profissional", skills: "Competências", education: "Formação acadêmica", certifications: "Certificações", projects: "Projetos", languages: "Idiomas", present: "Atual" }
     : { summary: "Professional Summary", experience: "Professional Experience", skills: "Skills", education: "Education", certifications: "Certifications", projects: "Projects", languages: "Languages", present: "Present" };
 }
 export function safeResumeLink(value: string | undefined) {
   if (!value?.trim()) return undefined;
   try { const url = new URL(/^https?:\/\//i.test(value) ? value : "https://" + value); return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined; } catch { return undefined; }
 }
-export function resumeDates(start: string, end: string, present = "") { const last=present&&/^(?:atual|presente|present|current|ongoing)$/i.test(end.trim())?present:end;return [start,last].filter(Boolean).join(" – "); }
+export function resumeDates(start: string, end: string, present = "") { const last=present&&/^(?:atual|actual|actualidad|presente|present|current|ongoing)$/i.test(end.trim())?present:end;return [start,last].filter(Boolean).join(" – "); }
 export function resumeSections(resume: OptimizedResume, language: string, skillsFirst = false) {
   const labels = resumeLabels(language);
   const sections = {

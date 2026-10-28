@@ -3,8 +3,8 @@ import { OptimizedResumeSchema } from "./schemas/optimize.schema.ts";
 import { isSourceUrl } from "./source-input.ts";
 
 export const MODES = ["MAKE_ATS_FRIENDLY", "COMPARE_AGAINST_JOB", "OPTIMIZE_FOR_JOB", "LINKEDIN_OPTIMIZATION", "COVER_LETTER_ONLY"] as const;
-export const LOCALES = ["pt-BR", "pt-PT", "en-US", "en-GB"] as const;
-export const REGIONS = ["BR", "US", "UK", "CA", "DE", "PT", "REMOTE"] as const;
+export const LOCALES = ["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES"] as const;
+export const REGIONS = ["BR", "US", "UK", "CA", "DE", "PT", "ES", "REMOTE"] as const;
 export const MAX_TEXT = 60_000;
 export const CreateAnalysisSchema = z.object({
   mode: z.enum(MODES),
@@ -40,5 +40,5 @@ export const UpdateAnalysisSchema = z.object({
 }).partial().strict().refine(value => Object.keys(value).some(key => key !== "revision"), "Informe uma alteração.");
 
 export function languageLabel(locale: string) {
-  return ({ "pt-BR": "Português (Brasil)", "pt-PT": "Português (Portugal)", "en-US": "English (US)", "en-GB": "English (UK)" } as Record<string, string>)[locale] || "Português (Brasil)";
+  return ({ "pt-BR": "Português (Brasil)", "pt-PT": "Português (Portugal)", "en-US": "English (US)", "en-GB": "English (UK)", "es-ES": "Español (España)" } as Record<string, string>)[locale] || locale;
 }

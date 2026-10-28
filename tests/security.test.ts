@@ -22,6 +22,8 @@ test("PATCH rejects internal fields and validates published resume JSON", () => 
   assert.equal(UpdateAnalysisSchema.safeParse({ selectedTemplate: "modern-ats", professionalTarget: "Analista" }).success, true);
   assert.equal(CreateAnalysisSchema.safeParse({ mode: "wrong", clientRequestId: crypto.randomUUID() }).success, false);
   assert.equal(CreateAnalysisSchema.parse({ mode: "OPTIMIZE_FOR_JOB", clientRequestId: crypto.randomUUID(), selectedLanguage: "pt-PT", jobLocation: "UK" }).selectedLanguage, "pt-PT");
+  assert.equal(CreateAnalysisSchema.parse({ mode: "OPTIMIZE_FOR_JOB", clientRequestId: crypto.randomUUID(), selectedLanguage: "es-ES", jobLocation: "BR" }).selectedLanguage, "es-ES");
+  assert.equal(CreateAnalysisSchema.parse({ mode: "OPTIMIZE_FOR_JOB", clientRequestId: crypto.randomUUID(), selectedLanguage: "en-US", jobLocation: "ES" }).jobLocation, "ES");
 });
 test("an address alone is never accepted as the job description", () => {
   const url = "https://careers.example.com/company/a-very-long-vacancy-id-1234567890";

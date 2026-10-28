@@ -7,8 +7,8 @@ export const ResumeAnalysisSchema = z.object({
     foundText: z.string().default(""),
     reason: z.string(),
   })).optional(),
-  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "unknown"]).catch("unknown"),
-  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB"]).catch("pt-BR"),
+  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES", "unknown"]).catch("unknown"),
+  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES"]).catch("pt-BR"),
   detectedSeniority: z.enum(["junior", "mid", "senior", "lead", "unknown"]).catch("unknown"),
   recommendedLength: z.object({
     pages: z.string().default("1"),
@@ -53,8 +53,8 @@ export function resumeAssessmentSchema(source:string){
 }
 
 export const LinkedInAnalysisSchema = z.object({
-  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "unknown"]).catch("unknown"),
-  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB"]).catch("pt-BR"),
+  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES", "unknown"]).catch("unknown"),
+  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES"]).catch("pt-BR"),
   detectedSeniority: z.enum(["junior", "mid", "senior", "lead", "unknown"]).catch("unknown"),
   strengths: z.array(z.string()).default([]),
   weaknesses: z.array(z.string()).default([]),

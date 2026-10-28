@@ -51,7 +51,7 @@ const request = () => new Request("https://app.example/api/test", { method: "POS
 test.beforeEach(() => { row = { ...initial }; questions = []; outputs = []; calls = []; writes = []; tasks = []; verificationLocales = []; });
 
 test("analysis route forwards each selected locale and never saves a rejected output", async () => {
-  for (const locale of ["pt-BR", "pt-PT", "en-US", "en-GB"]) {
+  for (const locale of ["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES"]) {
     row.selectedLanguage = locale;
     outputs.push(ResumeAnalysisSchema.parse({ recommendedLanguage: locale, rubric:["ats","structure","clarity","impact","keywords"].map(criterion=>({criterion,level:0,foundText:"",reason:"Not enough evidence"})), scores: {} }));
     assert.equal((await analyze.POST(request())).status, 200);

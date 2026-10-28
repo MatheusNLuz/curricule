@@ -41,8 +41,8 @@ test("job form offers a link or pasted description and a separate output locale"
   for (const text of ["Link da vaga", "Colar descrição", "Enviar PDF", "Idioma do resultado", "País ou convenção do currículo"]) assert.ok(html.includes(text), text);
   assert.ok(html.includes("pt-PT")); assert.ok(html.includes("en-GB"));
   assert.match(html, /Ler descrição da vaga/);
-  assert.match(html, /Español \(España\) — em preparação/);
-  assert.match(html, /Espanha — em preparação/);
+  assert.match(html, /Español \(España\)/);
+  assert.match(html, /Espanha/);
   assert.doesNotMatch(html, /Link do seu perfil do LinkedIn/);
 });
 test("LinkedIn form starts with public profile URL and includes PDF/text alternatives", () => {

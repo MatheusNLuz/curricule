@@ -40,6 +40,11 @@ test("provenance does not claim paraphrases are exact evidence and edits reject 
 test("DOCX contains the same optional sections and body contact, with no document header",async()=>{
   const bytes=await resumeDocx(resume,"pt-BR","executive-ats");const zip=await JSZip.loadAsync(bytes);const xml=await zip.file("word/document.xml")!.async("string");assert.match(xml,/Camila Validação/);assert.match(xml,/camila@example.test/);assert.match(xml,/Organização do arquivo/);assert.match(xml,/Português/);assert.doesNotMatch(xml,/<w:tbl\b/);assert.equal(Object.keys(zip.files).some(name=>/word\/header\d/.test(name)),false);
 });
+test("Spanish headings are shared by the preview and DOCX",async()=>{
+  const sections=resumeSections(resume,"es-ES");assert.equal(sections[0].title,"Perfil profesional");assert.ok(sections.some(section=>section.title==="Experiencia profesional"));
+  const html=renderToStaticMarkup(<AtsTemplate resume={resume} templateId="basic-ats" language="es-ES"/>);assert.match(html,/Experiencia profesional/);
+  const bytes=await resumeDocx(resume,"es-ES","basic-ats");const zip=await JSZip.loadAsync(bytes);const xml=await zip.file("word/document.xml")!.async("string");assert.match(xml,/Perfil profesional/);assert.match(xml,/Experiencia profesional/);
+});
 test("bounded JSON rejects oversized chunked bodies and foreign-origin mutations",async()=>{
   const request=new Request("https://app.example/api/test",{method:"POST",body:JSON.stringify({text:"x".repeat(100)})});await assert.rejects(()=>boundedJson(request,40),error=>(error as {status:number}).status===413);
   const before=process.env.APP_URL;process.env.APP_URL="https://app.example";try{assert.throws(()=>assertRequestOrigin(new Request("https://app.example/api/test",{headers:{origin:"https://other.example"}})));assert.doesNotThrow(()=>assertRequestOrigin(new Request("https://app.example/api/test",{headers:{origin:"https://app.example"}})));}finally{if(before===undefined)delete process.env.APP_URL;else process.env.APP_URL=before;}
