@@ -2,6 +2,16 @@
 
 Registro para uma próxima etapa. Nenhuma implementação de backend foi feita nesta revisão.
 
+## Atualização de 28/10/2026 — branch local
+
+- O teste do perfil informado recebeu HTTP 999 do LinkedIn; o navegador foi enviado à barreira de autenticação. A leitura pública não foi contornada e a interface oferece texto/PDF.
+- A extração de vaga evita botões, avisa sobre recorte ou fallback sem área principal e recusa páginas com múltiplas vagas estruturadas. Ainda falta validar com o endereço real da vaga relatada, que não foi fornecido; HTML arbitrário pode apresentar outros controles.
+- Espanhol e Espanha foram integrados aos contratos, prompts, rótulos e seletores. Um teste isolado com dados fictícios na NVIDIA gerou análise, perguntas, LinkedIn, carta e currículo em espanhol e produziu HTML de exportação e DOCX. Isso não substitui o teste autenticado de ponta a ponta nem verifica todos os perfis e profissões.
+- A pesquisa e as orientações utilizadas no currículo estão em [convencoes-curriculo-paises.md](convencoes-curriculo-paises.md).
+- A nota da versão reavaliada aparece na biblioteca quando válida; edições existentes invalidam a nota. Respostas condicionais e opções agora são guardadas com formato versionado e convertidas para texto explícito na revisão de fatos; respostas anteriores continuam legíveis.
+- A avaliação de duas IAs está em [avaliacao-duas-ias.md](avaliacao-duas-ias.md). O OpenRouter retornou HTTP 401, impedindo comparação efetiva; uma segunda análise não foi ativada sem essa evidência.
+- Termos completos e política para a operação comercial continuam sujeitos à definição dos dados reais da operação e revisão jurídica. A seção atual de processamento não é substituto desses documentos.
+
 ## 1. Link de perfil do LinkedIn
 
 - Relato: uma tentativa com link de perfil retornou erro. O endereço específico e a mensagem não foram fornecidos; ainda não há diagnóstico confirmado para esse caso.

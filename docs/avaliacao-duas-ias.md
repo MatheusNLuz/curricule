@@ -1,0 +1,7 @@
+# Avaliação de dois provedores para análise e perguntas
+
+O fluxo atual usa OpenRouter como primeira opção e NVIDIA NIM como alternativa, não como duas análises independentes. Cada resposta localizada é validada por esquema e por uma auditoria de idioma. O trabalho é limitado por timeout, tentativas e execução idempotente existentes; registros de telemetria não incluem textos das candidaturas.
+
+Em 28/10/2026, `scripts/compare-ai-providers.ts` enviou apenas um exemplo fictício aos dois provedores configurados para gerar perguntas neutras. OpenRouter retornou HTTP 401; NVIDIA produziu três perguntas em cerca de 12,5 segundos. Esse único exemplo não mede qualidade, custo nem consistência, e não compara os dois modelos. Não foi possível concluir que uma segunda opinião melhore o resultado. A identidade e configuração dos modelos vêm do ambiente e não são promessas apresentadas ao usuário.
+
+Alternativas a avaliar após restabelecer acesso: (1) duas análises independentes, seguidas de consolidação sem inventar fatos; (2) um modelo produz e outro revisa lacunas e perguntas. Ambas aumentam chamadas, tempo, custo e exposição de dados. Um experimento precisa comparar com o fluxo atual, usando casos fictícios e reais anonimizados autorizados; medir pertinência, repetições, fatos inventados, notas, idioma, latência e custo. Definir limite de chamadas e orçamento, comportamento para divergência, falhas, idempotência e informação sobre provedores antes de ativar. Não ativamos automaticamente uma segunda análise com base neste teste inconclusivo.

@@ -120,11 +120,13 @@ export function extractSourceText(html: string, kind: SourceKind) {
     // Parse the description as HTML too: schema.org descriptions commonly contain markup.
     const pieces: string[] = [];
     let ignored = 0;
-    const descriptionParser = new Parser({ onopentag: name => { if (["script", "style"].includes(name)) ignored++; }, ontext: value => { if (!ignored) pieces.push(value); }, onclosetag: name => { if (["script", "style"].includes(name)) ignored = Math.max(0, ignored - 1); pieces.push("\n"); } }, { decodeEntities: true });
+    const descriptionParser = new Parser({ onopentag: name => { if (["script", "style", "button"].includes(name)) ignored++; }, ontext: value => { if (!ignored) pieces.push(value); }, onclosetag: name => { if (["script", "style", "button"].includes(name)) ignored = Math.max(0, ignored - 1); pieces.push("\n"); } }, { decodeEntities: true });
     descriptionParser.end(job.description);
     text = [typeof job.title === "string" ? job.title : "", ...pieces].join("\n");
   }
-  text = text.replace(/[\t ]+/g, " ").replace(/\n\s*\n+/g, "\n\n").trim().slice(0, 60_000);
+  text = text.replace(/[\t ]+/g, " ").replace(/^\s*(?:show more|show less|ver mais|ver menos|mostrar más|mostrar menos)\s*$/gim, "").replace(/\n\s*\n+/g, "\n\n").trim();
+  const truncated = text.length > 60_000;
+  text = text.slice(0, 60_000);
   const pageTitle = title.join("").trim();
   const blocked = /sign in|log in|linkedin login|entrar|security verification|just a moment|access denied|verificação de segurança|attention required/i.test(pageTitle) || (kind === "linkedin" && !publicProfile && /sign in to view|join to view|entre para ver|faça login para ver|sign up to view/i.test(text));
   const relevant = kind === "job" ? !!job || /responsabil|requisit|qualifica|requirements|responsibilit|what you (?:will do|bring)|what you['’]re about|about (?:the|this) (?:role|job)|vaga|job description/i.test(text) : /experi[eê]ncia|experience|sobre|about|forma[çc][aã]o|education/i.test(text);
@@ -135,6 +137,8 @@ export function extractSourceText(html: string, kind: SourceKind) {
   const requirements=kind==="job"?section(/^(?:requisitos|qualifica|requirements|qualifications|o que (?:buscamos|esperamos))\b/i):null;
   const responsibilities=kind==="job"?section(/^(?:responsabilidades|responsibilities|atividades|o que voc[eê] vai fazer)\b/i):null;
   const warnings:string[]=[];
+  if(truncated)warnings.push("O conteúdo ultrapassou o limite de leitura e foi cortado. Confira a fonte e cole a descrição completa se necessário.");
+  if(kind==="job" && !job && main.join("").trim().length < 200)warnings.push("A página não identificou uma área principal de descrição; confira se o texto corresponde à vaga e está completo.");
   if(kind==="job"&&!requirements)warnings.push("Não identificamos uma seção explícita de requisitos. Confira se o texto da vaga está completo.");
   if(kind==="job"&&!responsibilities)warnings.push("Não identificamos uma seção explícita de responsabilidades. Revise o conteúdo antes de confirmar.");
   if(kind==="linkedin")warnings.push("A leitura cobre apenas o conteúdo público. Confira experiências, formação e resumo; partes privadas podem não aparecer.");
