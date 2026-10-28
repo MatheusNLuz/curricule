@@ -2,6 +2,13 @@ import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { CreateAnalysisSchema, UpdateAnalysisSchema } from "../lib/analysis-contract.ts";
 import { validateSourceUrl, isPublicAddress, extractSourceText, resolvePublicHost, importWebSource } from "../lib/web-source.ts";
+
+test("LinkedIn authentication redirects explain the public access limitation", async () => {
+  await assert.rejects(
+    () => importWebSource("https://www.linkedin.com/in/example/", "linkedin", async () => ({ status: 302, location: "/authwall", html: "" })),
+    /LinkedIn exige acesso.*PDF/,
+  );
+});
 import { pdfFileError, hasPdfSignature } from "../lib/upload-validation.ts";
 import { reviewTruth, truthContext, truthSourceHash, type ReviewedTruth } from "../lib/ats/truth-policy.ts";
 import { AnalysisOrchestrator } from "../lib/ai/analysis-orchestrator.ts";

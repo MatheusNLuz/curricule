@@ -61,6 +61,9 @@ export async function readPublicHtml(url: URL, signal: AbortSignal) {
     }, response => {
       const status = response.statusCode || 502;
       if (status >= 300 && status < 400) { response.resume(); resolve({ status, location: response.headers.location, html: "" }); return; }
+      if (status === 999 && (url.hostname === "linkedin.com" || url.hostname.endsWith(".linkedin.com"))) {
+        response.resume(); reject(Object.assign(new SourceError("O LinkedIn bloqueou a leitura pública deste perfil. Cole o texto do perfil ou envie o PDF exportado do LinkedIn."), { status })); return;
+      }
       if (status !== 200 || !/text\/html|application\/xhtml\+xml/i.test(response.headers["content-type"] || "") || Number(response.headers["content-length"] || 0) > MAX_SOURCE_BYTES || ![undefined, "identity"].includes(response.headers["content-encoding"])) {
         response.resume(); reject(Object.assign(new SourceError("A página não disponibilizou conteúdo legível. Cole o texto ou envie um PDF."), { status })); return;
       }
@@ -144,7 +147,11 @@ export async function importWebSource(input: string, kind: SourceKind, readPage 
       const response = await readPage(url, signal);
       if (response.status >= 300 && response.status < 400) {
         if (!response.location) break;
-        url = validateSourceUrl(new URL(response.location, url).href, kind); continue;
+        const destination = new URL(response.location, url);
+        if (kind === "linkedin" && (destination.hostname === "linkedin.com" || destination.hostname.endsWith(".linkedin.com")) && /^\/(?:authwall|login|signup|checkpoint)(?:\/|$)/i.test(destination.pathname)) {
+          throw new SourceError("O LinkedIn exige acesso para mostrar este perfil. Cole o texto do perfil ou envie o PDF exportado do LinkedIn.");
+        }
+        url = validateSourceUrl(destination.href, kind); continue;
       }
       return { ...extractSourceText(response.html, kind), url: url.href,extractedAt:new Date().toISOString() };
     }
