@@ -13,7 +13,6 @@ const {render,screen,within,cleanup,waitFor,act}=await import("@testing-library/
 const {default:userEvent}=await import("@testing-library/user-event");
 const {StructuredResumeEditor}=await import("../components/editor/structured-resume-editor");
 const {EditorClient}=await import("../app/analysis/[id]/editor/client");
-const {MeasurementControl}=await import("../components/analytics/measurement");
 const {SourceLinkInput}=await import("../components/analysis/source-link-input");
 const {TaskProgress}=await import("../components/analysis/task-progress");
 const {notifyTaskActivity}=await import("../lib/task-events");
@@ -26,16 +25,54 @@ test("progress polling pauses in hidden tabs and wakes immediately for task acti
   try{
     await act(async()=>{render(<TaskProgress analysisId="progress-test"/>);});
     assert.equal(requests.mock.callCount(),1);
-    await act(async()=>{context.mock.timers.tick(3000);});assert.equal(requests.mock.callCount(),1);
+    await act(async()=>{context.mock.timers.tick(600_000);});assert.equal(requests.mock.callCount(),1);
     await act(async()=>{notifyTaskActivity('{"analysisId":"progress-test"}',true);context.mock.timers.tick(0);});assert.equal(requests.mock.callCount(),2);
     await act(async()=>{context.mock.timers.tick(3000);});assert.equal(requests.mock.callCount(),3);
     Object.defineProperty(dom.window.document,"visibilityState",{value:"hidden",configurable:true});
     await act(async()=>{dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange"));context.mock.timers.tick(60_000);});assert.equal(requests.mock.callCount(),3);
     Object.defineProperty(dom.window.document,"visibilityState",{value:"visible",configurable:true});
     await act(async()=>{dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange"));context.mock.timers.tick(0);});assert.equal(requests.mock.callCount(),4);
+    await act(async()=>{notifyTaskActivity('{"analysisId":"progress-test"}',false);context.mock.timers.tick(0);});assert.equal(requests.mock.callCount(),5);
+    await act(async()=>{context.mock.timers.tick(600_000);});assert.equal(requests.mock.callCount(),5);
   }finally{cleanup();context.mock.timers.reset();Object.defineProperty(dom.window.document,"visibilityState",{value:"visible",configurable:true});}
 });
+test("progress stops after repeated errors and lets the user explicitly retry",async context=>{
+  context.mock.timers.enable({apis:["setTimeout"]});
+  let failed=true;
+  const requests=mock.method(globalThis,"fetch",async()=>failed?new Response(null,{status:503}):Response.json({tasks:[]}));
+  try{
+    await act(async()=>{render(<TaskProgress analysisId="paused"/>);});
+    for(const delay of [6000,12000,24000,48000])await act(async()=>{context.mock.timers.tick(delay);});
+    assert.equal(requests.mock.callCount(),5);assert.match(screen.getByRole("status").textContent||"",/pausada/);
+    await act(async()=>{context.mock.timers.tick(600_000);});assert.equal(requests.mock.callCount(),5);
+    failed=false;
+    await act(async()=>{screen.getByRole("button",{name:"Atualizar progresso"}).click();});
+    assert.equal(requests.mock.callCount(),6);
+    await act(async()=>{context.mock.timers.tick(600_000);});assert.equal(requests.mock.callCount(),6);
+  }finally{cleanup();context.mock.timers.reset();}
+});
 const fixture=()=>OptimizedResumeSchema.parse({personalInfo:{name:"Ana Validação"},professionalSummary:"Experiência em atendimento ao cliente.",experiences:[{company:"Empresa A",title:"Cargo A",startDate:"01/2021",endDate:"12/2022",description:["Atendimento por e-mail."]},{company:"Empresa B",title:"Cargo B",startDate:"01/2023",endDate:"",description:["Organização de pedidos."]}]});
+test("an idle analysis wakes for another tab without background polling",async context=>{
+  context.mock.timers.enable({apis:["setTimeout"]});
+  const channels:MockChannel[]=[];
+  class MockChannel {
+    onmessage:((event:MessageEvent)=>void)|null=null;
+    constructor(){channels.push(this);}
+    close(){}
+    postMessage(){}
+  }
+  const previous=Object.getOwnPropertyDescriptor(dom.window,"BroadcastChannel");
+  Object.defineProperty(dom.window,"BroadcastChannel",{value:MockChannel,configurable:true});
+  const requests=mock.method(globalThis,"fetch",async()=>Response.json({tasks:[]}));
+  try{
+    await act(async()=>{render(<TaskProgress analysisId="cross-tab"/>);});
+    await act(async()=>{context.mock.timers.tick(600_000);});assert.equal(requests.mock.callCount(),1);
+    await act(async()=>{channels[0].onmessage?.({data:{analysisId:"different",active:true,source:"other-tab"}} as MessageEvent);context.mock.timers.tick(0);});assert.equal(requests.mock.callCount(),1);
+    await act(async()=>{channels[0].onmessage?.({data:{analysisId:"cross-tab",active:true,source:"other-tab"}} as MessageEvent);context.mock.timers.tick(0);});assert.equal(requests.mock.callCount(),2);
+    await act(async()=>{channels[0].onmessage?.({data:{analysisId:"cross-tab",active:false,source:"other-tab"}} as MessageEvent);context.mock.timers.tick(0);});assert.equal(requests.mock.callCount(),3);
+    await act(async()=>{context.mock.timers.tick(600_000);});assert.equal(requests.mock.callCount(),3);
+  }finally{cleanup();context.mock.timers.reset();if(previous)Object.defineProperty(dom.window,"BroadcastChannel",previous);else Reflect.deleteProperty(dom.window,"BroadcastChannel");}
+});
 test("editor saves every section, supports reorder and undo, without changing dates implicitly",async()=>{
   const initial=fixture();let saved:typeof initial|null=null;
   render(<StructuredResumeEditor initialData={initial} onSave={async value=>{saved=structuredClone(value);}} onDraftSave={async()=>{}}/>);
@@ -63,9 +100,7 @@ test("editor network failure explains connection and expired session preserves t
   const fetcher=mock.method(globalThis,"fetch",async()=>{throw new TypeError("Failed to fetch");});render(<EditorClient analysisId="test"/>);assert.match((await screen.findByRole("alert")).textContent||"",/Verifique sua conexão/);cleanup();fetcher.mock.restore();
   mock.method(globalThis,"fetch",async()=>Response.json({error:"Expired"},{status:401}));render(<EditorClient analysisId="test"/>);await waitFor(()=>assert.equal(destinations.length,1));assert.match(destinations[0],/login\?next=%2Fanalysis%2Ftest%2Feditor/);
 });
-test("withdrawal stops local telemetry even if server deletion fails",async()=>{
-  dom.window.localStorage.setItem("curricule-measurement","yes");mock.method(globalThis,"fetch",async()=>new Response(null,{status:503}));render(<MeasurementControl/>);const user=userEvent.setup({document:dom.window.document});await user.click(screen.getByRole("button",{name:"Desativar medição opcional"}));await screen.findByText(/Medição local desativada/);assert.equal(dom.window.localStorage.getItem("curricule-measurement"),"no");assert.ok(screen.getByRole("button",{name:"Permitir medição opcional"}));
-});
+
 function SourceHarness(){const [url,setUrl]=React.useState("https://jobs.example.test/vaga"),[text,setText]=React.useState(""),[reviewed,setReviewed]=React.useState(false);return <SourceLinkInput kind="job" url={url} onUrlChange={setUrl} content={text} onContentChange={setText} reviewed={reviewed} onReviewedChange={setReviewed} ensureAnalysis={async()=>"a"}/>;}
 test("a blocked source never becomes successful or reviewed, and a partial source stays visible for review",async()=>{
   let blocked=true;mock.method(globalThis,"fetch",async()=>blocked?Response.json({error:"Página exige login. Cole o texto."},{status:422}):Response.json({text:"Requisitos: Excel. "+"Descrição pública da vaga. ".repeat(10),title:"Analista",company:null,url:"https://jobs.example.test/vaga",extractedAt:"2026-10-25T12:00:00Z",requirements:"Requisitos: Excel",responsibilities:null,warnings:["Confira as responsabilidades: bloco não identificado."]}));

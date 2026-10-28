@@ -18,6 +18,9 @@ registerHooks({
     return next(specifier, context);
   },
   load(url, context, next) {
+    if (/\.css(?:\?|$)/.test(url) && url.startsWith(pathToFileURL(root).href)) {
+      return { format: "module", source: 'export default new Proxy({}, { get: (_target, name) => String(name) });', shortCircuit: true };
+    }
     if (/\.tsx?(?:\?|$)/.test(url) && url.startsWith(pathToFileURL(root).href) && !url.includes("/node_modules/")) {
       return { format: "module", source: ts.transpileModule(readFileSync(fileURLToPath(url), "utf8"), { fileName: fileURLToPath(url), compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText, shortCircuit: true };
     }

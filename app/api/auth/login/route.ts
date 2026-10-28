@@ -10,7 +10,6 @@ import { validateLogin } from "@/lib/form-validation";
 
 export async function POST(req: Request) {
   try {
-    await consumeRateLimit("auth-global-login","global",200);
     const body = await boundedJson(req,16*1024);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Envie um e-mail e uma senha válidos." }, { status: 400 });
@@ -28,6 +27,7 @@ export async function POST(req: Request) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    await consumeRateLimit("auth-global-login","global",200);
     await consumeRateLimit("auth-account-login",normalizedEmail,12);
 
     const neonAuth = getNeonAuth();

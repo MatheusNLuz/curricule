@@ -41,8 +41,8 @@ test("database pool defaults remain bounded and preserve explicit connection set
   const custom=new URL(databaseConnectionUrl("postgresql://localhost/db?connection_limit=2&pool_timeout=20")!);assert.equal(custom.searchParams.get("connection_limit"),"2");assert.equal(custom.searchParams.get("pool_timeout"),"20");assert.equal(databaseConnectionUrl(undefined),undefined);
 });
 
-test("idle progress polling is ten times less frequent and errors back off within a bound",()=>{
-  assert.equal(taskPollDelay(false,0),30_000);assert.equal(taskPollDelay(true,0),3000);assert.equal(taskPollDelay(true,1),6000);assert.equal(taskPollDelay(true,20),60_000);
+test("idle progress does not poll and repeated failures pause bounded retries",()=>{
+  assert.equal(taskPollDelay(false,0),null);assert.equal(taskPollDelay(true,0),3000);assert.equal(taskPollDelay(true,1),6000);assert.equal(taskPollDelay(true,4),48_000);assert.equal(taskPollDelay(true,5),null);
 });
 
 test("print-only HTML preserves every model and locale, escapes input and needs no scripts or assets",()=>{

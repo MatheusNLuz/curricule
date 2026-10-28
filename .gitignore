@@ -56,3 +56,4 @@ scratch/
 *.pdf
 # Local visual QA evidence can contain account information.
 /.impeccable/review/
+/.codex-remote-attachments/

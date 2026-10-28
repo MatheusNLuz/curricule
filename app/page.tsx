@@ -5,7 +5,7 @@ import { getHomeRedirect } from "@/lib/home-route";
 import { getSessionUser } from "@/lib/auth";
 import { ProductTour } from "@/components/home/product-tour";
 import { GoalPicker } from "@/components/home/goal-picker";
-import { DeferredResumeDemo as ResumeDemo } from "@/components/home/deferred-resume-demo";
+import { ResumeDemo } from "@/components/home/resume-demo";
 import { CurriculeLogo } from "@/components/brand/curricule-logo";
 import styles from "./landing.module.css";
 
