@@ -5,7 +5,7 @@ Registro para uma próxima etapa. Nenhuma implementação de backend foi feita n
 ## Atualização de 28/10/2026 — branch local
 
 - O teste do perfil informado recebeu HTTP 999 do LinkedIn; o navegador foi enviado à barreira de autenticação. A leitura pública não foi contornada e a interface oferece texto/PDF.
-- A extração de vaga evita botões, avisa sobre recorte ou fallback sem área principal e recusa páginas com múltiplas vagas estruturadas. Ainda falta validar com o endereço real da vaga relatada, que não foi fornecido; HTML arbitrário pode apresentar outros controles.
+- A extração de vaga evita botões, avisa sobre recorte ou fallback sem área principal e recusa páginas com múltiplas vagas estruturadas. O endereço da vaga do LinkedIn fornecido foi testado: antes importava cerca de 11.360 caracteres com controles; após priorizar a descrição específica, retornou cerca de 4.452 caracteres com responsabilidades e requisitos, sem os controles observados. Outras páginas podem mudar sua estrutura.
 - Espanhol e Espanha foram integrados aos contratos, prompts, rótulos e seletores. Um teste isolado com dados fictícios na NVIDIA gerou análise, perguntas, LinkedIn, carta e currículo em espanhol e produziu HTML de exportação e DOCX. Isso não substitui o teste autenticado de ponta a ponta nem verifica todos os perfis e profissões.
 - A pesquisa e as orientações utilizadas no currículo estão em [convencoes-curriculo-paises.md](convencoes-curriculo-paises.md).
 - A nota da versão reavaliada aparece na biblioteca quando válida; edições existentes invalidam a nota. Respostas condicionais e opções agora são guardadas com formato versionado e convertidas para texto explícito na revisão de fatos; respostas anteriores continuam legíveis.

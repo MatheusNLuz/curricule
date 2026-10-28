@@ -52,6 +52,13 @@ test("job extraction avoids interface buttons and ambiguous lists of structured 
   const jobs = [{ "@type": "JobPosting", description: text }, { "@type": "JobPosting", description: text }];
   assert.throws(() => extractSourceText(`<script type="application/ld+json">${JSON.stringify(jobs)}</script>`, "job"), /mais de uma vaga/);
 });
+test("LinkedIn-style semantic description excludes surrounding interface and preserves job details", () => {
+  const detail = "Desenvolver e manter sistemas web com orientação da equipe. ".repeat(6);
+  const html = `<title>Vaga de exemplo</title><main><p>Save · Use AI to assess how you fit</p><div class="description__text description__text--rich"><h2>Como será o seu dia a dia</h2><p>${detail}</p><h2>Requirements</h2><p>Conhecimento em HTML e CSS.</p><button>Show more</button></div><p>More jobs for you</p></main>`;
+  const result = extractSourceText(html,"job");
+  assert.match(result.text,/Desenvolver e manter/);assert.match(result.text,/Conhecimento em HTML/);assert.match(result.responsibilities || "",/Desenvolver/);assert.doesNotMatch(result.text,/Save|Show more|More jobs|Use AI/);
+  assert.throws(()=>extractSourceText(`<main><div class="description__text">${detail}</div><div class="description__text">${detail}</div></main>`,"job"),/mais de uma descrição/);
+});
 test("mixed DNS records are rejected and DNS resolution obeys cancellation", async () => {
   const controller = new AbortController();
   await assert.rejects(() => resolvePublicHost("public.example", controller.signal, async () => [{ address: "8.8.8.8", family: 4 }, { address: "10.0.0.1", family: 4 }]));
