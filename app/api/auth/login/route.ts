@@ -1,3 +1,6 @@
+import { boundedJson } from "@/lib/read-bounded-body";
+import { consumeRateLimit } from "@/lib/security-rate-limit";
+import { apiError } from "@/lib/http-error";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getNeonAuth } from "@/lib/auth/server";
@@ -7,7 +10,8 @@ import { validateLogin } from "@/lib/form-validation";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => null);
+    await consumeRateLimit("auth-global-login","global",200);
+    const body = await boundedJson(req,16*1024);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Envie um e-mail e uma senha válidos." }, { status: 400 });
     }
@@ -24,6 +28,7 @@ export async function POST(req: Request) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    await consumeRateLimit("auth-account-login",normalizedEmail,12);
 
     const neonAuth = getNeonAuth();
     if (neonAuth) {
@@ -55,7 +60,6 @@ export async function POST(req: Request) {
       user: { id: user.id, email: user.email, name: user.name },
     });
   } catch (error) {
-    console.error("Erro no login:", error);
-    return NextResponse.json({ error: "Não foi possível entrar agora. Tente novamente em instantes." }, { status: 503 });
+    return apiError(error,"Não foi possível entrar agora. Tente novamente em instantes.");
   }
 }

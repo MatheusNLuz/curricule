@@ -41,7 +41,7 @@ const db = {
 mock.module(new URL("../lib/db.ts", import.meta.url).href, { namedExports: { prisma: { ...db, $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations) } } });
 mock.module(new URL("../lib/auth.ts", import.meta.url).href, { namedExports: { getSessionUser: async () => ({ userId: "owner" }) } });
 mock.module(new URL("../lib/ai/analysis-orchestrator.ts", import.meta.url).href, { namedExports: { AnalysisOrchestrator: FakeAI } });
-mock.module(new URL("../lib/analysis-task.ts", import.meta.url).href, { namedExports: { runAnalysisTask: async (_id: string, _user: string, kind: string, input: unknown, run: () => Promise<unknown>) => { tasks.push({ kind, input }); return run(); } } });
+mock.module(new URL("../lib/analysis-task.ts", import.meta.url).href, { namedExports: { commitTask:async (run:(tx:typeof db)=>Promise<unknown>)=>run(db), runAnalysisTask: async (_id: string, _user: string, kind: string, input: unknown, run: () => Promise<unknown>) => { tasks.push({ kind, input }); return run(); } } });
 mock.module(new URL("../lib/ats/verify-output.ts", import.meta.url).href, { namedExports: { verifyOutput: async (_original: string, _confirmed: string, _proposal: string, _rejects: string[], _destination: string, locale: string) => { verificationLocales.push(locale); } } });
 const analyze = await import("../app/api/analyze/route");
 const compare = await import("../app/api/compare/route");
@@ -53,7 +53,7 @@ test.beforeEach(() => { row = { ...initial }; questions = []; outputs = []; call
 test("analysis route forwards each selected locale and never saves a rejected output", async () => {
   for (const locale of ["pt-BR", "pt-PT", "en-US", "en-GB"]) {
     row.selectedLanguage = locale;
-    outputs.push(ResumeAnalysisSchema.parse({ recommendedLanguage: locale, scores: {} }));
+    outputs.push(ResumeAnalysisSchema.parse({ recommendedLanguage: locale, rubric:["ats","structure","clarity","impact","keywords"].map(criterion=>({criterion,level:0,foundText:"",reason:"Not enough evidence"})), scores: {} }));
     assert.equal((await analyze.POST(request())).status, 200);
     assert.equal(calls.at(-1)!.locale, locale);
   }

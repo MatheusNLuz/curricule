@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25T20:07:21.0183638Z",
+  "title": "Design System: Curricule",
+  "extensions": {
+    "shadows": [
+      {
+        "name": "ambient-light",
+        "value": "0 18px 44px #26203f0d",
+        "purpose": "Anotações sobre a interface clara."
+      },
+      {
+        "name": "ambient-dark",
+        "value": "0 18px 44px #0002",
+        "purpose": "Anotações sobre a interface escura."
+      },
+      {
+        "name": "document",
+        "value": "0 10px 30px #19132a0c",
+        "purpose": "Papel branco do currículo."
+      }
+    ],
+    "motion": [
+      {
+        "name": "button-state",
+        "value": "background .18s, box-shadow .18s",
+        "purpose": "Transições de estado dos botões; removidas sob prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "fields-and-lists",
+        "value": "560px"
+      },
+      {
+        "name": "sidebar-and-editor",
+        "value": "860px"
+      },
+      {
+        "name": "wide-workspace",
+        "value": "1150px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal clara; a variante escura usa o par de cores documentado no frontmatter.",
+      "html": "<button class=\"ds-primary\">Começar uma análise</button>",
+      "css": ".ds-primary{display:inline-flex;align-items:center;justify-content:center;min-height:46px;gap:12px;padding:11px 17px;border:0;border-radius:9px;background:#5d4fd0;color:#fff;font:600 12px/1.65 'Avenir Next','Segoe UI',sans-serif;cursor:pointer;transition:background .18s,box-shadow .18s}.ds-primary:hover{box-shadow:0 5px 16px #5d4fd028;filter:brightness(.96)}.ds-primary:focus-visible{outline:3px solid #5d4fd0;outline-offset:4px}.ds-primary:disabled{opacity:.5;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ação secundária com borda.",
+      "html": "<button class=\"ds-secondary\">Começar uma análise</button>",
+      "css": ".ds-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 17px;border:1px solid #e5e6ef;border-radius:9px;background:#fff;color:#252536;font:600 12px/1.65 'Avenir Next','Segoe UI',sans-serif;cursor:pointer;transition:background .18s,box-shadow .18s}.ds-secondary:hover{border-color:#5d4fd0;color:#5d4fd0}.ds-secondary:focus-visible{outline:3px solid #5d4fd0;outline-offset:4px}@media(prefers-reduced-motion:reduce){.ds-secondary{transition:none}}"
+    },
+    {
+      "name": "Labeled Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Campo explícito do formulário; o snippet representa o tema claro.",
+      "html": "<label class=\"ds-field\"><span>Seu nome</span><input type=\"text\" /></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:8px;color:#252536;font:600 11px/1.65 'Avenir Next','Segoe UI',sans-serif}.ds-field input{min-height:46px;border:1px solid #e5e6ef;border-radius:8px;padding:12px 13px;background:#fff;color:#252536;font:400 12px/1.8 'Avenir Next','Segoe UI',sans-serif;caret-color:#5d4fd0}.ds-field input:focus-visible{outline:3px solid #5d4fd0;outline-offset:4px}"
+    },
+    {
+      "name": "Workspace Navigation",
+      "kind": "nav",
+      "description": "Estado ativo da navegação lateral; o layout móvel fica na documentação de layout.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Navegação principal\"><a href=\"/dashboard\" aria-current=\"page\">Meu espaço</a><a href=\"/analysis/new\">Nova análise</a></nav>",
+      "css": ".ds-nav{display:grid;gap:5px;font:500 12px/1.65 'Avenir Next','Segoe UI',sans-serif}.ds-nav a{display:flex;align-items:center;gap:12px;min-height:47px;padding:10px 12px;border-radius:8px;color:#666b80;text-decoration:none}.ds-nav a:hover,.ds-nav a[aria-current]{background:#eeecfb;color:#5d4fd0}.ds-nav a[aria-current]{font-weight:650}.ds-nav a:focus-visible{outline:3px solid #5d4fd0;outline-offset:4px}"
+    },
+    {
+      "name": "Status",
+      "kind": "chip",
+      "refersTo": "status",
+      "description": "Rótulo de estado violeta com marcador textual e visual.",
+      "html": "<span class=\"ds-status\"><i></i>Em revisão</span>",
+      "css": ".ds-status{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:5px;background:#eeecfb;color:#51449f;font:600 10px/1.65 'Avenir Next','Segoe UI',sans-serif;white-space:nowrap}.ds-status i{display:inline-block;width:5px;height:5px;border-radius:50%;background:currentColor}"
+    },
+    {
+      "name": "Sheet",
+      "kind": "card",
+      "refersTo": "sheet",
+      "description": "Folha de conteúdo com cabeçalho e divisor.",
+      "html": "<section class=\"ds-sheet\"><div class=\"ds-sheet-heading\"><h2>Seu material</h2></div></section>",
+      "css": ".ds-sheet{background:#fff;color:#252536;border:1px solid #e5e6ef;border-radius:14px;overflow:clip;font-family:'Avenir Next','Segoe UI',sans-serif}.ds-sheet-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:22px 21px;border-bottom:1px solid #e5e6ef}.ds-sheet-heading h2{margin:0;font-size:15px;font-weight:650;line-height:1.2;letter-spacing:-.015em}"
+    }
+  ],
+  "narrative": {
+    "overview": "O mundo visual aplicado organiza material, fatos, revisão e resultado em um espaço calmo de trabalho. Violeta orienta ações; folhas claras, bordas suaves e texto direto ajudam a pessoa candidata a manter o controle da própria história. O produto atende diferentes áreas profissionais.",
+    "keyCharacteristics": [
+      "Superfícies frias, ação violeta e estados com texto explícito.",
+      "Uma coluna móvel; navegação lateral e painéis de contexto no desktop.",
+      "Documento branco independente do tema da interface.",
+      "Revisão dos fatos e decisões da pessoa candidata visíveis no fluxo."
+    ],
+    "rules": [
+      {
+        "name": "The White Document Rule",
+        "body": "A representação do currículo permanece branca nos dois temas, com a tinta de papel; a interface ao redor responde ao tema.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scoped Palette Rule",
+        "body": "Os tokens locais são declarados em `.work-ui` e `.curricule-shell`. As regras de componentes vivem em `@layer components` com `@scope`; adaptações de integração são explicitamente prefixadas. Preserve essa fronteira para não alterar a landing ou a exportação PDF. Os tokens semânticos globais continuam atendendo componentes compartilhados.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do preservar o logotipo aprovado e a família herdada, validar claro/escuro e celular antes de desktop.",
+      "Do manter estados acompanhados por texto, foco visível e controles de toque confortáveis.",
+      "Do preservar a folha branca, a confirmação dos fatos e o idioma escolhido para o documento.",
+      "Do usar dados reais de análise e rotular exemplos sintéticos como fictícios."
+    ],
+    "donts": [
+      "Don't transformar notas ATS em promessa de contratação ou inventar projeções, depoimentos e resultados profissionais.",
+      "Don't aplicar os tokens locais do workspace indiscriminadamente à landing pública ou ao PDF exportado.",
+      "Don't tratar fixtures visuais como validação E2E autenticada ou alterar guardas de backend para facilitar uma demonstração.",
+      "Don't promover a barra de revisão, seletores e rotas por hash do protótipo a componentes do produto aplicado."
+    ]
+  }
+}

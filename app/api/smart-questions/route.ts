@@ -1,14 +1,16 @@
+import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { SmartQuestionSchema, SmartQuestionGen } from "@/lib/schemas/questions-truth.schema";
 import { getSessionUser } from "@/lib/auth";
-import { runAnalysisTask } from "@/lib/analysis-task";
+import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
 import { apiError } from "@/lib/http-error";
 import type { SmartQuestion } from "@prisma/client";
 
 const QUESTIONS_WITH_JOB_PROMPT = `You are an expert technical recruiter and ATS specialist.
 Based on the gap analysis between the resume and the job description, generate smart questions to ask the candidate. You can generate up to 8 questions if necessary.
+Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
 CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for the STAR method (Situation, Task, Action, Result) with numbers.
 
 Focus on:
@@ -36,6 +38,7 @@ Use the user-selected output locale for every question, reason, option and sugge
 
 const QUESTIONS_GENERAL_PROMPT = `You are an expert technical recruiter and ATS specialist.
 Based on the parsed resume text, generate 3-5 smart questions to ask the candidate to help improve their resume for general ATS screening.
+Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
 CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for the STAR method (Situation, Task, Action, Result) with numbers.
 
 Focus on:
@@ -62,6 +65,7 @@ Use the user-selected output locale for every question, reason, option and sugge
 
 const QUESTIONS_LINKEDIN_PROMPT = `You are an expert LinkedIn Profile optimizer and technical recruiter.
 Based on the parsed LinkedIn profile text, generate 3-5 smart questions to help the user optimize their profile for recruiter search results.
+Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
 CRITICAL INSTRUCTION: AT LEAST 2 QUESTIONS MUST BE STRICTLY QUANTITATIVE. You must ask for real metrics, numbers, percentages, or achievements for their experiences to replace any draft/hallucinated placeholders.
 (e.g., "Qual foi o impacto percentual na melhoria de performance no cargo X?", "Quantas pessoas faziam parte da equipe?", "Quantos sistemas legados você migrou?").
 
@@ -84,7 +88,7 @@ export const maxDuration = 180;
 
 export async function POST(req: Request) {
   try {
-    const { analysisId } = await req.json();
+    const { analysisId } = await boundedJson(req);
     if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
 
     const session = await getSessionUser();
@@ -105,7 +109,7 @@ export async function POST(req: Request) {
         const schema = SmartQuestionSchema.refine(value => value.questions.length === ordered.length && value.questions.every((q, i) => q.category === source[i].category && q.answerType === source[i].answerType), "Preserve question order, count and machine fields");
         const translated = await new AnalysisOrchestrator().analyzeLocalized("Faithfully translate these existing questions into the selected locale. Preserve their exact order, count, meaning, category and answerType. Do not generate new questions or facts. Preserve already-correct text. Return JSON {questions:[{question,reason,category,answerType,options?,suggestedAnswer?}]}. Options and suggestedAnswer are prose and must also use the selected locale.", JSON.stringify({ questions: source }), schema, analysis.selectedLanguage);
         const questions = translated.questions.map((q, i) => ({ ...q, id: ordered[i].id }));
-        await prisma.$transaction(questions.map(q => prisma.smartQuestion.update({ where: { id: q.id }, data: { question: q.question, reason: q.reason, options: q.options ? JSON.stringify(q.options) : null, suggestedAnswer: q.suggestedAnswer || null } })));
+        await commitTask(tx=>Promise.all(questions.map(q => tx.smartQuestion.update({ where: { id: q.id }, data: { question: q.question, reason: q.reason, options: q.options ? JSON.stringify(q.options) : null, suggestedAnswer: q.suggestedAnswer || null } }))));
         return questions;
       });
       const translatedById = new Map(localized.map(q => [q.id, q]));
@@ -129,7 +133,7 @@ export async function POST(req: Request) {
     if (analysis.userId) {
       pastAnsweredQuestions = await prisma.smartQuestion.findMany({
         where: { 
-          answer: { not: null },
+          answer: { not: null }, confirmed: true,
           AND: [{ answer: { not: "" } }],
           analysisId: { not: analysisId },
           analysis: { userId: analysis.userId }
@@ -171,9 +175,9 @@ export async function POST(req: Request) {
     const validated = SmartQuestionSchema.parse(rawQuestions);
 
     const savedQuestions: { id: string; question: string; reason: string; category: string; answerType: string; options: string[] | undefined; suggestedAnswer: string | null }[] = [];
-    // Save to DB
+    await commitTask(async tx=>{
     for (const q of validated.questions) {
-      const dbQ = await prisma.smartQuestion.create({
+      const dbQ = await tx.smartQuestion.create({
         data: {
           analysisId,
           question: q.question,
@@ -195,6 +199,7 @@ export async function POST(req: Request) {
       });
     }
 
+    });
     return { success: true, questions: savedQuestions };
     });
     return NextResponse.json(result);

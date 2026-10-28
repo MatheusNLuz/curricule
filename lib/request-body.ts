@@ -1,4 +1,5 @@
 import { HttpError } from "./http-error";
+import { assertRequestOrigin } from "./read-bounded-body";
 export async function readRawBody(request: Request, maxBytes = 16_384) {
   const reader = request.body?.getReader();
   if (!reader) return Buffer.alloc(0);
@@ -13,4 +14,4 @@ export async function readRawBody(request: Request, maxBytes = 16_384) {
   } finally { reader.releaseLock(); }
   return Buffer.concat(chunks);
 }
-export async function readJsonBody(request: Request) { return JSON.parse((await readRawBody(request)).toString("utf8")); }
+export async function readJsonBody(request: Request) { assertRequestOrigin(request);return JSON.parse((await readRawBody(request)).toString("utf8")); }

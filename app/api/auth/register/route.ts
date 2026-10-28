@@ -1,3 +1,6 @@
+import { boundedJson } from "@/lib/read-bounded-body";
+import { consumeRateLimit } from "@/lib/security-rate-limit";
+import { apiError } from "@/lib/http-error";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getNeonAuth } from "@/lib/auth/server";
@@ -7,7 +10,8 @@ import { validateRegistration } from "@/lib/form-validation";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => null);
+    await consumeRateLimit("auth-global-register","global",200);
+    const body = await boundedJson(req,16*1024);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Envie nome, e-mail e senha válidos." }, { status: 400 });
     }
@@ -24,6 +28,7 @@ export async function POST(req: Request) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    await consumeRateLimit("auth-account-register",normalizedEmail,12);
     const normalizedName = name.trim();
 
     const neonAuth = getNeonAuth();
@@ -59,7 +64,6 @@ export async function POST(req: Request) {
       user: { id: user.id, email: user.email, name: user.name },
     });
   } catch (error) {
-    console.error("Erro no cadastro:", error);
-    return NextResponse.json({ error: "Não foi possível criar sua conta agora. Tente novamente em instantes." }, { status: 503 });
+    return apiError(error,"Não foi possível criar sua conta agora. Tente novamente em instantes.");
   }
 }

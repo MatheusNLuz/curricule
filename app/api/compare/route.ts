@@ -1,9 +1,10 @@
+import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { JobParseSchema, CompareSchema, JobParse, CompareAnalysis } from "@/lib/schemas/job-compare.schema";
 import { getSessionUser } from "@/lib/auth";
-import { runAnalysisTask } from "@/lib/analysis-task";
+import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
 import { apiError } from "@/lib/http-error";
 
 export const maxDuration = 180;
@@ -35,7 +36,7 @@ Use the user-selected output locale.`;
 
 export async function POST(req: Request) {
   try {
-    const { analysisId } = await req.json();
+    const { analysisId } = await boundedJson(req);
 
     if (!analysisId) return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
 
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
       analysis.selectedLanguage
     );
     const jobParseJson = JSON.stringify(parsedJob);
-    await prisma.analysis.update({ where: { id: analysisId }, data: { jobParseJson } });
+    await commitTask(tx=>tx.analysis.update({where:{id:analysisId},data:{jobParseJson}}));
 
     // 2. Compare
     const rawCompare = await orchestrator.analyzeLocalized<CompareAnalysis>(
@@ -67,10 +68,7 @@ export async function POST(req: Request) {
       CompareSchema, analysis.selectedLanguage);
     const validatedCompare = CompareSchema.parse(rawCompare);
 
-    await prisma.analysis.update({
-      where: { id: analysisId },
-      data: { comparisonJson: JSON.stringify(validatedCompare) }
-    });
+    await commitTask(tx=>tx.analysis.update({where:{id:analysisId},data:{comparisonJson:JSON.stringify(validatedCompare)}}));
 
     return { success: true, comparison: validatedCompare };
     });

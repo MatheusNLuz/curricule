@@ -22,13 +22,14 @@ export const DraftSchema = z.object({
 });
 
 export const UpdateAnalysisSchema = z.object({
+  applicationStatus:z.enum(["PREPARING","READY","SENT","CLOSED"]),
   professionalTarget: z.string().trim().max(120),
   originalResumeText: z.string().max(MAX_TEXT),
   parsedResumeText: z.string().max(MAX_TEXT),
   jobDescription: z.string().max(MAX_TEXT).refine(value => !isSourceUrl(value), "Leia o link antes de salvar a descrição da vaga."),
   selectedLanguage: z.enum(LOCALES),
   jobLocation: z.union([z.enum(REGIONS), z.literal("")]),
-  selectedTemplate: z.enum(["basic-ats", "modern-ats"]),
+  selectedTemplate: z.enum(["basic-ats", "modern-ats", "executive-ats", "direct-ats"]),
   resumeInputType: z.enum(["PDF_UPLOAD", "PASTED_TEXT", "LINKEDIN_URL"]),
   jobUrl: z.string().url().max(2048).nullable(),
   profileUrl: z.string().url().max(2048).nullable(),

@@ -62,6 +62,8 @@ export function AccountMenu({ session }: { session: SessionUser }) {
             </div>
           </div>
           <div className="my-1 h-px bg-border" />
+          <Link href="/settings/account" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Sua conta e dados</Link>
+          <Link href="/help" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Ajuda e solicitações</Link>
           <Link href="/settings/billing" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Acesso e cobrança</Link>
           {session.role === "ADMIN" && <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs font-semibold text-primary hover:bg-secondary">Administração</Link>}
           <form action="/logout" method="post">

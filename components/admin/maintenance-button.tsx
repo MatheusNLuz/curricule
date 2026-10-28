@@ -1,0 +1,4 @@
+"use client";
+import { useState } from "react";
+import { readApiError } from "@/lib/api-client";
+export function MaintenanceButton(){const [pending,setPending]=useState(false),[message,setMessage]=useState("");async function run(){setPending(true);setMessage("");try{const response=await fetch("/api/admin/maintenance",{method:"POST"});if(!response.ok)throw new Error(await readApiError(response,"A manutenção não foi concluída."));const result=await response.json();setMessage(`Manutenção concluída: ${result.deleted} registros operacionais antigos removidos. Materiais dos usuários foram preservados.`);}catch(error){setMessage(error instanceof Error?error.message:"Tente novamente.");}finally{setPending(false);}}return <div><button className="button secondary" disabled={pending} onClick={run}>{pending?"Executando…":"Executar manutenção de retenção"}</button>{message&&<p role="status" className="mt-3 text-sm">{message}</p>}</div>;}

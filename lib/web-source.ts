@@ -124,7 +124,16 @@ export function extractSourceText(html: string, kind: SourceKind) {
   const blocked = /sign in|log in|linkedin login|entrar|security verification|just a moment|access denied|verificação de segurança|attention required/i.test(pageTitle) || (kind === "linkedin" && !publicProfile && /sign in to view|join to view|entre para ver|faça login para ver|sign up to view/i.test(text));
   const relevant = kind === "job" ? !!job || /responsabil|requisit|qualifica|requirements|responsibilit|what you (?:will do|bring)|what you['’]re about|about (?:the|this) (?:role|job)|vaga|job description/i.test(text) : /experi[eê]ncia|experience|sobre|about|forma[çc][aã]o|education/i.test(text);
   if (blocked || text.length < 200 || !relevant) throw new SourceError(kind === "linkedin" ? "Não conseguimos ler um perfil completo nesse link. Ele pode exigir login. Cole o texto do perfil ou envie o PDF exportado do LinkedIn." : "Não encontramos a descrição completa da vaga. O site pode exigir login ou carregar por JavaScript. Cole a descrição para continuar.");
-  return { text, title: (typeof job?.title === "string" ? job.title : pageTitle).slice(0, 160) };
+  const company=job?.hiringOrganization&&typeof job.hiringOrganization==="object"&&"name" in job.hiringOrganization&&typeof job.hiringOrganization.name==="string"?job.hiringOrganization.name.slice(0,160):null;
+  const lines=text.split(/\n+/);
+  function section(pattern:RegExp){const start=lines.findIndex(line=>pattern.test(line.trim()));if(start<0)return null;const next=lines.findIndex((line,index)=>index>start&&/^(?:requisitos|responsabilidades|qualifica|requirements|responsibilities|qualifications|benef[ií]cios|benefits|we offer|what we offer|create a job alert|sobre a empresa|about the company)\b/i.test(line.trim()));return lines.slice(start,next<0?Math.min(lines.length,start+18):next).join("\n").slice(0,3000);}
+  const requirements=kind==="job"?section(/^(?:requisitos|qualifica|requirements|qualifications|o que (?:buscamos|esperamos))\b/i):null;
+  const responsibilities=kind==="job"?section(/^(?:responsabilidades|responsibilities|atividades|o que voc[eê] vai fazer)\b/i):null;
+  const warnings:string[]=[];
+  if(kind==="job"&&!requirements)warnings.push("Não identificamos uma seção explícita de requisitos. Confira se o texto da vaga está completo.");
+  if(kind==="job"&&!responsibilities)warnings.push("Não identificamos uma seção explícita de responsabilidades. Revise o conteúdo antes de confirmar.");
+  if(kind==="linkedin")warnings.push("A leitura cobre apenas o conteúdo público. Confira experiências, formação e resumo; partes privadas podem não aparecer.");
+  return { text, title: (typeof job?.title === "string" ? job.title : pageTitle).slice(0, 160),company,requirements,responsibilities,warnings };
 }
 
 export async function importWebSource(input: string, kind: SourceKind, readPage = readPublicHtml) {
@@ -137,7 +146,7 @@ export async function importWebSource(input: string, kind: SourceKind, readPage 
         if (!response.location) break;
         url = validateSourceUrl(new URL(response.location, url).href, kind); continue;
       }
-      return { ...extractSourceText(response.html, kind), url: url.href };
+      return { ...extractSourceText(response.html, kind), url: url.href,extractedAt:new Date().toISOString() };
     }
     throw new SourceError("A página redirecionou muitas vezes. Cole o texto para continuar.");
   } catch (error) {

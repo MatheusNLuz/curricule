@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import { TruthGuardSchema, type TruthGuardGen } from "../schemas/questions.schema.ts";
 
 export type ReviewedTruth = TruthGuardGen & { sourceHash: string; decisions: Record<string, boolean> };
-type TruthSource = { parsedResumeText: string | null; comparisonJson: string | null; selectedLanguage: string; questions: { id: string; answer: string | null }[] };
+export function storedRejectedClaims(value:string|null|undefined):string[]{try{const parsed=JSON.parse(value||"[]");return Array.isArray(parsed)?parsed.filter((item):item is string=>typeof item==="string"&&item.trim().length>0):[];}catch{return [];}}
+export const storedConfirmedClaims=storedRejectedClaims;
+type TruthSource = { parsedResumeText: string | null; comparisonJson: string | null; selectedLanguage: string; confirmedClaimsJson?:string|null;rejectedClaimsJson?:string|null;questions: { id: string; answer: string | null }[] };
 export function truthSourceHash(source: TruthSource) {
-  return createHash("sha256").update(JSON.stringify([source.parsedResumeText, source.comparisonJson, source.selectedLanguage, [...source.questions].sort((a, b) => a.id.localeCompare(b.id)).map(q => [q.id, q.answer])])).digest("hex");
+  return createHash("sha256").update(JSON.stringify([source.parsedResumeText, source.comparisonJson, source.selectedLanguage, source.confirmedClaimsJson||null,source.rejectedClaimsJson||null,[...source.questions].sort((a, b) => a.id.localeCompare(b.id)).map(q => [q.id, q.answer])])).digest("hex");
 }
 export function readTruth(value: string | null): ReviewedTruth | null {
   try {

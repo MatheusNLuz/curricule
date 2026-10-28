@@ -62,6 +62,7 @@ export const getSessionUser = cache(async function getSessionUser() {
       const existingUser = await prisma.user.findFirst({
         where: { OR: [{ neonAuthId: neonUser.id }, { email: neonUser.email }] },
       });
+      if(existingUser&&existingUser.status!=="ACTIVE")return null;
 
       const user = existingUser
         ? await prisma.user.update({

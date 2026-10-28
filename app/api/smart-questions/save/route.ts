@@ -1,3 +1,4 @@
+import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -6,7 +7,7 @@ import { apiError, HttpError } from "@/lib/http-error";
 export async function POST(request: Request) {
   try {
     const session = await getSessionUser(); if (!session) throw new HttpError(401, "Faça login para continuar.");
-    const { analysisId, answers } = z.object({ analysisId: z.string(), answers: z.record(z.string(), z.string().max(5000)) }).strict().parse(await request.json());
+    const { analysisId, answers } = z.object({ analysisId: z.string(), answers: z.record(z.string(), z.string().max(5000)) }).strict().parse(await boundedJson(request));
     await prisma.$transaction(async tx => {
       const analysis = await tx.analysis.findFirst({ where: { id: analysisId, userId: session.userId }, include: { questions: true } });
       if (!analysis) throw new HttpError(404, "Análise não encontrada.");

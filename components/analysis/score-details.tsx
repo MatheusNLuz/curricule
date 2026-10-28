@@ -1,0 +1,6 @@
+import type { ResumeAnalysis } from "@/lib/schemas/analysis.schema";
+import { scoreExplanation } from "@/lib/ats/score-engine";
+export function ScoreDetails({analysis,stale=false}:{analysis:ResumeAnalysis|null;stale?:boolean}){
+  if(!analysis)return null;
+  return <details className="sheet padded my-5"><summary className="min-h-11 cursor-pointer font-semibold">{stale?"Como foi calculada a avaliação anterior":"Como esta estimativa foi calculada"}</summary><p className="finePrint my-3">Os critérios usam níveis de 0 a 4, convertidos para 0–100. A média aplica os pesos abaixo. Não há bônus por palavras nas explicações nem uma segunda penalidade por um problema já considerado. A análise de texto não certifica a leitura do arquivo por um ATS.</p>{scoreExplanation(analysis).map(item=><div className="border-t border-border py-4" key={item.key}><h3 className="text-sm font-semibold">{item.label} · peso {Math.round(item.weight*100)}% · {item.value}/100</h3><p className="mt-2 text-sm">{item.reason}</p>{item.evidence&&<blockquote className="mt-2 border-l-2 border-primary pl-3 text-sm"><span className="finePrint">Trecho usado como evidência: </span>{item.evidence}</blockquote>}</div>)}</details>;
+}

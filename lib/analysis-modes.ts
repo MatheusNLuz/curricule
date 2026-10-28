@@ -13,7 +13,7 @@ export const ANALYSIS_MODES = [
     href: "/analysis/new?mode=MAKE_ATS_FRIENDLY",
     icon: File02Icon,
     title: "Otimizar para ATS",
-    description: "Analise e reestruture seu currículo para passar nos filtros de ATS. Não precisa de descrição de vaga.",
+    description: "Revise estrutura e conteúdo do currículo com foco em leitura clara. Não precisa de descrição de vaga.",
     cta: "Iniciar análise",
     accent: "primary",
   },

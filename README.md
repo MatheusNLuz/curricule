@@ -1,10 +1,10 @@
 # Curricule
 
-Aplicação Next.js 16.3 / React 19 para analisar currículos, comparar candidaturas, preparar versões de currículo, sugestões para LinkedIn e cartas de apresentação. Usa Prisma 5 com PostgreSQL e provedores de IA OpenRouter/NVIDIA NIM.
+Aplicação Next.js 16.4 / React 19 para analisar currículos, comparar candidaturas, preparar versões de currículo, sugestões para LinkedIn e cartas de apresentação. Usa Prisma 5 com PostgreSQL e provedores de IA OpenRouter/NVIDIA NIM.
 
 ## Executar localmente
 
-Use Node.js 24 LTS e npm. Copie `.env.example` para `.env` e configure os valores sem compartilhar chaves ou currículos.
+Use Node.js 24.22.1 LTS ou uma atualização de segurança posterior da linha 24 e npm. A versão de referência está em `.nvmrc`. Copie `.env.example` para `.env` e configure os valores sem compartilhar chaves ou currículos. `DATABASE_URL` usa o pool de conexões; `DIRECT_URL` aponta diretamente para o mesmo banco para migrations.
 
 ```powershell
 npm ci
@@ -16,7 +16,7 @@ npm run dev
 
 Abra http://localhost:3000. Para um banco que já contém tabelas, siga **Banco existente** antes de executar migrations. Não use uma URL SQLite: o datasource é PostgreSQL.
 
-Configure o login conforme [docs/neon-auth-setup.md](docs/neon-auth-setup.md). Para autenticação legada, `JWT_SECRET` precisa ser aleatório e ter pelo menos 32 caracteres. Não existe mais uma chave padrão. A autenticação Neon usa as variáveis descritas no guia.
+O ambiente atual usa Prisma Postgres e login por e-mail/senha: [configuração de desenvolvimento](docs/prisma-development-setup.md). `JWT_SECRET` precisa ser aleatório e ter pelo menos 32 caracteres. Mantenha as variáveis `NEON_AUTH_*` vazias para esse fluxo. O adaptador Neon permanece disponível para instalações anteriores, conforme [guia legado](docs/neon-auth-setup.md); Google OAuth não está habilitado no ambiente atual.
 
 ## Vaga e LinkedIn por link
 
@@ -40,7 +40,7 @@ O limite padrão é de 40 etapas de processamento/importação por usuário por 
 
 ## Exportação PDF
 
-`APP_URL` é a origem confiável da aplicação (HTTPS em produção). O Chromium abre o preview com os cookies da requisição autenticada e só pode carregar essa origem. O parâmetro `export=true` controla apresentação; nunca dispensa sessão ou propriedade do currículo.
+`APP_URL` é a origem confiável da aplicação (HTTPS em produção). A exportação valida a sessão e a propriedade do currículo e gera HTML isolado, com os mesmos estilos dos modelos, sem JavaScript, cookies ou requisições de rede no Chromium. A rota de prévia continua exigindo sessão e propriedade; `export=true` controla apenas sua apresentação. PDF e DOCX estão disponíveis nos quatro modelos.
 
 No Windows, o caminho padrão de desenvolvimento é `C:\Program Files\Google\Chrome\Application\chrome.exe`; use `CHROME_EXECUTABLE_PATH` se necessário. Em produção é usado `@sparticuz/chromium`, que requer ambiente compatível. O navegador é fechado também em falhas.
 
@@ -59,7 +59,9 @@ npx prisma generate
 
 Para banco vazio, rode apenas `prisma migrate deploy`: o baseline cria as tabelas e a segunda migration adiciona fontes, rascunhos, revisões, tarefas e registros de uso. Faça backup e valide o upgrade numa cópia antes de aplicá-lo ao ambiente usado por pessoas reais. Não execute `db push --accept-data-loss`.
 
-As novas rotas exigem essas migrations antes de iniciar a aplicação atualizada. Nenhuma migration remota foi aplicada automaticamente durante a implementação.
+As novas rotas exigem essas migrations antes de iniciar a aplicação atualizada. As nove migrations foram aplicadas ao banco `curricule-dev` no Prisma Postgres; produção ainda não foi migrada. Consulte o [registro de configuração](docs/prisma-development-setup.md).
+
+Para o servidor de 1 GiB, consulte a [otimização de recursos](docs/low-memory-optimization.md) e a [preparação da máquina Ubuntu](docs/server-preparation.md). O artefato standalone de produção deve ser gerado em Linux, com as dependências nativas da plataforma. O envio ao GitHub não publica automaticamente o site.
 
 ## Verificação
 

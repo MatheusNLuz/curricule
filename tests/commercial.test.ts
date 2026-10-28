@@ -58,7 +58,8 @@ test("admin cannot remove own access or suspend/demote the final active admin", 
   assert.equal(audits.length, 0);
 });
 test("user access changes create an audit and reject extra editable fields", async () => {
-  await updateManagedUser("admin", "customer", { role: "USER", status: "SUSPENDED" });
+  await assert.rejects(()=>updateManagedUser("admin","customer",{role:"USER",status:"SUSPENDED"}),expectStatus(400));
+  await updateManagedUser("admin", "customer", { role: "USER", status: "SUSPENDED",reason:"Pedido de revisão de acesso" });
   assert.equal(users[1].status, "SUSPENDED"); assert.equal(audits.length, 1);
   assert.doesNotMatch(JSON.stringify(audits), /email|password|resume|token/);
   await assert.rejects(() => updateManagedUser("admin", "customer", { role: "ADMIN", status: "ACTIVE", email: "other@example.test" }));

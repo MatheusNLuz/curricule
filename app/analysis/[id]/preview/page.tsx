@@ -25,10 +25,9 @@ export default async function PreviewPage({
     <>
       <style dangerouslySetInnerHTML={{__html: `
         /* Remove a navegação do app durante o preview e impressão */
-        [data-app-shell-nav] { display: none !important; }
-        header { display: none !important; }
+        [data-app-shell-nav], [data-app-utilities] { display: none !important; }
         body { background: white !important; }
-        main { padding: 0 !important; }
+        main.workspaceMain, main { margin: 0 !important; padding: 0 !important; }
       `}} />
       <div data-resume-preview>
       <PreviewTemplate

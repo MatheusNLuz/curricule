@@ -7,6 +7,9 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // Public delivery endpoint; the handler authenticates the provider signature over raw bytes.
   if (pathname === "/api/billing/webhook") return NextResponse.next();
+  // Anonymous, explicitly consented events are validated and rate-limited by
+  // this handler. Requiring a session here prevents measuring public pages.
+  if(pathname==="/api/telemetry")return NextResponse.next();
 
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
     return NextResponse.next();
@@ -50,6 +53,8 @@ export const config = {
     "/",
     "/analysis/:path*",
     "/history/:path*",
+    "/dashboard/:path*",
+    "/resumes/:path*",
     "/settings/:path*",
     "/admin/:path*",
     "/api/:path*",

@@ -84,7 +84,7 @@ test("AI fallback validates schema before accepting provider output", async () =
   function provider(name: string, value: unknown) { return { name, generateText: async () => "", generateJson: async <T>({ systemPrompt }: { systemPrompt: string }) => { calls.push(name); return (systemPrompt.startsWith("You are a strict language quality auditor.") ? { matchesSelectedLocale: true, containsMixedLanguage: false } : value) as T; } }; }
   const logger = mock.method(console, "warn", () => {});
   const ai = new AnalysisOrchestrator([provider("primary", { invalid: true }), provider("secondary", { score: 42 })]);
-  assert.deepEqual(await ai.analyzeLocalized("system", "input", z.object({ score: z.number() }), "pt-BR"), { score: 42 }); assert.deepEqual(calls, ["primary", "secondary", "secondary"]); logger.mock.restore();
+  assert.deepEqual(await ai.analyzeLocalized("system", "input", z.object({ score: z.number() }), "pt-BR"), { score: 42 }); assert.deepEqual(calls, ["primary", "primary", "secondary", "secondary"]); logger.mock.restore();
 });
 test("final fact verification rejects declined and unconfirmed generated content", async () => {
   const verify = mock.method(TruthGuard, "evaluate", async () => ({ claims: [{ claim: "Invented metric", source: "missing" as const, canUseInResume: false, canUseInCoverLetter: false, explanation: "No source" }], blockedClaims: [], warnings: [] }));

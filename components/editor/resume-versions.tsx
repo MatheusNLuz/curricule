@@ -4,7 +4,7 @@ import { OptimizedResumeSchema } from "@/lib/schemas/optimize.schema";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
 type Version = { id: string; content: string; source: string; createdAt: string };
-const SECTIONS = { personalInfo: "Contato", professionalSummary: "Resumo", experiences: "Experiências", education: "Formação", skills: "Competências", certifications: "Certificações" } as const;
+const SECTIONS = { personalInfo: "Contato", professionalSummary: "Resumo", experiences: "Experiências", education: "Formação", skills: "Competências", certifications: "Certificações", projects:"Projetos", languages:"Idiomas" } as const;
 export function ResumeVersions({ analysisId, current, revision, onRestore }: { analysisId: string; current: string; revision: number; onRestore: () => Promise<void> }) {
   const [versions, setVersions] = useState<Version[] | null>(null);
   const [selected, setSelected] = useState(""); const [sections, setSections] = useState<string[]>([]);

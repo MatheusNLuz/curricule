@@ -5,7 +5,7 @@ import { getHomeRedirect } from "@/lib/home-route";
 import { getSessionUser } from "@/lib/auth";
 import { ProductTour } from "@/components/home/product-tour";
 import { GoalPicker } from "@/components/home/goal-picker";
-import { ResumeDemo } from "@/components/home/resume-demo";
+import { DeferredResumeDemo as ResumeDemo } from "@/components/home/deferred-resume-demo";
 import { CurriculeLogo } from "@/components/brand/curricule-logo";
 import styles from "./landing.module.css";
 
@@ -47,6 +47,6 @@ export default async function Home() {
 
     <section id="duvidas" className={styles.faq}><div><h2>Vamos tirar<br />as dúvidas?</h2><p>O que saber antes de começar a preparar sua próxima candidatura.</p></div><div>{questions.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
     <section className={styles.finalCta}><div className={styles.finalMark} aria-hidden="true"><FileCheck2 size={30} strokeWidth={1.4} /></div><h2>Você já tem uma história.<br /><em>Vamos preparar o próximo capítulo?</em></h2><p>Comece pelo currículo, pela vaga ou pelo seu LinkedIn. Um objetivo de cada vez, com mais clareza para seguir.</p><Link href={start} className={styles.primary}>Começar minha candidatura <ArrowUpRight size={19} aria-hidden="true" /></Link><span className={styles.finalNote}>Já tem uma conta? <Link href="/login">Entre no seu espaço</Link></span></section>
-    <footer className={styles.footer}><div><Link href="/" className={styles.footerBrand}><CurriculeLogo className={styles.footerLogo} /></Link><p>Clareza para sua próxima candidatura.</p></div><nav aria-label="Rodapé"><a href="#recursos">O que você recebe</a><a href="#como-funciona">Como funciona</a><a href="#duvidas">Dúvidas</a><Link href="/login">Entrar</Link></nav><p className={styles.footerNote}>As recomendações usam IA e precisam da sua revisão. Nenhuma análise garante entrevista ou contratação.</p></footer>
+    <footer className={styles.footer}><div><Link href="/" className={styles.footerBrand}><CurriculeLogo className={styles.footerLogo} /></Link><p>Clareza para sua próxima candidatura.</p></div><nav aria-label="Rodapé"><a href="#recursos">O que você recebe</a><a href="#como-funciona">Como funciona</a><a href="#duvidas">Dúvidas</a><Link href="/login">Entrar</Link><Link href="/privacy">Privacidade</Link><Link href="/help">Ajuda</Link></nav><p className={styles.footerNote}>As recomendações usam IA e precisam da sua revisão. Nenhuma análise garante entrevista ou contratação.</p></footer>
   </div>;
 }

@@ -8,7 +8,9 @@ let row = { ...original };
 type TaskState = { status: string; inputHash: string; token: string; leaseUntil: Date; resultJson: string | null };
 let task: TaskState | null = null;
 let used = 0;
+const renderedDocuments:string[]=[];
 const db = {
+  pdfExport:{create:async()=>({})},
   $executeRaw: async () => 1,
   analysis: {
     findFirst: async ({ where }: { where: { id: string; userId: string } }) => where.id === row.id && where.userId === row.userId ? { ...row } : null,
@@ -21,12 +23,15 @@ const db = {
     upsert: async ({ create, update }: { create: TaskState; update: TaskState }) => { task = task ? { ...task, ...update } : create; return task; },
     updateMany: async ({ where, data }: { where: { token: string }; data: Partial<TaskState> }) => { if (task?.token === where.token) { task = { ...task, ...data }; return { count: 1 }; } return { count: 0 }; },
   },
-  analysisUsage: { count: async () => used, create: async () => { used++; return {}; }, deleteMany: async () => ({ count: 0 }) },
+  analysisUsage: { count: async () => used, create: async () => { used++; return {id:"usage-"+used}; }, updateMany:async()=>({count:1}), deleteMany: async () => ({ count: 0 }) },
   resumeRevision: { findFirst: async () => null, create: async () => ({}), findMany: async () => [] },
 };
 const prisma = { ...db, $transaction: async <T>(operation: (tx: typeof db) => Promise<T>): Promise<T> => operation(db) };
 mock.module(new URL("../lib/db.ts", import.meta.url).href, { namedExports: { prisma } });
 mock.module(new URL("../lib/auth.ts", import.meta.url).href, { namedExports: { getSessionUser: async () => user } });
+mock.module(new URL("../lib/runtime/document-capacity.ts",import.meta.url).href,{namedExports:{withDocumentCapacity:async<T>(work:()=>Promise<T>)=>work()}});
+mock.module(new URL("../lib/security-rate-limit.ts",import.meta.url).href,{namedExports:{consumeRateLimit:async()=>{},reserveCapacity:async()=>async()=>{}}});
+mock.module(new URL("../lib/resume/pdf-renderer.ts",import.meta.url).href,{namedExports:{renderResumePdf:async(html:string)=>{renderedDocuments.push(html);return new TextEncoder().encode("%PDF-test");}}});
 mock.module("next/navigation.js", { namedExports: { redirect: () => { throw new Error("REDIRECT_LOGIN"); }, notFound: () => { throw new Error("NOT_FOUND"); } } });
 mock.module(new URL("../components/preview/preview-template.tsx", import.meta.url).href, { namedExports: { PreviewTemplate: () => null } });
 mock.module("puppeteer-core", { defaultExport: { launch: async () => { throw new Error("Browser must not launch in this test"); } } });
@@ -38,10 +43,10 @@ const upload = await import("../app/api/upload-resume/route.ts");
 const exporting = await import("../app/api/export/route.ts");
 const importing = await import("../app/api/import-source/route.ts");
 const { default: preview } = await import("../app/analysis/[id]/preview/page.tsx");
-const { runAnalysisTask, inputHash } = await import("../lib/analysis-task.ts");
+const { runAnalysisTask, inputHash,commitTask } = await import("../lib/analysis-task.ts");
 const context = { params: Promise.resolve({ id: "analysis-a" }) };
 const jsonRequest = (body: unknown) => new Request("https://app.example/api/analysis/analysis-a", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-test.beforeEach(() => { user = { userId: "owner", email: "owner@example.com" }; row = { ...original }; writes = []; task = null; used = 0; });
+test.beforeEach(() => { user = { userId: "owner", email: "owner@example.com" }; row = { ...original }; writes = []; task = null; used = 0;renderedDocuments.length=0; });
 
 test("language policy discards legacy cache and separates selected locales", async () => {
   const input = ["same source", "pt-BR"];
@@ -81,12 +86,13 @@ test("export=true never bypasses session or owner in the real preview page", asy
   user = { userId: "other", email: "other@example.com" }; await assert.rejects(() => preview(props), /NOT_FOUND/);
   user = { userId: "owner", email: "owner@example.com" }; assert.ok(await preview(props));
 });
-test("export route checks session, ownership and trusted APP_URL before launching Chrome", async () => {
+test("export checks session and ownership, then renders a network-free document without APP_URL", async () => {
   user = null; assert.equal((await exporting.POST(jsonRequest({ analysisId: row.id }))).status, 401);
   user = { userId: "other", email: "other@example.com" }; assert.equal((await exporting.POST(jsonRequest({ analysisId: row.id }))).status, 404);
+  assert.equal(renderedDocuments.length,0);
   const before = process.env.APP_URL; const mode = process.env.NODE_ENV;
   process.env.APP_URL = ""; Reflect.set(process.env, "NODE_ENV", "production");
-  user = { userId: "owner", email: "owner@example.com" }; assert.equal((await exporting.POST(jsonRequest({ analysisId: row.id }))).status, 503);
+  user = { userId: "owner", email: "owner@example.com" };const result=await exporting.POST(jsonRequest({ analysisId: row.id }));assert.equal(result.status,200);assert.equal(await result.text(),"%PDF-test");assert.equal(renderedDocuments.length,1);assert.doesNotMatch(renderedDocuments[0],/_next\/|<script|Cookie:/);
   if (before === undefined) delete process.env.APP_URL; else process.env.APP_URL = before;
   if (mode === undefined) Reflect.deleteProperty(process.env, "NODE_ENV"); else Reflect.set(process.env, "NODE_ENV", mode);
 });
@@ -126,4 +132,16 @@ test("task quotas, ownership and failed-attempt recovery are enforced", async ()
   await assert.rejects(() => runAnalysisTask(row.id, "owner", "ANALYZE", "x", async () => { throw new Error("Provider failure"); }));
   assert.equal((task as TaskState | null)?.status, "FAILED");
   assert.deepEqual(await runAnalysisTask(row.id, "owner", "ANALYZE", "x", async () => ({ success: true })), { success: true }); assert.equal(used, 2);
+});
+
+test("total timeout marks a failed attempt and a late execution cannot commit over a resumed task",async context=>{
+  const previous=process.env.ANALYSIS_TASK_TIMEOUT_MS;process.env.ANALYSIS_TASK_TIMEOUT_MS="10000";
+  context.mock.timers.enable({apis:["setTimeout"]});let release:()=>void=()=>{},started:()=>void=()=>{};let lateBlocked=false;
+  const ready=new Promise<void>(resolve=>{started=resolve;});const barrier=new Promise<void>(resolve=>{release=resolve;});
+  try{
+    const first=runAnalysisTask(row.id,"owner","ANALYZE","slow",async()=>{started();await barrier;try{await commitTask(async tx=>tx.analysis.update({where:{id:row.id},data:{professionalTarget:"late write"}}));}catch{lateBlocked=true;}return {success:true};});
+    await ready;const failure=assert.rejects(first,error=>(error as {code?:string}).code==="TASK_TIMEOUT");context.mock.timers.tick(10001);await failure;
+    assert.equal((task as TaskState|null)?.status,"FAILED");
+    assert.deepEqual(await runAnalysisTask(row.id,"owner","ANALYZE","fresh",async()=>({success:true})),{success:true});release();await new Promise(resolve=>setImmediate(resolve));assert.equal(lateBlocked,true);assert.equal(writes.length,0);assert.equal((task as TaskState|null)?.status,"COMPLETED");
+  }finally{context.mock.timers.reset();if(previous===undefined)delete process.env.ANALYSIS_TASK_TIMEOUT_MS;else process.env.ANALYSIS_TASK_TIMEOUT_MS=previous;}
 });

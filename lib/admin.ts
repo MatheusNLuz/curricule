@@ -3,7 +3,7 @@ import { prisma } from "./db";
 import { getSessionUser } from "./auth";
 import { HttpError } from "./http-error";
 
-export const AdminUserUpdate = z.object({ role: z.enum(["USER", "ADMIN"]), status: z.enum(["ACTIVE", "SUSPENDED"]) }).strict();
+export const AdminUserUpdate = z.object({ role: z.enum(["USER", "ADMIN"]), status: z.enum(["ACTIVE", "SUSPENDED"]), reason:z.string().trim().max(500).optional() }).strict();
 
 export async function requireAdmin() {
   const session = await getSessionUser();
@@ -22,14 +22,16 @@ export async function updateManagedUser(actorId: string, targetId: string, input
     if (!actor || actor.role !== "ADMIN" || actor.status !== "ACTIVE") throw new HttpError(403, "Permissão administrativa revogada.");
     const target = await tx.user.findUnique({ where: { id: targetId } });
     if (!target) throw new HttpError(404, "Usuário não encontrado.");
+    if(target.status==="DELETED")throw new HttpError(409,"Esta conta teve seus dados excluídos e não pode ser reativada.");
     if (targetId === actorId && (change.role !== "ADMIN" || change.status !== "ACTIVE")) throw new HttpError(409, "Você não pode remover seu próprio acesso administrativo.");
     if (target.role === "ADMIN" && target.status === "ACTIVE" && (change.role !== "ADMIN" || change.status !== "ACTIVE")) {
       const remaining = await tx.user.count({ where: { role: "ADMIN", status: "ACTIVE" } });
       if (remaining <= 1) throw new HttpError(409, "Mantenha pelo menos um administrador ativo.");
     }
     if (target.role === change.role && target.status === change.status) return { id: target.id, ...change };
-    const updated = await tx.user.update({ where: { id: targetId }, data: change, select: { id: true, role: true, status: true } });
-    await tx.adminAudit.create({ data: { actorId, targetUserId: targetId, action: "USER_ACCESS_CHANGED", details: JSON.stringify({ before: { role: target.role, status: target.status }, after: change }) } });
+    if(change.status==="SUSPENDED"&&(!change.reason||change.reason.length<8))throw new HttpError(400,"Informe o motivo da suspensão (mínimo de 8 caracteres).");
+    const updated = await tx.user.update({ where: { id: targetId }, data: {role:change.role,status:change.status}, select: { id: true, role: true, status: true } });
+    await tx.adminAudit.create({ data: { actorId, targetUserId: targetId, action: "USER_ACCESS_CHANGED", details: JSON.stringify({ before: { role: target.role, status: target.status }, after:{role:change.role,status:change.status},reason:change.reason||null }) } });
     return updated;
   });
 }

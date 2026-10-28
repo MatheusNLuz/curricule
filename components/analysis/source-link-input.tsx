@@ -13,6 +13,7 @@ export function SourceLinkInput({ kind, url, onUrlChange, content, onContentChan
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [loadedUrl, setLoadedUrl] = useState("");
+  const [source,setSource]=useState<{title:string;company:string|null;url:string;extractedAt:string;requirements:string|null;responsibilities:string|null;warnings:string[]}|null>(null);
   async function load() {
     setPending(true); setError(""); onReviewedChange(false);
     try {
@@ -20,7 +21,7 @@ export function SourceLinkInput({ kind, url, onUrlChange, content, onContentChan
       const response = await fetch("/api/import-source", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId, kind, url }) });
       if (!response.ok) throw new Error(await readApiError(response, "Não foi possível ler o link."));
       const data = await response.json();
-      onContentChange(data.text); setLoadedUrl(url);
+      onContentChange(data.text); setLoadedUrl(url);setSource(data);
     } catch (error) { setError(error instanceof Error ? error.message : "Não foi possível ler o link. Cole o texto ou envie um PDF."); }
     finally { setPending(false); }
   }
@@ -34,6 +35,7 @@ export function SourceLinkInput({ kind, url, onUrlChange, content, onContentChan
     <p className="text-xs leading-6 text-muted-foreground">{kind === "job" ? "Vamos ler a página pública e mostrar a descrição para você conferir. Se ela exigir login ou não disponibilizar o texto, use Colar descrição." : "Lemos somente o conteúdo público do perfil. Se o LinkedIn bloquear o acesso ou exibir conteúdo incompleto, use Colar texto ou envie o PDF exportado do perfil."}</p>
     {error && <p role="alert" className="text-sm leading-6 text-destructive">{error}</p>}
     {content && validContent && <>
+      {source&&<div className="rounded-lg border border-border bg-secondary/30 p-4"><h3 className="text-sm font-semibold">{source.title||"Conteúdo importado"}</h3>{source.company&&<p className="mt-1 text-sm">Empresa informada na página: {source.company}</p>}<p className="mt-2 break-all text-xs">Fonte: <a href={source.url} target="_blank" rel="noreferrer">{source.url}</a></p><p className="mt-1 text-xs text-muted-foreground">Lido em {new Date(source.extractedAt).toLocaleString("pt-BR")}</p>{source.warnings?.map(warning=><p className="mt-3 text-xs text-amber-800 dark:text-amber-200" key={warning}>{warning}</p>)}{[["Requisitos encontrados",source.requirements],["Responsabilidades encontradas",source.responsibilities]].map(([label,text])=>text?<details key={label} className="mt-3"><summary className="min-h-11 cursor-pointer text-sm">{label}</summary><p className="whitespace-pre-wrap text-xs leading-6">{text}</p></details>:null)}</div>}
       <label className="flex flex-col gap-2 text-sm font-medium">{kind === "job" ? "Descrição lida — revise e ajuste se necessário" : "Conteúdo público lido — confira se o perfil está completo"}<Textarea value={content} maxLength={60000} onChange={event => { onContentChange(event.target.value); onReviewedChange(false); }} className="min-h-60" /></label>
       <label className="flex min-h-11 items-start gap-3 text-sm leading-6"><input className="mt-1 size-4 accent-primary" type="checkbox" checked={reviewed} onChange={event => onReviewedChange(event.target.checked)} />Conferi o conteúdo e quero usá-lo na análise.</label>
     </>}
