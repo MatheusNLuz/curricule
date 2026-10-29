@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/custom-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResumeEditingWorkspace } from "@/components/editor/resume-editing-workspace";
 import { ReviewQuestions } from "@/components/analysis/review-questions";
+import { AiReviewNotice } from "@/components/analysis/ai-review-notice";
 import { WorkspacePage, Journey } from "@/components/workspace/workspace-ui";
 import { DownloadDocumentButton } from "@/components/analysis/download-document-button";
 import { TaskProgress } from "@/components/analysis/task-progress";
@@ -30,6 +31,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   const [activeTab, setActiveTab] = useState(() => { const tab=params.get("tab");return tab&&["questions","match","edit","preview","coverletter"].includes(tab)?tab:"questions"; });
 
   const [questions, setQuestions] = useState<AnalysisQuestion[]>([]);
+  const [questionReview, setQuestionReview] = useState<"approved" | "unavailable" | undefined>();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [truthGuardData, setTruthGuardData] = useState<ReviewedTruth | null>(null);
   const [answerSaveStatus, setAnswerSaveStatus] = useState("");
@@ -51,6 +53,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       if (!res.ok) throw new Error(await readApiError(res, "Não foi possível gerar as perguntas."));
       const d = await res.json();
       if (d.success) {
+        if (d.review === "approved" || d.review === "unavailable") setQuestionReview(d.review);
         setQuestions(d.questions);
         const initialAnswers: Record<string, string> = {};
         d.questions.forEach((q: AnalysisQuestion) => {
@@ -75,6 +78,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       if (!res.ok) throw Object.assign(new Error(await readApiError(res, "Não foi possível carregar a análise.")),{status:res.status});
       const d = await res.json() as AnalysisView;
       setData(d);
+      setQuestionReview(d.reviewStatuses?.QUESTIONS);
       
       if (!d.comparisonJson && d.jobDescription) {
         // Needs match
@@ -314,7 +318,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       {optimized&&<ResumeFactReview key={data.revision} analysisId={analysisId} revision={data.revision} disabled={editorDirty} onUpdated={async()=>{setTruthGuardData(null);await fetchData();}}/>}
       {optimized && <ResumeVersions analysisId={analysisId} current={data.finalResumeJson||""} revision={data.revision} onRestore={fetchData} />}
 
-      {isLinkedIn ? (<ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/>
+      {isLinkedIn ? (<>{questionReview === "unavailable" && <AiReviewNotice subject="questions" />}<ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/></>
       ) : (
         <Tabs value={activeTab==="edit"&&!optimized?"questions":activeTab==="match"&&!match?"questions":activeTab} onValueChange={setActiveTab} className="w-full legacyPanels">
         <TabsList className="flowTabs">
@@ -354,7 +358,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
           </TabsContent>
         )}
 
-        <TabsContent value="questions"><ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/></TabsContent>
+        <TabsContent value="questions">{questionReview === "unavailable" && <AiReviewNotice subject="questions" />}<ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/></TabsContent>
 
         {optimized && (
           <TabsContent value="edit" className="space-y-6">

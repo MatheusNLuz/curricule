@@ -11,6 +11,7 @@ import { WorkspacePage, PageHeading, Sheet } from "@/components/workspace/worksp
 import { useToast } from "@/components/ui/custom-toast";
 import { RouteLine } from "@/components/ui/route-line";
 import { getFetchErrorMessage, getLoginUrl, readApiError, fetchAnalysisTask } from "@/lib/api-client";
+import { AiReviewNotice } from "@/components/analysis/ai-review-notice";
 
 const LinkedInDashboard = dynamic(
   () => import("@/components/analysis/linkedin-dashboard").then((module) => module.LinkedInDashboard),
@@ -205,16 +206,16 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
 
   if (analysisData.mode === "LINKEDIN_OPTIMIZATION") {
     return (
-      <LinkedInDashboard 
+      <><div className="mx-auto max-w-6xl px-5 pt-5">{analysisData.reviewStatuses?.ANALYZE === "unavailable" && <AiReviewNotice subject="analysis" />}</div><LinkedInDashboard 
         analysis={parseAnalysisJson<LinkedInAnalysis>(analysisData.finalResumeJson||analysisData.analysisJson)!}
         scores={finalScores || scores || {}}
         gamification={gamification} 
         analysisId={analysisId}
         language={analysisData.selectedLanguage}
         title={analysisData.professionalTarget}
-      />
+      /></>
     );
   }
 
-  return <ResumeAnalysisView analysisId={analysisId} record={analysisData} analysis={analysisData.finalAssessmentJson?parseAnalysisJson<ResumeAnalysis>(analysisData.finalAssessmentJson):analysis} scores={scores} finalScores={finalScores} onExport={handleExportPdf} exporting={exportingPdf} onGenerateLetter={handleGenerateCoverLetter} generatingLetter={generatingLetter} onDownloadLetter={handleDownloadCoverLetter} onRefresh={runAnalysis}/>;
+  return <>{analysisData.reviewStatuses?.ANALYZE === "unavailable" && <div className="mx-auto max-w-6xl px-5 pt-5"><AiReviewNotice subject="analysis" /></div>}<ResumeAnalysisView analysisId={analysisId} record={analysisData} analysis={analysisData.finalAssessmentJson?parseAnalysisJson<ResumeAnalysis>(analysisData.finalAssessmentJson):analysis} scores={scores} finalScores={finalScores} onExport={handleExportPdf} exporting={exportingPdf} onGenerateLetter={handleGenerateCoverLetter} generatingLetter={generatingLetter} onDownloadLetter={handleDownloadCoverLetter} onRefresh={runAnalysis}/></>;
 }
