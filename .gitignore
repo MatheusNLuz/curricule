@@ -57,3 +57,8 @@ scratch/
 # Local visual QA evidence can contain account information.
 /.impeccable/review/
 /.codex-remote-attachments/
+# Browser recordings, snapshots and local Windows skill mirrors.
+/.playwright-cli/
+/.claude/skills/agent-browser/
+/.claude/skills/handoff/
+/.claude/skills/playwright-cli/
