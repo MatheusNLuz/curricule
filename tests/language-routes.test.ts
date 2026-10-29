@@ -13,8 +13,13 @@ let calls: { locale: string; system: string; input: string }[] = [];
 let writes: Record<string, unknown>[] = [];
 let tasks: { kind: string; input: unknown }[] = [];
 let verificationLocales: string[] = [];
+let dualReviews = 0;
 
 class FakeAI {
+  async analyzeWithReview<T>(system: string, input: string, schema: ZodType<T>, locale: string): Promise<T> {
+    dualReviews++;
+    return this.analyzeLocalized(system, input, schema, locale);
+  }
   async analyzeLocalized<T>(system: string, input: string, schema: ZodType<T>, locale: string): Promise<T> {
     calls.push({ locale, system, input });
     const output = outputs.shift();
@@ -48,7 +53,7 @@ const compare = await import("../app/api/compare/route");
 const questioning = await import("../app/api/smart-questions/route");
 const letter = await import("../app/api/cover-letter/route");
 const request = () => new Request("https://app.example/api/test", { method: "POST", body: JSON.stringify({ analysisId: "a" }) });
-test.beforeEach(() => { row = { ...initial }; questions = []; outputs = []; calls = []; writes = []; tasks = []; verificationLocales = []; });
+test.beforeEach(() => { row = { ...initial }; questions = []; outputs = []; calls = []; writes = []; tasks = []; verificationLocales = []; dualReviews = 0; });
 
 test("analysis route forwards each selected locale and never saves a rejected output", async () => {
   for (const locale of ["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES"]) {
@@ -57,6 +62,7 @@ test("analysis route forwards each selected locale and never saves a rejected ou
     assert.equal((await analyze.POST(request())).status, 200);
     assert.equal(calls.at(-1)!.locale, locale);
   }
+  assert.equal(dualReviews, 5);
   writes = [];
   outputs.push(new OutputLanguageError());
   const response = await analyze.POST(request());
@@ -77,6 +83,7 @@ test("comparison reparses legacy job data and scopes both calls and cache to the
 test("generated questions and cached letters receive the selected locale", async () => {
   outputs.push({ questions: [{ question: "How did you organise files?", reason: "Clarify experience", category: "experience", answerType: "text" }] });
   assert.equal((await questioning.POST(request())).status, 200);
+  assert.equal(dualReviews, 1);
   outputs.push({ content: "I am applying for this position. I organised files at Example Inc." });
   assert.equal((await letter.POST(request())).status, 200);
   assert.deepEqual(calls.map(c => c.locale), ["en-GB", "en-GB"]);

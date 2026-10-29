@@ -9,7 +9,7 @@ Registro para uma próxima etapa. Nenhuma implementação de backend foi feita n
 - Espanhol e Espanha foram integrados aos contratos, prompts, rótulos e seletores. Um teste isolado com dados fictícios na NVIDIA gerou análise, perguntas, LinkedIn, carta e currículo em espanhol e produziu HTML de exportação e DOCX. Isso não substitui o teste autenticado de ponta a ponta nem verifica todos os perfis e profissões.
 - A pesquisa e as orientações utilizadas no currículo estão em [convencoes-curriculo-paises.md](convencoes-curriculo-paises.md).
 - A nota da versão reavaliada aparece na biblioteca quando válida; edições existentes invalidam a nota. Respostas condicionais e opções agora são guardadas com formato versionado e convertidas para texto explícito na revisão de fatos; respostas anteriores continuam legíveis.
-- A avaliação de duas IAs está em [avaliacao-duas-ias.md](avaliacao-duas-ias.md). O OpenRouter retornou HTTP 401, impedindo comparação efetiva; uma segunda análise não foi ativada sem essa evidência.
+- A implementação local de duas etapas e os limites da avaliação estão em [avaliacao-duas-ias.md](avaliacao-duas-ias.md). O teste real mais recente não pôde ser concluído: OpenRouter respondeu HTTP 429 e NVIDIA excedeu o tempo de chamada.
 - Termos completos e política para a operação comercial continuam sujeitos à definição dos dados reais da operação e revisão jurídica. A seção atual de processamento não é substituto desses documentos.
 
 ## 1. Link de perfil do LinkedIn

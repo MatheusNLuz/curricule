@@ -53,6 +53,29 @@ test("mixed prose is discarded and regenerated before returning", async () => {
   assert.equal(calls[2].userPrompt, "Original");
 });
 
+test("two different providers author and review before the result is returned", async () => {
+  const author = provider([{ content: "Texto inicial." }, approved]);
+  const reviewer = provider([{ content: "Texto revisado." }, approved]);
+  author.fake.name = "author"; reviewer.fake.name = "reviewer";
+  const result = await new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Material original", ContentSchema, "pt-BR");
+  assert.equal(result.content, "Texto revisado.");
+  assert.equal(author.calls.length, 2); assert.equal(reviewer.calls.length, 2);
+  assert.match(reviewer.calls[0].systemPrompt, /independent second reviewer/);
+  assert.deepEqual(JSON.parse(reviewer.calls[0].userPrompt), { originalInput: "Material original", firstDraft: { content: "Texto inicial." } });
+});
+
+test("dual review fails closed when either provider fails", async () => {
+  const author = provider([{ content: "Texto inicial." }, approved]);
+  const reviewer = provider([new Error("Unavailable")]);
+  author.fake.name = "author"; reviewer.fake.name = "reviewer";
+  await assert.rejects(new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => (error as {code?: string}).code === "DUAL_AI_REVIEWER_UNAVAILABLE");
+  assert.equal(reviewer.calls.length, 1);
+  const failed = provider([new Error("Unavailable")]); failed.fake.name = "author";
+  const unused = provider([]); unused.fake.name = "reviewer";
+  await assert.rejects(new AnalysisOrchestrator([failed.fake, unused.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => (error as {code?: string}).code === "DUAL_AI_AUTHOR_UNAVAILABLE");
+  assert.equal(unused.calls.length, 0);
+});
+
 test("repeated wrong-language results exhaust a bounded retry and fall back", async () => {
   const primary = provider([{ content: "Wrong" }, rejected, { content: "Still wrong" }, rejected]);
   const fallback = provider([{ content: "Texto correto." }, approved]);

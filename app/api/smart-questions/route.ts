@@ -123,7 +123,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, questions: mapped });
     }
 
-    const result = await runAnalysisTask(analysisId, session.userId, "QUESTIONS", [analysis.parsedResumeText, analysis.comparisonJson, analysis.selectedLanguage], async () => {
+    const result = await runAnalysisTask(analysisId, session.userId, "QUESTIONS", ["dual-review-v1", analysis.parsedResumeText, analysis.comparisonJson, analysis.selectedLanguage], async () => {
     // 2. Fetch past answered questions for the SAME USER to reuse answers
     let pastAnsweredQuestions: SmartQuestion[] = [];
     if (analysis.userId) {
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
     }
 
     prompt += "\nAdapt questions to the candidate's actual profession. Never require invented metrics; explicitly permit 'I do not know' or 'I have not done this'. Suggestions are unconfirmed until the candidate chooses and submits them. Use boolean for a neutral yes/no question, multiple_choice for one option, multiple_select for several options, and text for open questions. Include at most eight relevant neutral options of at most 100 characters each; never assume a suggestion is a fact.";
-    const rawQuestions = await orchestrator.analyzeLocalized<SmartQuestionGen>(prompt, payload, SmartQuestionSchema, analysis.selectedLanguage);
+    const rawQuestions = await orchestrator.analyzeWithReview<SmartQuestionGen>(prompt, payload, SmartQuestionSchema, analysis.selectedLanguage);
     const validated = SmartQuestionSchema.parse(rawQuestions);
 
     const savedQuestions: { id: string; question: string; reason: string; category: string; answerType: string; options: string[] | undefined; suggestedAnswer: string | null }[] = [];

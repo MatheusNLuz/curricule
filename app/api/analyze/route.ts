@@ -17,15 +17,15 @@ export async function POST(request: Request) {
     const { analysisId } = z.object({ analysisId: z.string() }).strict().parse(await boundedJson(request));
     const record = await prisma.analysis.findFirst({ where: { id: analysisId, userId: session.userId } });
     if (!record?.parsedResumeText || record.parsedResumeText.length < 50) throw new HttpError(400, "Envie seu currículo ou perfil antes de analisar.");
-    const result = await runAnalysisTask(analysisId, session.userId, "ANALYZE", [record.parsedResumeText, record.mode, record.selectedLanguage], async () => {
+    const result = await runAnalysisTask(analysisId, session.userId, "ANALYZE", ["dual-review-v1", record.parsedResumeText, record.mode, record.selectedLanguage], async () => {
       const ai = new AnalysisOrchestrator();
       if (record.mode === "LINKEDIN_OPTIMIZATION") {
-        const analysis = await ai.analyzeLocalized(getLinkedInSystemPrompt(record.selectedLanguage), generateLinkedInAnalyzerUserPrompt(record.parsedResumeText!, record.professionalTarget || "General", record.selectedLanguage), LinkedInAnalysisSchema, record.selectedLanguage);
+        const analysis = await ai.analyzeWithReview(getLinkedInSystemPrompt(record.selectedLanguage), generateLinkedInAnalyzerUserPrompt(record.parsedResumeText!, record.professionalTarget || "General", record.selectedLanguage), LinkedInAnalysisSchema, record.selectedLanguage);
         const gamification = { level: 1, levelName: "Perfil em revisão", missionsComplete: 0, totalMissions: 4, badges: [] };
         await commitTask(tx => tx.analysis.update({ where: { id: analysisId }, data: { analysisJson: JSON.stringify(analysis), initialScores: JSON.stringify(analysis.scores), gamificationJson: JSON.stringify(gamification) } }));
         return { success: true, analysis, scores: analysis.scores, gamification };
       }
-      const analysis = await ai.analyzeLocalized(ATS_ANALYZER_SYSTEM_PROMPT, generateAtsAnalyzerUserPrompt(record.parsedResumeText!, record.professionalTarget || "General", record.mode, record.selectedLanguage), resumeAssessmentSchema(record.parsedResumeText!), record.selectedLanguage);
+      const analysis = await ai.analyzeWithReview(ATS_ANALYZER_SYSTEM_PROMPT, generateAtsAnalyzerUserPrompt(record.parsedResumeText!, record.professionalTarget || "General", record.mode, record.selectedLanguage), resumeAssessmentSchema(record.parsedResumeText!), record.selectedLanguage);
       analysis.scores = ScoreEngine.evaluate(analysis);
       const gamification = GamificationEngine.evaluate(analysis);
       await commitTask(tx => tx.analysis.update({ where: { id: analysisId }, data: { analysisJson: JSON.stringify(analysis), initialScores: JSON.stringify(analysis.scores), gamificationJson: JSON.stringify(gamification) } }));
