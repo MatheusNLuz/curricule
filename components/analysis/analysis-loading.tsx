@@ -1,11 +1,11 @@
 import styles from "./analysis-loading.module.css";
 
-export function AnalysisLoading({ step }: { step: string }) {
-  const description = step.includes("Comparando")
+export function AnalysisLoading({ step, description: suppliedDescription }: { step: string; description?: string }) {
+  const description = suppliedDescription || (step.includes("Comparando")
     ? "Estamos relacionando sua experiência ao que a vaga pede."
     : step.includes("Carta")
       ? "Estamos preparando uma apresentação para você revisar."
-      : "Estamos organizando as informações do seu material para você revisar com clareza.";
+      : "Estamos organizando as informações do seu material para você revisar com clareza.");
 
   return <div className={styles.layout} role="status" aria-live="polite">
     <div className={styles.content}>

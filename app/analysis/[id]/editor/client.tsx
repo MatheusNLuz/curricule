@@ -13,7 +13,7 @@ import { WorkspacePage, Journey } from "@/components/workspace/workspace-ui";
 import { DownloadDocumentButton } from "@/components/analysis/download-document-button";
 import { TaskProgress } from "@/components/analysis/task-progress";
 import { PreviewTemplate } from "@/components/preview/preview-template";
-import { RouteLine } from "@/components/ui/route-line";
+import { AnalysisLoading } from "@/components/analysis/analysis-loading";
 import { getFetchErrorMessage, getLoginUrl, readApiError, fetchAnalysisTask } from "@/lib/api-client";
 import { normalizeTemplateId, TEMPLATE_OPTIONS } from "@/lib/preview-template";
 import type { ReviewedTruth } from "@/lib/ats/truth-policy";
@@ -269,24 +269,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   }, [analysisId, answers, questions]);
 
   if (!data && loadError) return <WorkspacePage><section className="sheet padded" role="alert"><h1 className="text-2xl font-semibold">{loadError.status===404?"Análise não encontrada":loadError.status===403?"Acesso indisponível":"Não foi possível abrir o editor"}</h1><p className="my-4">{loadError.message} Seus rascunhos salvos não foram removidos.</p><div className="flex flex-wrap gap-3"><button className="button primary" onClick={()=>{setLoading(true);void fetchData();}}>Tentar novamente</button><button className="button secondary" onClick={()=>router.push("/history")}>Voltar ao histórico</button></div></section></WorkspacePage>;
-  if (loading || !data) return (
-    <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center px-5 py-16">
-      <div className="surface w-full rounded-2xl p-6 text-center sm:p-8">
-        <Loader2 className="mx-auto h-9 w-9 animate-spin text-primary" />
-        <p className="mt-4 text-sm font-semibold">Preparando seu espaço de edição</p>
-        <p className="mt-1 text-xs text-muted-foreground">Estamos organizando as próximas decisões do seu currículo.</p>
-        <RouteLine
-          className="mt-8 text-left"
-          activeIndex={1}
-          steps={[
-            { label: "Leitura", description: "Currículo recebido" },
-            { label: "Edição", description: "Espaço sendo preparado" },
-            { label: "Exportação", description: "Disponível depois" },
-          ]}
-        />
-      </div>
-    </div>
-  );
+  if (loading || !data) return <AnalysisLoading step="Preparando seu espaço de edição." description="Estamos organizando seu material para você revisar e editar." />;
 
   const match = data.comparisonJson ? JSON.parse(data.comparisonJson) : null;
   const optimized = data.finalResumeJson ? JSON.parse(data.finalResumeJson) : null;
