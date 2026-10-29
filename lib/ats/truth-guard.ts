@@ -1,5 +1,7 @@
 import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { TruthGuardGen, TruthGuardSchema } from "@/lib/schemas/questions.schema";
+import { OpenRouterProvider } from "@/lib/ai/openrouter-provider";
+import { NvidiaNimProvider } from "@/lib/ai/nvidia-nim-provider";
 
 const TRUTH_GUARD_SYSTEM_PROMPT = `You are the Truth Guard. Your sole purpose is to prevent AI hallucination and ensure a candidate's resume contains NO lies.
 You must classify every new claim, skill, or metric proposed for the resume rewrite.
@@ -20,9 +22,19 @@ Return ONLY valid JSON matching this exact structure:
   "warnings": ["string"]
 }`;
 
+export function normalizeTruthVerdict(result: TruthGuardGen): TruthGuardGen {
+  return { ...result, claims: result.claims.map(claim =>
+    (claim.source === "confirmed_by_resume" || claim.source === "confirmed_by_user") && (!claim.canUseInResume || !claim.canUseInCoverLetter)
+      ? { ...claim, source: "missing" as const, canUseInResume: false, canUseInCoverLetter: false }
+      : claim
+  ) };
+}
+
 export class TruthGuard {
-  static async evaluate(resumeText: string, userAnswers: string, proposedChanges: string, rejected: string[] = [], language = "pt-BR"): Promise<TruthGuardGen> {
-    const orchestrator = new AnalysisOrchestrator();
+  static async evaluate(resumeText: string, userAnswers: string, proposedChanges: string, rejected: string[] = [], language = "pt-BR", interactive = false): Promise<TruthGuardGen> {
+    const orchestrator = interactive
+      ? new AnalysisOrchestrator([new OpenRouterProvider(), new NvidiaNimProvider(process.env.NVIDIA_NIM_TRUTH_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b"), new NvidiaNimProvider()])
+      : new AnalysisOrchestrator();
     
     const userPrompt = `
 ORIGINAL RESUME:
@@ -52,6 +64,9 @@ Evaluate EVERY factual claim in the proposed content, including metrics, employe
       language
     );
     
-    return TruthGuardSchema.parse(rawResult);
+    const result = TruthGuardSchema.parse(rawResult);
+    // A contradictory verdict must never turn an uncertain statement into an
+    // approved fact merely because the model labeled its source as confirmed.
+    return normalizeTruthVerdict(result);
   }
 }

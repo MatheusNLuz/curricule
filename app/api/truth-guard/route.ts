@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       const answers = analysis.questions.map(q => ({ question: q.question, answer: answerForReview(q.answer) })).filter(q => q.answer).map(q => q.question + ": " + q.answer).join("\n")+"\n"+storedConfirmedClaims(analysis.confirmedClaimsJson).join("\n");
       const comparison = analysis.comparisonJson ? JSON.parse(analysis.comparisonJson) : null;
       const additions = { answers, unconfirmedJobRequirements: comparison?.missingMandatorySkills || [] };
-      const report = { ...await TruthGuard.evaluate(analysis.parsedResumeText || "", answers, JSON.stringify(additions), rejected, analysis.selectedLanguage), sourceHash: hash, decisions: {} };
+      const report = { ...await TruthGuard.evaluate(analysis.parsedResumeText || "", answers, JSON.stringify(additions), rejected, analysis.selectedLanguage, true), sourceHash: hash, decisions: {} };
       await commitTask(async tx=>{
         const updated=await tx.analysis.updateMany({where:{id:analysisId,revision:analysis.revision},data:{truthGuardJson:JSON.stringify(report)}});
         if(!updated.count)throw new HttpError(409,"As respostas mudaram durante a validação. Valide os fatos novamente.");

@@ -13,7 +13,7 @@ import { pdfFileError, hasPdfSignature } from "../lib/upload-validation.ts";
 import { reviewTruth, truthContext, truthSourceHash, type ReviewedTruth } from "../lib/ats/truth-policy.ts";
 import { AnalysisOrchestrator } from "../lib/ai/analysis-orchestrator.ts";
 import { z } from "zod";
-import { TruthGuard } from "../lib/ats/truth-guard.ts";
+import { TruthGuard, normalizeTruthVerdict } from "../lib/ats/truth-guard.ts";
 import { verifyOutput } from "../lib/ats/verify-output.ts";
 import { hasSourceText, isSourceUrl } from "../lib/source-input.ts";
 
@@ -107,6 +107,11 @@ test("Truth Guard requires decisions and preserves rejects across resume and let
   assert.deepEqual(truthContext(restored), { approved: [], rejected: ["Conheço SAP", "Gerenciei uma equipe"] });
   const source = { parsedResumeText: "Original", comparisonJson: null, selectedLanguage: "pt-BR", questions: [{ id: "q", answer: "A" }] };
   assert.notEqual(truthSourceHash(source), truthSourceHash({ ...source, questions: [{ id: "q", answer: "B" }] }));
+});
+test("contradictory fact verdicts cannot become approved candidate facts", () => {
+  const result = normalizeTruthVerdict({ claims: [{ claim: "Acompanhou metas", source: "confirmed_by_user", canUseInResume: false, canUseInCoverLetter: false, explanation: "Não foi confirmado" }], blockedClaims: [], warnings: [] });
+  assert.equal(result.claims[0].source, "missing");
+  assert.deepEqual(truthContext({ ...result, sourceHash: "test", decisions: {} }), { approved: [], rejected: ["Acompanhou metas"] });
 });
 test("AI fallback validates schema before accepting provider output", async () => {
   const calls: string[] = [];
