@@ -146,6 +146,8 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
 
       const decisionResponse = await fetch("/api/truth-guard/decisions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId, sourceHash: truthGuardData?.sourceHash, decisions }) });
       if (!decisionResponse.ok) throw new Error(await readApiError(decisionResponse, "Não foi possível salvar suas decisões."));
+      const savedDecision = await decisionResponse.json();
+      if (typeof savedDecision.sourceHash === "string") setTruthGuardData(current => current ? { ...current, sourceHash: savedDecision.sourceHash, decisions } : current);
 
       const res = await fetchAnalysisTask(`/api/optimize`, {
         method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }
