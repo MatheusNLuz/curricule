@@ -21,7 +21,7 @@ import { FlagPicker } from "@/components/ui/flag-picker";
 
 const REGIONS = [{ value: "BR", label: "Brasil" }, { value: "US", label: "Estados Unidos" }, { value: "UK", label: "Reino Unido" }, { value: "CA", label: "Canadá" }, { value: "DE", label: "Alemanha" }, { value: "PT", label: "Portugal" }, { value: "ES", label: "Espanha" }, { value: "REMOTE", label: "Remoto internacional" }];
 const LANGUAGE_COUNTRIES: Record<string, string> = { "pt-BR": "BR", "pt-PT": "PT", "en-US": "US", "en-GB": "UK", "es-ES": "ES" };
-type MaterialTab = "pdf" | "paste" | "link";
+type MaterialTab = "pdf" | "paste";
 
 function NewAnalysisContent() {
   const params = useSearchParams(); const router = useRouter(); const { toast } = useToast();
@@ -34,13 +34,13 @@ function NewAnalysisContent() {
   const [hydrated, setHydrated] = useState(!initialDraft);
   const [title, setTitle] = useState(""); const [pastedText, setPastedText] = useState("");
   const [jobDescription, setJobDescription] = useState(""); const [jobUrl, setJobUrl] = useState(""); const [profileUrl, setProfileUrl] = useState("");
-  const [activeTab, setActiveTab] = useState<MaterialTab>(isLinkedIn ? "link" : "pdf");
+  const [activeTab, setActiveTab] = useState<MaterialTab>("pdf");
   const [jobInput, setJobInput] = useState<"text" | "link">("link");
   const [selectedLanguage, setLanguage] = useState("pt-BR"); const [jobLocation, setRegion] = useState("BR");
   const [file, setFile] = useState<File | null>(null); const [storedPdf, setStoredPdf] = useState(false);
   const [loading, setLoading] = useState(false); const [saveStatus, setSaveStatus] = useState("");
   const [savedDraft, setSavedDraft] = useState("");
-  const [profileReviewed, setProfileReviewed] = useState(false); const [jobReviewed, setJobReviewed] = useState(false);
+  const [jobReviewed, setJobReviewed] = useState(false);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const ensureAnalysis = useCallback(async () => {
@@ -68,7 +68,7 @@ function NewAnalysisContent() {
         if (record.analysisJson || record.coverLetter) { router.replace("/analysis/" + record.id); return; }
         if (record.draftJson) {
           const draft = DraftSchema.parse(JSON.parse(record.draftJson));
-          setTitle(draft.title); setPastedText(draft.pastedText); setJobDescription(draft.jobDescription); setJobUrl(draft.jobUrl); setProfileUrl(draft.profileUrl); setActiveTab(draft.activeTab); setJobInput(draft.jobInput); setRegion(draft.jobLocation); setLanguage(draft.selectedLanguage); setSavedDraft(JSON.stringify(draft));
+          setTitle(draft.title); setPastedText(draft.pastedText); setJobDescription(draft.jobDescription); setJobUrl(draft.jobUrl); setProfileUrl(draft.profileUrl); setActiveTab(draft.activeTab === "link" ? (draft.pastedText.trim() ? "paste" : "pdf") : draft.activeTab); setJobInput(draft.jobInput); setRegion(draft.jobLocation); setLanguage(draft.selectedLanguage); setSavedDraft(JSON.stringify(draft));
         }
         setStoredPdf(record.resumeInputType === "PDF_UPLOAD" && !!record.parsedResumeText);
         setSaveStatus("Rascunho recuperado. Confira novamente os conteúdos importados por link."); setHydrated(true);
@@ -109,7 +109,7 @@ function NewAnalysisContent() {
     try {
       await queue.current; const id = await ensureAnalysis();
       const update: Record<string, unknown> = { professionalTarget: title, selectedLanguage, jobLocation, draftJson, ...(requiresJob ? { jobDescription, jobUrl: jobInput === "link" ? jobUrl : null } : {}) };
-      if (activeTab !== "pdf") Object.assign(update, { parsedResumeText: pastedText, originalResumeText: pastedText, resumeInputType: activeTab === "link" ? "LINKEDIN_URL" : "PASTED_TEXT", profileUrl: activeTab === "link" ? profileUrl : null });
+      if (activeTab === "paste") Object.assign(update, { parsedResumeText: pastedText, originalResumeText: pastedText, resumeInputType: "PASTED_TEXT", profileUrl: null });
       const saved = await fetch("/api/analysis/" + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(update) });
       if (!saved.ok) throw new Error(await readApiError(saved, "Não foi possível salvar o material."));
       if (activeTab === "pdf" && file) {
@@ -123,14 +123,13 @@ function NewAnalysisContent() {
   }
   if (!mode) return <WorkspacePage><PageHeading title="Vamos preparar seu próximo passo." description="Escolha o objetivo que faz sentido para o seu momento."/><AnalysisModeGrid/></WorkspacePage>;
   if (!hydrated) return <div className="p-8" role="status">{saveStatus || "Recuperando seu rascunho…"}</div>;
-  const hasMaterial = activeTab === "pdf" ? !!file || storedPdf : hasSourceText(pastedText) && (activeTab !== "link" || profileReviewed);
+  const hasMaterial = activeTab === "pdf" ? !!file || storedPdf : hasSourceText(pastedText);
   const validJob = !requiresJob || (hasSourceText(jobDescription) && (jobInput !== "link" || jobReviewed));
   return <WorkspacePage className="newAnalysisPage"><PageHeading title={isLinkedIn?"Vamos melhorar seu LinkedIn.":"Vamos preparar seu próximo passo."} description="Traga seu material. Você confere o conteúdo antes de continuar."><Link href="/analysis/new" className="textLink">Alterar objetivo <ArrowRight size={15}/></Link></PageHeading><Journey current={0}/><div className="formLayout formLayoutSingle"><div className="legacyPanels space-y-5">
     <label className="flex flex-col gap-2 text-sm font-medium">Nome desta candidatura ou análise<Input maxLength={120} value={title} onChange={event => setTitle(event.target.value)} placeholder="Ex.: Analista financeiro — Empresa" /></label>
     <section className="sheet padded flex flex-col gap-5 rounded-2xl p-5 sm:p-7"><h2 className="materialTitle text-lg font-semibold">{isLinkedIn && <LinkedInLogo size={24} />}{isLinkedIn ? "Seu perfil no LinkedIn" : "Seu currículo"}</h2>
       <Tabs value={activeTab} onValueChange={value => setActiveTab(value as MaterialTab)}>
-        <TabsList className="flowTabs">{isLinkedIn && <TabsTrigger value="link">Link do perfil</TabsTrigger>}<TabsTrigger value="pdf">Enviar PDF</TabsTrigger><TabsTrigger value="paste">Colar texto</TabsTrigger></TabsList>
-        {isLinkedIn && <TabsContent value="link"><SourceLinkInput kind="linkedin" url={profileUrl} onUrlChange={setProfileUrl} content={pastedText} onContentChange={setPastedText} ensureAnalysis={ensureAnalysis} reviewed={profileReviewed} onReviewedChange={setProfileReviewed} /></TabsContent>}
+        <TabsList className="flowTabs"><TabsTrigger value="pdf">Enviar PDF</TabsTrigger><TabsTrigger value="paste">Colar texto</TabsTrigger></TabsList>
         <TabsContent value="pdf"><label className="dropzone" onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();chooseFile(event.dataTransfer.files[0]);}}><span className="dropzoneIcon"><FileText size={25}/></span><strong>{file?"Arquivo selecionado":storedPdf?"Seu PDF está salvo":isLinkedIn?"Adicione seu perfil em PDF":"Adicione seu currículo em PDF"}</strong>{file && <span className="dropzoneFilename">{file.name}</span>}<span>{file||storedPdf?"Toque para escolher outro arquivo.":"Arraste um PDF ou toque para selecionar."}</span><b>{file||storedPdf?"Trocar arquivo":"Escolher arquivo"}</b><small>PDF · até 10 MB e 30 páginas</small><input id="resume-upload" aria-label={isLinkedIn?"PDF exportado do LinkedIn":"Arquivo do currículo"} type="file" accept="application/pdf,.pdf" onChange={event=>chooseFile(event.target.files?.[0])}/></label></TabsContent>
         <TabsContent value="paste"><label className="flex flex-col gap-2 text-sm font-medium">{isLinkedIn ? "Texto do perfil (título, sobre e experiências)" : "Texto completo do currículo"}<Textarea value={pastedText} maxLength={MAX_TEXT} onChange={event => setPastedText(event.target.value)} className="min-h-60" /></label><p className="mt-2 text-xs text-muted-foreground">Mínimo de 50 caracteres. Máximo de 60 mil.</p></TabsContent>
       </Tabs>

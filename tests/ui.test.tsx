@@ -52,11 +52,11 @@ test("objective selection immediately shows all analysis options", () => {
   assert.match(html, /Otimizar LinkedIn/);
   assert.doesNotMatch(html, /Um ponto de partida|Ver todos os objetivos/);
 });
-test("LinkedIn form starts with public profile URL and includes PDF/text alternatives", () => {
+test("LinkedIn form offers PDF and text without a profile URL field", () => {
   mode = "LINKEDIN_OPTIMIZATION";
   const html = renderToStaticMarkup(React.createElement(NewAnalysisPage));
   savePreview("linkedin", html);
-  for (const text of ["Link do perfil", "Link do seu perfil do LinkedIn", "Ler perfil público", "Enviar PDF", "Colar texto", "somente o conteúdo público"]) assert.ok(html.includes(text), text);
-  assert.ok(html.includes("https://www.linkedin.com/in/seu-perfil/"));
+  for (const text of ["Enviar PDF", "Colar texto", "PDF exportado do LinkedIn"]) assert.ok(html.includes(text), text);
+  assert.doesNotMatch(html, /Link do perfil|Link do seu perfil do LinkedIn|Ler perfil público/);
   assert.doesNotMatch(html, /A vaga que você quer/);
 });
