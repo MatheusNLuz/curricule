@@ -1,6 +1,6 @@
 import styles from "./analysis-loading.module.css";
 
-export function AnalysisLoading({ step, description: suppliedDescription }: { step: string; description?: string }) {
+export function AnalysisLoading({ step, description: suppliedDescription, writing = false }: { step: string; description?: string; writing?: boolean }) {
   const description = suppliedDescription || (step.includes("Comparando")
     ? "Estamos relacionando sua experiência ao que a vaga pede."
     : step.includes("Carta")
@@ -11,7 +11,7 @@ export function AnalysisLoading({ step, description: suppliedDescription }: { st
     <div className={styles.content}>
       <div className={styles.art} aria-hidden="true">
         <div className={styles.backSheet} />
-        <div className={styles.paper}>
+        <div className={`${styles.paper} ${writing ? styles.writing : ""}`}>
           <div className={styles.paperHeader}><span className={styles.avatar}/><div className={styles.headerLines}><span/><span/></div></div>
           <div className={styles.divider}/>
           <div className={styles.paperLines}><span/><span/><span/><span/><span/><span/></div>

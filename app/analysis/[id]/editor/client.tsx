@@ -36,6 +36,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   const [truthGuardData, setTruthGuardData] = useState<ReviewedTruth | null>(null);
   const [answerSaveStatus, setAnswerSaveStatus] = useState("");
   const [runningTruthGuard, setRunningTruthGuard] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [editorDirty,setEditorDirty]=useState(false);
   const [generatingLetter, setGeneratingLetter] = useState(false);
@@ -149,6 +150,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       const savedDecision = await decisionResponse.json();
       if (typeof savedDecision.sourceHash === "string") setTruthGuardData(current => current ? { ...current, sourceHash: savedDecision.sourceHash, decisions } : current);
 
+      setOptimizing(true);
       const res = await fetchAnalysisTask(`/api/optimize`, {
         method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }
       });
@@ -168,6 +170,8 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       }
     } catch (error: unknown) {
       toast({ title: "Não foi possível otimizar", description: getFetchErrorMessage(error, "Tente novamente em instantes."), variant: "error" });
+    } finally {
+      setOptimizing(false);
     }
   };
 
@@ -269,6 +273,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   }, [analysisId, answers, questions]);
 
   if (!data && loadError) return <WorkspacePage><section className="sheet padded" role="alert"><h1 className="text-2xl font-semibold">{loadError.status===404?"Análise não encontrada":loadError.status===403?"Acesso indisponível":"Não foi possível abrir o editor"}</h1><p className="my-4">{loadError.message} Seus rascunhos salvos não foram removidos.</p><div className="flex flex-wrap gap-3"><button className="button primary" onClick={()=>{setLoading(true);void fetchData();}}>Tentar novamente</button><button className="button secondary" onClick={()=>router.push("/history")}>Voltar ao histórico</button></div></section></WorkspacePage>;
+  if (optimizing) return <AnalysisLoading step={data?.mode === "LINKEDIN_OPTIMIZATION" ? "Estamos reescrevendo seu perfil." : "Estamos reescrevendo seu currículo."} description="Organizamos sua experiência e verificamos as informações antes de apresentar a nova versão." writing />;
   if (loading || !data) return <AnalysisLoading step="Preparando seu espaço de edição." description="Estamos organizando seu material para você revisar e editar." />;
 
   const match = data.comparisonJson ? JSON.parse(data.comparisonJson) : null;
