@@ -81,18 +81,19 @@ test("two different providers author and review before the result is returned", 
   const reviewer = provider([{ approved: true }]);
   author.fake.name = "author"; reviewer.fake.name = "reviewer";
   const result = await new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Material original", ContentSchema, "pt-BR");
-  assert.equal(result.content, "Texto inicial.");
+  assert.equal(result.value.content, "Texto inicial."); assert.equal(result.review, "approved");
   assert.equal(author.calls.length, 2); assert.equal(reviewer.calls.length, 1);
   assert.match(reviewer.calls[0].systemPrompt, /independent reviewer/);
   assert.deepEqual(JSON.parse(reviewer.calls[0].userPrompt), { originalInput: "Material original", proposedOutput: { content: "Texto inicial." } });
   assert.equal(reviewer.calls[0].maxTokens, 1024);
 });
 
-test("dual review fails closed when either provider fails", async () => {
+test("unavailable reviewer returns a clearly marked draft; both authors failing stops the task", async () => {
   const author = provider([{ content: "Texto inicial." }, approved]);
   const reviewer = provider([new Error("Unavailable"), new Error("Unavailable")]);
   author.fake.name = "author"; reviewer.fake.name = "reviewer";
-  await assert.rejects(new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => (error as {code?: string}).code === "DUAL_AI_REVIEWER_UNAVAILABLE");
+  const result = await new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR");
+  assert.deepEqual(result, { value: { content: "Texto inicial." }, review: "unavailable" });
   assert.equal(reviewer.calls.length, 2);
   const failed = provider([new Error("Unavailable")]); failed.fake.name = "author";
   const alsoFailed = provider([new Error("Unavailable")]); alsoFailed.fake.name = "reviewer";
@@ -104,7 +105,7 @@ test("second provider can author when the first is unavailable, but both must co
   const first = provider([new Error("Unavailable"), { approved: true }]); first.fake.name = "first";
   const second = provider([{ content: "Texto revisado." }, approved]); second.fake.name = "second";
   const result = await new AnalysisOrchestrator([first.fake, second.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR");
-  assert.equal(result.content, "Texto revisado."); assert.equal(first.calls.length, 2); assert.equal(second.calls.length, 2);
+  assert.equal(result.value.content, "Texto revisado."); assert.equal(result.review, "approved"); assert.equal(first.calls.length, 2); assert.equal(second.calls.length, 2);
 });
 
 test("an independent rejection never releases the draft", async () => {
@@ -118,9 +119,15 @@ test("specific review feedback is repaired and independently reviewed again", as
   const author = provider([{ content: "Texto inicial." }, approved, { content: "Texto corrigido." }, approved]); author.fake.name = "author";
   const reviewer = provider([{ approved: false, issues: ["A afirmação não está no currículo."] }, { approved: true, issues: [] }]); reviewer.fake.name = "reviewer";
   const result = await new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR");
-  assert.equal(result.content, "Texto corrigido.");
+  assert.equal(result.value.content, "Texto corrigido."); assert.equal(result.review, "approved");
   assert.equal(reviewer.calls.length, 2);
   assert.deepEqual(JSON.parse(reviewer.calls[1].userPrompt).proposedOutput, { content: "Texto corrigido." });
+});
+
+test("a failed repair cannot release a draft the reviewer rejected", async () => {
+  const author = provider([{ content: "Texto inicial." }, approved, new Error("Unavailable")]); author.fake.name = "author";
+  const reviewer = provider([{ approved: false, issues: ["Há uma afirmação sem evidência."] }]); reviewer.fake.name = "reviewer";
+  await assert.rejects(new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => (error as {code?:string}).code === "DUAL_AI_REVIEW_REJECTED");
 });
 
 test("repeated wrong-language results exhaust a bounded retry and fall back", async () => {

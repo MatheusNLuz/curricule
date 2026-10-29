@@ -10,9 +10,16 @@ export async function GET(_request: Request, { params }: Context) {
   try {
     const { id } = await params; const session = await getSessionUser();
     if (!session) throw new HttpError(401, "Faça login para continuar.");
-    const analysis = await prisma.analysis.findFirst({ where: { id, userId: session.userId }, include: { questions: true, tasks: { select: { kind: true, status: true, leaseUntil: true } } } });
+    const analysis = await prisma.analysis.findFirst({ where: { id, userId: session.userId }, include: { questions: true, tasks: { select: { kind: true, status: true, leaseUntil: true, resultJson: true } } } });
     if (!analysis) throw new HttpError(404, "Análise não encontrada.");
-    return NextResponse.json(analysis,{headers:{"Cache-Control":"private, no-store"}});
+    const reviewStatuses: Record<string, "approved" | "unavailable"> = {};
+    const tasks = analysis.tasks.map(({ resultJson, ...task }) => {
+      if (task.status === "COMPLETED" && resultJson && (task.kind === "ANALYZE" || task.kind === "QUESTIONS")) {
+        try { const value = JSON.parse(resultJson).review; if (value === "approved" || value === "unavailable") reviewStatuses[task.kind] = value; } catch { /* Legacy results may not have review metadata. */ }
+      }
+      return task;
+    });
+    return NextResponse.json({ ...analysis, tasks, reviewStatuses },{headers:{"Cache-Control":"private, no-store"}});
   } catch (error) { return apiError(error); }
 }
 export async function PATCH(request: Request, { params }: Context) {

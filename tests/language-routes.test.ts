@@ -16,9 +16,9 @@ let verificationLocales: string[] = [];
 let dualReviews = 0;
 
 class FakeAI {
-  async analyzeWithReview<T>(system: string, input: string, schema: ZodType<T>, locale: string): Promise<T> {
+  async analyzeWithReview<T>(system: string, input: string, schema: ZodType<T>, locale: string): Promise<{ value: T; review: "approved" }> {
     dualReviews++;
-    return this.analyzeLocalized(system, input, schema, locale);
+    return { value: await this.analyzeLocalized(system, input, schema, locale), review: "approved" };
   }
   async analyzeLocalized<T>(system: string, input: string, schema: ZodType<T>, locale: string): Promise<T> {
     calls.push({ locale, system, input });
