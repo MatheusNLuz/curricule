@@ -1,8 +1,9 @@
 import { z, ZodError,type ZodType } from "zod";
+import { setTimeout as retryDelay } from "node:timers/promises";
 import type { AiProviderInterface } from "./ai-provider.interface";
 import { OpenRouterProvider } from "./openrouter-provider";
 import { NvidiaNimProvider } from "./nvidia-nim-provider";
-import { aiFailureMetadata } from "./provider-error";
+import { aiFailureMetadata, isRetryableProviderFailure } from "./provider-error";
 import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError, OutputLanguageAuditError } from "./output-language";
 import { taskSignal } from "../task-context";
 import { HttpError } from "../http-error";
@@ -73,7 +74,7 @@ export class AnalysisOrchestrator {
       let repairStructure=false;
       let repairLanguage=false;
       let languageIssues: {path:string;reason:string}[] = [];
-      // One bounded regeneration for a wrong-language response, then provider fallback.
+      // One bounded recovery for transient failures, schema or language, then fallback.
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const instruction = repairLanguage
@@ -91,6 +92,10 @@ export class AnalysisOrchestrator {
           taskSignal()?.throwIfAborted();
           console.warn("Localized AI attempt failed", { provider: provider.name, locale: language, ...aiFailureMetadata(error) });
           if (error instanceof OutputLanguageAuditError) { auditUnavailable = error; break; }
+          if (attempt === 0 && isRetryableProviderFailure(error)) {
+            await retryDelay(500, undefined, { signal: taskSignal() });
+            continue;
+          }
           if(error instanceof ZodError){repairStructure=true;repairLanguage=false;correction="\nThe previous response failed the required JSON schema. Correct these fields: "+error.issues.map(issue=>issue.path.join(".")+": "+issue.message).join("; ")+". For rubric evidence copy ONE short continuous excerpt character-for-character from the supplied source, with no ellipsis, combining, translation or paraphrase. If evidence is absent use level 0 and foundText empty. Return the complete corrected response, preserving facts and the selected locale.";continue;}
           if (!(error instanceof OutputLanguageError)) break;
           repairStructure=false;repairLanguage=true;languageIssues=error.issues;correction="\nYour previous response failed language validation. Translate it into the selected locale only. Review every prose field; preserve the original facts and machine enums.";
@@ -100,6 +105,6 @@ export class AnalysisOrchestrator {
     }
     if (auditUnavailable) throw auditUnavailable;
     if (languageRejected) throw new OutputLanguageError();
-    throw new Error("AI providers unavailable or invalid language validation response");
+    throw new HttpError(503, "Os serviços de IA não conseguiram concluir esta etapa após as tentativas de recuperação. Seu material está salvo; tente novamente em alguns minutos.", "AI_PROVIDERS_UNAVAILABLE");
   }
 }

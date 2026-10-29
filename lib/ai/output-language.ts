@@ -1,8 +1,9 @@
 import { z, ZodError } from "zod";
+import { setTimeout as retryDelay } from "node:timers/promises";
 import { LOCALES, languageLabel } from "../analysis-contract";
 import { HttpError } from "../http-error";
 import type { AiProviderInterface } from "./ai-provider.interface";
-import { AiProviderError } from "./provider-error";
+import { isRetryableProviderFailure } from "./provider-error";
 import { taskSignal } from "../task-context";
 
 export const LANGUAGE_POLICY_VERSION = "selected-locale-v3";
@@ -111,8 +112,9 @@ Return ONLY JSON {"matchesSelectedLocale":boolean,"containsMixedLanguage":boolea
       return;
     } catch (error) {
       taskSignal()?.throwIfAborted();
-      if (!(error instanceof ZodError) && !(error instanceof AiProviderError && error.code === "INVALID_JSON")) throw error;
-      console.warn("Language audit returned invalid JSON", { provider: provider.name, attempt: attempt + 1 });
+      if (!(error instanceof ZodError) && !isRetryableProviderFailure(error)) throw error;
+      console.warn("Language audit needs recovery", { provider: provider.name, attempt: attempt + 1 });
+      if (attempt === 0) await retryDelay(500, undefined, { signal: taskSignal() });
     }
   }
   throw new OutputLanguageAuditError();

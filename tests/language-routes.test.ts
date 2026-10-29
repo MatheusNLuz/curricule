@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { ZodType } from "zod";
 import { OutputLanguageError } from "../lib/ai/output-language";
 import { ResumeAnalysisSchema } from "../lib/schemas/analysis.schema";
+import { HttpError } from "../lib/http-error";
 
 const initial = { id: "a", userId: "owner", selectedLanguage: "en-GB", mode: "MAKE_ATS_FRIENDLY", parsedResumeText: "Ana trabalhou na Example Inc. Organizou arquivos e analisou relatórios.", comparisonJson: null, jobDescription: "Organise files and analyse reports.", jobParseJson: '{"title":"Dados antigos em português"}', revision: 1, truthGuardJson: null, finalResumeJson: null };
 let row = { ...initial };
@@ -78,6 +79,14 @@ test("comparison reparses legacy job data and scopes both calls and cache to the
   assert.match(calls[1].input, /Organise files/);
   assert.doesNotMatch(calls[1].input, /Dados antigos/);
   assert.ok((tasks[0].input as unknown[]).includes("en-GB"));
+});
+
+test("comparison provider failure preserves the previous result and returns a specific recovery error", async () => {
+  outputs.push({ title: "Assistant", seniority: "unknown", requiredSkills: [], niceToHaveSkills: [], keyResponsibilities: ["Organise files"] }, new HttpError(503, "Providers temporarily unavailable", "AI_PROVIDERS_UNAVAILABLE"));
+  const response = await compare.POST(request());
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, "AI_PROVIDERS_UNAVAILABLE");
+  assert.ok(writes.every(write => !("comparisonJson" in write)));
 });
 
 test("generated questions and cached letters receive the selected locale", async () => {

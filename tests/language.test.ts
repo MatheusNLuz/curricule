@@ -6,6 +6,7 @@ import { OpenRouterProvider } from "../lib/ai/openrouter-provider";
 import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError, OutputLanguageAuditError } from "../lib/ai/output-language";
 import { AiProviderError } from "../lib/ai/provider-error";
 import type { AiGenerateJsonParams, AiProviderInterface } from "../lib/ai/ai-provider.interface";
+import { taskContext } from "../lib/task-context";
 
 const ContentSchema = z.object({ content: z.string(), recommendedLanguage: z.string().optional() });
 const approved = { matchesSelectedLocale: true, containsMixedLanguage: false };
@@ -195,6 +196,40 @@ test("an invalid audit JSON is retried without regenerating the valid draft", as
   assert.deepEqual(JSON.parse(calls[1].userPrompt), JSON.parse(calls[2].userPrompt));
   assert.match(calls[2].systemPrompt, /previous audit response was invalid/);
   assert.equal(calls[2].maxTokens, 1024);
+});
+
+test("quota-limited primary falls back and a temporary 503 is recovered once", async () => {
+  const limited = provider([new AiProviderError("HTTP_ERROR", 429)]);
+  const fallback = provider([new AiProviderError("HTTP_ERROR", 503), { content: "Comparação concluída." }, approved]);
+  const result = await new AnalysisOrchestrator([limited.fake, fallback.fake]).analyzeLocalized("Compare", "Resume and job", ContentSchema, "pt-BR");
+  assert.equal(result.content, "Comparação concluída.");
+  assert.equal(limited.calls.length, 1);
+  assert.equal(fallback.calls.length, 3);
+  assert.equal(fallback.calls[0].userPrompt, fallback.calls[1].userPrompt);
+});
+
+test("temporary failures during the language audit retry the audit only", async () => {
+  const draft = { content: "Comparação concluída." };
+  const { fake, calls } = provider([draft, new AiProviderError("HTTP_ERROR", 503), approved]);
+  assert.deepEqual(await new AnalysisOrchestrator([fake]).analyzeLocalized("Compare", "Resume and job", ContentSchema, "pt-BR"), draft);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[1].userPrompt, calls[2].userPrompt);
+});
+
+test("provider downtime has bounded attempts and an explicit service error", async () => {
+  const { fake, calls } = provider([new AiProviderError("HTTP_ERROR", 503), new AiProviderError("HTTP_ERROR", 503)]);
+  await assert.rejects(new AnalysisOrchestrator([fake]).analyzeLocalized("Compare", "Resume and job", ContentSchema, "pt-BR"), error => (error as {code?: string}).code === "AI_PROVIDERS_UNAVAILABLE");
+  assert.equal(calls.length, 2);
+});
+
+test("task cancellation interrupts provider recovery before a second request", async () => {
+  const controller = new AbortController();
+  const { fake, calls } = provider([new AiProviderError("HTTP_ERROR", 503)]);
+  const timer = setTimeout(() => controller.abort(), 20);
+  try {
+    await assert.rejects(taskContext.run({ analysisId: "test", userId: "test", kind: "COMPARE", token: "test", signal: controller.signal }, () => new AnalysisOrchestrator([fake]).analyzeLocalized("Compare", "Resume and job", ContentSchema, "pt-BR")), error => (error as Error).name === "AbortError");
+    assert.equal(calls.length, 1);
+  } finally { clearTimeout(timer); }
 });
 
 test("malformed audit verdicts have a bounded retry and never release unchecked output", async () => {
