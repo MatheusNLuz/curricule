@@ -255,3 +255,10 @@
 @keyframes stepConnect{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 @keyframes checkDraw{from{stroke-dashoffset:70;opacity:.3}to{stroke-dashoffset:0;opacity:1}}
 @keyframes finalStamp{from{transform:rotate(-14deg) scale(.9)}to{transform:rotate(-7deg) scale(1)}}
+
+/* Supporting UI stays readable at mobile sizes. */
+.landing{--quiet:color-mix(in srgb,var(--foreground) 76%,var(--paper));}
+.exampleLabel,.tourCaption,.demoFootnote,.footerNote{font-size:12px;line-height:1.6;}
+.tourTabs button,.demoTabs button{font-size:12px;min-height:40px;}
+.footer nav{font-size:12px;}.footer nav a{min-height:36px;display:inline-flex;align-items:center;}
+@media(max-width:600px){.tourCaption{font-size:11px;}.goalCard p,.faq summary{font-size:14px;}.footerNote{font-size:11px;}.finalNote{font-size:12px;}}

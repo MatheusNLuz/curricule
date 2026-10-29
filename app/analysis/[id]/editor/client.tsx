@@ -307,7 +307,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
             ? "Responda perguntas estratégicas para traduzir sua experiência em evidências reais de performance."
             : optimized ? "Veja a avaliação da nova versão, confira o currículo e baixe seu arquivo." : "Responda perguntas, ajuste o conteúdo e leve uma versão pronta para cada oportunidade."}
         </p>
-        <Journey current={optimized?3:2}/>
+        {!optimized && <Journey current={2}/>}
       </div>
 
       {optimized && !isLinkedIn && <GeneratedResumeSummary initialScores={data.initialScores} finalScores={data.finalScores} analysisId={analysisId}/>}
@@ -323,7 +323,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
           {match && <TabsTrigger value="match" className="shrink-0 text-xs sm:text-[13px]"><Briefcase className="mr-2 h-3.5 w-3.5" /> Comparação com a vaga</TabsTrigger>}
           <TabsTrigger value="questions" className="shrink-0 text-xs sm:text-[13px]"><HelpCircle className="mr-2 h-3.5 w-3.5" /> Perguntas e fatos</TabsTrigger>
           {optimized && <TabsTrigger value="edit" className="shrink-0 text-xs sm:text-[13px]"><PenTool className="mr-2 h-3.5 w-3.5" /> Editar currículo</TabsTrigger>}
-          <TabsTrigger value="preview" className="shrink-0 text-xs sm:text-[13px]"><Layout className="mr-2 h-3.5 w-3.5" /> Prévia e PDF</TabsTrigger>
+          <TabsTrigger value="preview" disabled={!optimized} className="shrink-0 text-xs sm:text-[13px]"><Layout className="mr-2 h-3.5 w-3.5" /> Prévia e PDF</TabsTrigger>
           <TabsTrigger value="coverletter" className="shrink-0 text-xs sm:text-[13px]"><FileText className="mr-2 h-3.5 w-3.5" /> Carta de Apresentação</TabsTrigger>
         </TabsList>
 

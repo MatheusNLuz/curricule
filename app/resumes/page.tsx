@@ -32,7 +32,7 @@ export default async function ResumesPage({ searchParams }: { searchParams: Prom
   const next = new URLSearchParams({ q: query.q, cursor: resumes.at(-1)?.id || "" });
 
   return <WorkspacePage><PageHeading title="Cada versão, um próximo passo." description="Seus currículos organizados para retomar, revisar e usar."><Link href="/analysis/new" className="button primary"><HugeIcon icon={Add01Icon} size={17}/>Criar uma versão</Link></PageHeading>
-<form action="/resumes" className="filterBar"><label className="searchField"><HugeIcon icon={File02Icon} size={18}/><input name="q" aria-label="Buscar currículo" maxLength={120} defaultValue={query.q} placeholder="Buscar meus currículos"/></label><button type="submit" className="button secondary">Buscar</button></form>
+{(resumes.length > 0 || query.q || query.cursor) && <form action="/resumes" className="filterBar"><label className="searchField"><HugeIcon icon={File02Icon} size={18}/><input name="q" aria-label="Buscar currículo" maxLength={120} defaultValue={query.q} placeholder="Buscar meus currículos"/></label><button type="submit" className="button secondary">Buscar</button></form>}
 {!resumes.length?<Sheet><EmptyState title="Seus currículos aparecerão aqui." description="Conclua uma revisão para abrir seu currículo no editor e baixar o PDF."/></Sheet>:<div className="resumeGrid">{resumes.map(resume=><ResumeLibraryCard key={resume.id} resume={resume}/>)}</div>}
 <nav className="pagination" aria-label="Paginação da biblioteca">{query.cursor?<Link href={"/resumes?q="+encodeURIComponent(query.q)}>Primeira página</Link>:<span/>}{results.length>HISTORY_PAGE_SIZE&&<Link href={"/resumes?"+next}>Próxima página</Link>}</nav></WorkspacePage>;
 }

@@ -247,3 +247,58 @@
   .work-ui .workspaceFooter{margin:0 auto;padding:24px 35px;align-items:center}
   .work-ui .score{max-width:270px}
 }
+
+/* UI audit: readable controls, compact working surfaces and unobstructed touch navigation. */
+.work-ui .finePrint { font-size:12px;line-height:1.7; }
+.work-ui .pageHeading { margin-bottom:24px; }
+.work-ui .pageHeading p { font-size:14px;line-height:1.7; }
+.work-ui .sheetHeading>span,.work-ui .actionRow small,.work-ui .recentList small { font-size:12px; }
+.work-ui .emptyState { padding:30px 22px; }
+.work-ui .emptyState p { font-size:13px; }
+.work-ui .flowTabs { max-width:100%;gap:4px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin; }
+.work-ui .flowTabs [role=tab] { color:var(--quiet);min-height:44px;font-size:13px;white-space:nowrap;flex:0 0 auto;padding:10px 14px; }
+.work-ui .flowTabs [data-active] { color:var(--violet); }
+.work-ui .dashboardLead:not(.hasPreview) { min-height:0; }
+.work-ui .dashboardLead:not(.hasPreview) .continueCopy { max-width:none;padding:24px 28px; }
+.work-ui .dashboardLead:not(.hasPreview) h2 { font-size:24px;max-width:30ch;margin-top:10px; }
+.work-ui .dashboardLead:not(.hasPreview) p { max-width:65ch;font-size:14px;line-height:1.7;margin-top:10px; }
+.work-ui .dashboardLead:not(.hasPreview) .button { margin-top:18px; }
+.work-ui .dashboardLead.hasPreview .continueCopy { padding:28px; }
+.work-ui .authForm .finePrint,.work-ui .authFooter,.work-ui .workspaceFooter { font-size:12px; }
+.work-ui .authFooter a,.work-ui .workspaceFooter a { display:inline-flex;align-items:center;min-height:40px; }
+.work-ui .authStoryFooter { display:none; }
+.work-ui .authForm .textLink { min-height:40px;display:inline-flex;align-items:center; }
+.work-ui .authHeader .textLink { font-size:12px;min-height:44px; }
+.work-ui .filterBar { gap:12px;justify-content:flex-start; }
+.work-ui .searchField { flex:1;max-width:520px; }
+.work-ui .filterBar .field { max-width:240px; }
+.work-ui .journey { margin-bottom:20px;padding-bottom:18px; }
+@media(max-width:859px) {
+ body:has(.workspaceMain) { height:100dvh;overflow:hidden; }
+ body:has(.workspaceMain) #page-top { height:100%;min-height:0;padding-bottom:calc(80px + env(safe-area-inset-bottom)); }
+ .curricule-shell { flex-shrink:0; }
+ .workspaceMain { flex:1;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;padding-bottom:0;scroll-padding-block:20px; }
+ .workspaceMain :is(button,a,input,textarea,select,summary,[role=tab]) { scroll-margin-block:20px; }
+ .curricule-shell .mobileNav { bottom:0;left:0;right:0;max-width:none;margin:0;min-height:80px;padding:6px 12px calc(6px + env(safe-area-inset-bottom));border-radius:0;border-width:1px 0 0;box-shadow:0 -5px 20px #211b3d08; }
+ .curricule-shell .mobileNav a { font-size:11px;min-height:58px; }
+ .work-ui .mainContent { padding:24px 18px; }
+ .work-ui .workspaceFooter { padding:20px 18px;gap:14px; }
+ .work-ui .workspaceFooter nav { display:flex;flex-wrap:wrap;gap:6px 18px; }
+ .work-ui .dashboardLead:not(.hasPreview) .continueCopy { padding:22px; }
+ .work-ui .dashboardLead:not(.hasPreview) h2 { font-size:22px; }
+ .work-ui .sheetHeading { padding:18px; }
+ .work-ui .filterBar { flex-direction:row;flex-wrap:wrap; }
+ .work-ui .filterBar .searchField { flex:1 1 180px; }
+ .work-ui .filterBar .button { flex:0 0 auto;width:auto; }
+ .work-ui .authGrid { padding-top:20px; }
+ .work-ui .authHeader .textLink { max-width:130px; }
+}
+
+.curricule-shell .breadcrumbs{font-size:12px;}.curricule-shell .sidebar nav a{font-size:13px;}.curricule-shell .account small{font-size:11px;line-height:1.5;}
+
+@media(min-width:1100px){
+ .work-ui .dashboardLead:not(.hasPreview) .continueCopy{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:32px;row-gap:10px;align-items:start;}
+ .work-ui .dashboardLead:not(.hasPreview) .continueCopy :is(.status,h2,p,.subtleLine){grid-column:1;margin:0;max-width:none;}
+ .work-ui .dashboardLead:not(.hasPreview) .continueCopy .status{justify-self:start;}
+ .work-ui .dashboardLead:not(.hasPreview) .continueCopy .button{grid-column:2;grid-row:2 / span 3;align-self:center;margin:0;}
+}
