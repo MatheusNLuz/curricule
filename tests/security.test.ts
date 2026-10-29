@@ -14,7 +14,7 @@ import { reviewTruth, truthContext, truthSourceHash, type ReviewedTruth } from "
 import { AnalysisOrchestrator } from "../lib/ai/analysis-orchestrator.ts";
 import { z } from "zod";
 import { TruthGuard, normalizeTruthVerdict } from "../lib/ats/truth-guard.ts";
-import { verifyOutput } from "../lib/ats/verify-output.ts";
+import { generateVerifiedOutput, OutputVerificationError, verifyOutput } from "../lib/ats/verify-output.ts";
 import { hasSourceText, isSourceUrl } from "../lib/source-input.ts";
 
 test("PATCH rejects internal fields and validates published resume JSON", () => {
@@ -126,4 +126,18 @@ test("final fact verification rejects declined and unconfirmed generated content
   assert.equal(verify.mock.callCount(), 0);
   await assert.rejects(() => verifyOutput("Original", "", "Invented metric", []));
   assert.equal(verify.mock.callCount(), 1); verify.mock.restore();
+});
+test("a rejected rewrite is corrected once and checked again before use", async () => {
+  const inputs: string[][] = [];
+  const checked: string[] = [];
+  const output = await generateVerifiedOutput(async issues => { inputs.push(issues); return issues.length ? "supported" : "invented"; }, async value => { checked.push(value); if (value === "invented") throw new OutputVerificationError(["invented"]); });
+  assert.equal(output, "supported");
+  assert.deepEqual(inputs, [[], ["invented"]]);
+  assert.deepEqual(checked, ["invented", "supported"]);
+});
+test("a rewrite is never released if verification continues to fail or is unavailable", async () => {
+  await assert.rejects(generateVerifiedOutput(async () => "unsupported", async () => { throw new OutputVerificationError(["unsupported"]); }), OutputVerificationError);
+  let attempts = 0;
+  await assert.rejects(generateVerifiedOutput(async () => { attempts++; return "draft"; }, async () => { throw new Error("unavailable"); }));
+  assert.equal(attempts, 1);
 });

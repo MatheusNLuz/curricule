@@ -7,6 +7,7 @@ const TRUTH_GUARD_SYSTEM_PROMPT = `You are the Truth Guard. Your sole purpose is
 You must classify every new claim, skill, or metric proposed for the resume rewrite.
 A claim can ONLY be used if it is 'confirmed_by_resume' or 'confirmed_by_user'.
 Any claim that is an invention or hallucination MUST be marked 'forbidden_to_use'.
+For the review screen, translate claim descriptions faithfully into the selected output language even when the source is in another language. Preserve proper names, technical terms and the underlying facts. A question or a blank answer is not a confirmed or denied fact.
 Return ONLY valid JSON matching this exact structure:
 {
   "claims": [
@@ -32,9 +33,11 @@ export function normalizeTruthVerdict(result: TruthGuardGen): TruthGuardGen {
 
 export class TruthGuard {
   static async evaluate(resumeText: string, userAnswers: string, proposedChanges: string, rejected: string[] = [], language = "pt-BR", interactive = false): Promise<TruthGuardGen> {
-    const orchestrator = interactive
-      ? new AnalysisOrchestrator([new OpenRouterProvider(), new NvidiaNimProvider(process.env.NVIDIA_NIM_TRUTH_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b"), new NvidiaNimProvider()])
-      : new AnalysisOrchestrator();
+    const fast = new NvidiaNimProvider(process.env.NVIDIA_NIM_TRUTH_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b");
+    const configured = new NvidiaNimProvider();
+    const orchestrator = new AnalysisOrchestrator(interactive
+      ? [new OpenRouterProvider(), fast, configured]
+      : [new OpenRouterProvider(), configured, fast]);
     
     const userPrompt = `
 ORIGINAL RESUME:

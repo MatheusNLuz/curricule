@@ -10,7 +10,7 @@ import { apiError } from "@/lib/http-error";
 import type { SmartQuestion } from "@prisma/client";
 
 const QUESTIONS_WITH_JOB_PROMPT = `You are an expert technical recruiter and ATS specialist.
-Based on the gap analysis between the resume and the job description, generate smart questions to ask the candidate. You can generate up to 8 questions if necessary.
+Based on the resume and the actual job description, generate smart questions to ask the candidate. You can generate up to 8 questions if necessary. Treat the gap analysis as a fallible suggestion: the original job description is the authority for what the job actually requires. Do not turn optional skills into mandatory requirements, add production experience, or imply that certificates, metrics, or specific practices are required unless the job explicitly says so. Do not present speculation in a question's reason as established fact. Questions may be left unanswered; unanswered is not a negative answer.
 Ask neutral questions. Never assume the candidate implemented improvements, used tools, led people, or achieved results that are not explicitly documented. Quantitative questions must explicitly allow "not measured / do not know"; do not demand a number or suggest one. Do not claim a recruiter or ATS universally requires a metric.
 Focus on:
 1. Relevant context and, when appropriate, whether measurable results exist; explicitly allow no or unknown.
@@ -159,7 +159,7 @@ export async function POST(req: Request) {
     } else if (analysis.comparisonJson) {
       // Job-specific gaps mode
       prompt = QUESTIONS_WITH_JOB_PROMPT;
-      payload = `Resume Text:\n${analysis.parsedResumeText}\n\nGap Analysis:\n${analysis.comparisonJson}\n\n${historyBlock}`;
+      payload = `Resume Text:\n${analysis.parsedResumeText}\n\nOriginal Job Description:\n${analysis.jobDescription || "Not provided"}\n\nGap Analysis (fallible suggestions):\n${analysis.comparisonJson}\n\n${historyBlock}`;
     } else {
       // General resume optimization mode
       prompt = QUESTIONS_GENERAL_PROMPT;
