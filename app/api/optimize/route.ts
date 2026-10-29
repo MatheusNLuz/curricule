@@ -9,12 +9,11 @@ import { AnalysisOrchestrator } from "@/lib/ai/analysis-orchestrator";
 import { OpenRouterProvider } from "@/lib/ai/openrouter-provider";
 import { NvidiaNimProvider } from "@/lib/ai/nvidia-nim-provider";
 import { ATS_ANALYZER_SYSTEM_PROMPT, generateAtsAnalyzerUserPrompt, getLinkedInSystemPrompt } from "@/lib/ai/prompts";
-import { OptimizedResumeSchema } from "@/lib/schemas/optimize.schema";
 import { LinkedInAnalysisSchema, resumeAssessmentSchema } from "@/lib/schemas/analysis.schema";
 import { storedConfirmedClaims, storedRejectedClaims, readTruth, reviewTruth, truthContext, truthSourceHash } from "@/lib/ats/truth-policy";
 import { generateVerifiedOutput, verifyOutput } from "@/lib/ats/verify-output";
 import { ScoreEngine } from "@/lib/ats/score-engine";
-import { RESUME_REWRITE_PROMPT, RESUME_FACT_REPAIR_PROMPT } from "@/lib/ai/resume-rewrite-prompt";
+import { rewriteResume } from "@/lib/ai/rewrite-resume";
 import { languageLabel } from "@/lib/analysis-contract";
 import { resumeText } from "@/lib/resume/resume-text";
 import { recordRevision } from "@/lib/resume-revisions";
@@ -36,7 +35,7 @@ export async function POST(request: Request) {
     facts.rejected=[...new Set([...facts.rejected,...storedRejectedClaims(analysis.rejectedClaimsJson)])];
     const answers = analysis.questions.filter(q => q.confirmed).map(q => ({ question: q.question, answer: answerForReview(q.answer) })).filter(q => q.answer).map(q => q.question + ": " + q.answer).join("\n");
     const confirmed = answers + "\nExplicitly confirmed by candidate:\n" + facts.approved.join("\n");
-    const result = await runAnalysisTask(analysisId, session.userId, "OPTIMIZE", ["rewrite-v3", review, analysis.revision, analysis.selectedLanguage, analysis.jobLocation,resumeRegionGuidance(analysis.jobLocation),analysis.rejectedClaimsJson,analysis.confirmedClaimsJson], async () => {
+    const result = await runAnalysisTask(analysisId, session.userId, "OPTIMIZE", ["rewrite-v4-job-evidence", review, analysis.revision, analysis.selectedLanguage, analysis.jobLocation,resumeRegionGuidance(analysis.jobLocation),analysis.rejectedClaimsJson,analysis.confirmedClaimsJson], async () => {
       const ai = new AnalysisOrchestrator([new NvidiaNimProvider(process.env.NVIDIA_NIM_TRUTH_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b"), new OpenRouterProvider(), new NvidiaNimProvider()]);
       const payload = JSON.stringify({ original: analysis.parsedResumeText, confirmed, rejected: facts.rejected, job: analysis.jobDescription, language: languageLabel(analysis.selectedLanguage), region: analysis.jobLocation });
       let optimized: unknown, assessment: unknown, finalScores: unknown;
@@ -50,10 +49,7 @@ export async function POST(request: Request) {
         finalScores = (assessment as z.infer<typeof LinkedInAnalysisSchema>).scores;
         optimized = { ...generated, scores: finalScores };
       } else {
-        const generated = await generateVerifiedOutput<z.infer<typeof OptimizedResumeSchema>>(
-          (issues, previousOutput) => ai.analyzeLocalized((issues.length ? RESUME_FACT_REPAIR_PROMPT : RESUME_REWRITE_PROMPT) + "\nOutput language: " + languageLabel(analysis.selectedLanguage) + ". Optional regional guidance: " + resumeRegionGuidance(analysis.jobLocation) + " These are not universal rules; prioritize the vacancy and candidate's choices. Never invent facts, add personal ID numbers or unconfirmed personal data. The selected output language is independent of region.", issues.length ? JSON.stringify({ originalInput: JSON.parse(payload), previousOutput, reviewFeedback: issues }) : payload, OptimizedResumeSchema, analysis.selectedLanguage),
-          value => verifyOutput(analysis.parsedResumeText!, confirmed, resumeText(value, analysis.selectedLanguage), facts.rejected, "resume", analysis.selectedLanguage),
-        );
+        const generated = await rewriteResume(ai, { original: analysis.parsedResumeText!, confirmed, confirmedEvidence: facts.approved.join("\n"), rejected: facts.rejected, job: analysis.jobDescription, language: analysis.selectedLanguage, region: analysis.jobLocation });
         const text = resumeText(generated,analysis.selectedLanguage);
         const evaluation = await ai.analyzeLocalized(ATS_ANALYZER_SYSTEM_PROMPT, generateAtsAnalyzerUserPrompt(text, analysis.professionalTarget || "General", analysis.mode, analysis.selectedLanguage), resumeAssessmentSchema(text), analysis.selectedLanguage);
         finalScores = ScoreEngine.evaluate(evaluation); assessment = { ...evaluation, scores: finalScores }; optimized = generated;

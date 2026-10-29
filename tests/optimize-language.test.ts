@@ -25,7 +25,8 @@ mock.module(new URL("../lib/ai/analysis-orchestrator.ts", import.meta.url).href,
   async analyzeLocalized<T>(prompt: string, input: string, schema: ZodType<T>, selected: string): Promise<T> {
     calls.push({ locale: selected, input, prompt });
     if (failure) throw new OutputLanguageError();
-    return schema.parse(calls.length === 1 ? generated : { rubric: ["ats", "structure", "clarity", "impact", "keywords"].map(criterion => ({ criterion, level: 0, foundText: "", reason: "Sin evaluación suficiente." })), scores: {} });
+    if (prompt.startsWith("You prepare an evidence-based plan")) return schema.parse({ targetRole: "Backend", priorities: [{ requirement: "PHP APIs", jobEvidence: { foundText: "PHP APIs" }, candidateEvidence: { foundText: "serviços PHP e APIs REST" } }], unsupportedRequirements: [] });
+    return schema.parse(calls.length === 2 ? generated : { rubric: ["ats", "structure", "clarity", "impact", "keywords"].map(criterion => ({ criterion, level: 0, foundText: "", reason: "Sin evaluación suficiente." })), scores: {} });
   }
 } } });
 const optimize = await import("../app/api/optimize/route");
@@ -37,13 +38,15 @@ test("rewrite and final assessment use the selected locale independently of mixe
     locale = selected; calls = [];
     const response = await optimize.POST(request());
     assert.equal(response.status, 200);
-    assert.deepEqual(calls.map(call => call.locale), [selected, selected]);
-    const payload = JSON.parse(calls[0].input);
+    assert.deepEqual(calls.map(call => call.locale), [selected, selected, selected]);
+    assert.equal(JSON.parse(calls[0].input).confirmed, "");
+    const payload = JSON.parse(calls[1].input);
     assert.equal(payload.original, original);
     assert.equal(payload.region, "US");
     assert.equal(payload.job, row().jobDescription);
-    assert.match(calls[0].prompt, /role titles/);
-    assert.match(calls[0].prompt, /most relevant supported bullets FIRST/);
+    assert.equal(payload.tailoring.priorities[0].candidateEvidence.foundText, "serviços PHP e APIs REST");
+    assert.match(calls[1].prompt, /role titles/);
+    assert.match(calls[1].prompt, /most relevant supported bullets FIRST/);
     assert.deepEqual(JSON.parse(writes.at(-1)!.finalResumeJson as string), generated);
   }
 });
