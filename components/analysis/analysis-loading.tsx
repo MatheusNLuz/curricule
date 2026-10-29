@@ -44,6 +44,9 @@ export function AnalysisLoading({ step, description, writing = false, variant, c
           <div className={styles.skills}><i/><i/><i/></div>
           <div className={styles.cursor}/><div className={styles.scan}/>
         </div>
+        {(kind === "questions" || kind === "verify") && <div className={styles.prompts}>
+          {[0, 1, 2].map(index => <div className={styles.prompt} key={index}><span>?</span><div><i/><i/></div></div>)}
+        </div>}
         <div className={styles.activity}><span/><span/><span/></div>
       </div>
       <div className={styles.copy}>
