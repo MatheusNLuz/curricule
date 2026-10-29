@@ -28,6 +28,7 @@ test("login and registration expose only the supported email/password flow", () 
 test("landing renders the interactive writing example before any viewport event", async () => {
   const html=renderToStaticMarkup(await HomePage());
   assert.ok(html.includes("Laboratório de escrita"));assert.ok(html.includes("Confirmar essa informação no exemplo"));
+  assert.match(html,/data-motion="hero"/);assert.match(html,/data-motion="process"/);
   assert.doesNotMatch(html,/será carregado ao chegar|Carregando sua análise/);
 });
 test("application shell no longer renders optional measurement controls", async () => {

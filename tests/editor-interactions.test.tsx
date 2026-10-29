@@ -20,8 +20,36 @@ const {notifyTaskActivity}=await import("../lib/task-events");
 const {FlagPicker}=await import("../components/ui/flag-picker");
 const {ReviewQuestions}=await import("../components/analysis/review-questions");
 const {TruthGuardPanel}=await import("../components/analysis/truth-guard-panel");
+const {LandingMotion}=await import("../components/home/landing-motion");
 const {answerForReview}=await import("../lib/question-answer");
 test.afterEach(()=>{cleanup();mock.restoreAll();dom.window.localStorage.clear();destinations.length=0;replacements.length=0;searchQuery="";});
+
+test("landing motion enters once, pauses offscreen and pauses in hidden tabs",()=>{
+  let callback:IntersectionObserverCallback=()=>{};
+  const observed:Element[]=[];
+  class Observer { constructor(handler:IntersectionObserverCallback){callback=handler;} observe(element:Element){observed.push(element);} disconnect(){} }
+  const previousGlobal=Object.getOwnPropertyDescriptor(globalThis,"IntersectionObserver");
+  const previousWindow=Object.getOwnPropertyDescriptor(dom.window,"IntersectionObserver");
+  const previousHidden=Object.getOwnPropertyDescriptor(dom.window.document,"hidden");
+  Object.defineProperty(globalThis,"IntersectionObserver",{value:Observer,configurable:true});
+  Object.defineProperty(dom.window,"IntersectionObserver",{value:Observer,configurable:true});
+  try{
+    const view=render(<LandingMotion className="landing"><section data-motion="hero">Conteúdo sempre disponível</section></LandingMotion>);
+    assert.equal(observed.length,1);
+    const target=observed[0] as HTMLElement;
+    callback([{target,isIntersecting:true}] as unknown as IntersectionObserverEntry[],{} as IntersectionObserver);
+    assert.equal(target.dataset.motionSeen,"true");
+    callback([{target,isIntersecting:false}] as unknown as IntersectionObserverEntry[],{} as IntersectionObserver);
+    assert.equal(target.dataset.motionSeen,"true");assert.equal(target.dataset.motionVisible,"false");
+    Object.defineProperty(dom.window.document,"hidden",{value:true,configurable:true});
+    dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange"));
+    assert.equal((view.container.firstElementChild as HTMLElement).dataset.motionPaused,"true");
+    assert.ok(screen.getByText("Conteúdo sempre disponível"));
+  }finally{
+    cleanup();
+    for(const [target,key,previous] of [[globalThis,"IntersectionObserver",previousGlobal],[dom.window,"IntersectionObserver",previousWindow],[dom.window.document,"hidden",previousHidden]] as const){if(previous)Object.defineProperty(target,key,previous);else Reflect.deleteProperty(target,key);}
+  }
+});
 
 test("fact review groups information and preserves the original decision indexes",async()=>{
   let submitted:Record<string,boolean>|undefined;
