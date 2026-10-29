@@ -62,7 +62,7 @@ for (const [locale, prose] of Object.entries({
     assert.match(calls[0].systemPrompt, new RegExp(`MANDATORY OUTPUT LANGUAGE: ${locale}`));
     assert.match(calls[0].systemPrompt, /Job location NEVER overrides/);
     assert.equal(JSON.parse(calls[1].userPrompt).selectedLocale, locale);
-    assert.deepEqual(JSON.parse(calls[1].userPrompt).outputToAudit, output);
+    assert.deepEqual(JSON.parse(calls[1].userPrompt).outputToAudit, { content: prose });
   });
 }
 
@@ -74,6 +74,14 @@ test("mixed prose is discarded and regenerated before returning", async () => {
   assert.equal(calls.length, 4);
   assert.match(calls[2].systemPrompt, /failed language validation/);
   assert.equal(calls[2].userPrompt, "Original");
+});
+
+test("language rejection identifies fields so regeneration can fix the actual problem", async () => {
+  const { fake, calls } = provider([{ content: "English text" }, { ...rejected, issues: [{ path: "content", reason: "English prose" }] }, { content: "Texto em português." }, approved]);
+  const result = await new AnalysisOrchestrator([fake]).analyzeLocalized("Summary", "Original", ContentSchema, "pt-BR");
+  assert.equal(result.content, "Texto em português.");
+  assert.match(calls[2].userPrompt, /English prose/);
+  assert.match(calls[2].userPrompt, /preserve source quotations/);
 });
 
 test("two different providers author and review before the result is returned", async () => {
@@ -191,8 +199,28 @@ test("approved names, technical terms, original evidence and numbers are never r
   const snapshot = JSON.stringify(output);
   await assertOutputLanguage(fake, output, "pt-PT");
   assert.equal(JSON.stringify(output), snapshot);
-  assert.deepEqual(JSON.parse(calls[0].userPrompt).outputToAudit, output);
+  assert.deepEqual(JSON.parse(calls[0].userPrompt).outputToAudit, { content: output.content, score: output.score });
   assert.match(outputLanguagePolicy("pt-PT"), /Preserve personal identity/);
+});
+
+test("a mixed-language source quotation is excluded from the generated-output audit", async () => {
+  const output = { content: "Desenvolvi aplicações web com React.", foundText: "Built web applications and developed APIs.", recommendedLanguage: "pt-BR" };
+  const { fake, calls } = provider([approved]);
+  await assertOutputLanguage(fake, output, "pt-BR");
+  const audited = JSON.parse(calls[0].userPrompt).outputToAudit;
+  assert.equal(audited.content, output.content);
+  assert.equal("foundText" in audited, false);
+  assert.equal(output.foundText, "Built web applications and developed APIs.");
+});
+
+test("generated language names and skill headings remain subject to the selected output locale", async () => {
+  const output = { personalInfo: { name: "Ana Exemplo" }, languages: [{ name: "Inglês", proficiency: "Intermediário" }], skills: [{ category: "Desenvolvimento", items: ["React"] }] };
+  const { fake, calls } = provider([approved]);
+  await assertOutputLanguage(fake, output, "pt-BR");
+  const audited = JSON.parse(calls[0].userPrompt).outputToAudit;
+  assert.deepEqual(audited.languages, output.languages);
+  assert.deepEqual(audited.skills, output.skills);
+  assert.equal("name" in audited.personalInfo, false);
 });
 
 test("a company name containing a regional verb is preserved even inside prose", async () => {

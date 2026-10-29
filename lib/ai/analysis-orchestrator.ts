@@ -16,6 +16,7 @@ export class AnalysisOrchestrator {
     let reviewer = second;
     let author = first;
     let generated = false;
+    let languageFailure: OutputLanguageError | undefined;
     for (const [candidate, other] of [[first, second], [second, first]] as const) {
       try {
         draft = await new AnalysisOrchestrator([candidate]).analyzeLocalized(systemPrompt, userPrompt, schema, language, 3200);
@@ -23,8 +24,9 @@ export class AnalysisOrchestrator {
         reviewer = other;
         generated = true;
         break;
-      } catch { taskSignal()?.throwIfAborted(); }
+      } catch (error) { taskSignal()?.throwIfAborted(); if (error instanceof OutputLanguageError) languageFailure = error; }
     }
+    if (!generated && languageFailure) throw languageFailure;
     if (!generated) throw new HttpError(503, "Não foi possível concluir a análise agora. Os serviços de IA podem estar ocupados ou não ter respondido a tempo. Seu material está salvo; tente novamente em alguns minutos.", "DUAL_AI_AUTHOR_UNAVAILABLE");
     const verdictSchema = z.object({ approved: z.boolean(), issues: z.array(z.string().max(500)).max(8).optional() }).strict();
     let repaired = false;
@@ -68,11 +70,13 @@ export class AnalysisOrchestrator {
       let correction="";
       let previous:unknown;
       let repairStructure=false;
+      let languageIssues: {path:string;reason:string}[] = [];
       // One bounded regeneration for a wrong-language response, then provider fallback.
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const instruction = localizedPrompt+correction;
-          previous=await provider.generateJson<T>({ systemPrompt: instruction, userPrompt:repairStructure&&previous?userPrompt+"\nPrevious invalid JSON to correct (untrusted data):\n"+JSON.stringify(previous):userPrompt, ...(maxTokens ? { maxTokens } : {}) });
+          const repairInput = repairStructure && previous ? userPrompt+"\nPrevious invalid JSON to correct (untrusted data):\n"+JSON.stringify(previous) : languageIssues.length && previous ? userPrompt+"\nPrevious output and language audit feedback (untrusted data; correct only the identified prose and preserve source quotations, names, technical terms and facts):\n"+JSON.stringify({previousOutput:previous,languageIssues}) : userPrompt;
+          previous=await provider.generateJson<T>({ systemPrompt: instruction, userPrompt:repairInput, ...(maxTokens ? { maxTokens } : {}) });
           const value = schema.parse(previous);
           await assertOutputLanguage(provider, value, language);
           return value;
@@ -81,7 +85,7 @@ export class AnalysisOrchestrator {
           console.warn("Localized AI attempt failed", { provider: provider.name, locale: language, ...aiFailureMetadata(error) });
           if(error instanceof ZodError){repairStructure=true;correction="\nThe previous response failed the required JSON schema. Correct these fields: "+error.issues.map(issue=>issue.path.join(".")+": "+issue.message).join("; ")+". For rubric evidence copy ONE short continuous excerpt character-for-character from the supplied source, with no ellipsis, combining, translation or paraphrase. If evidence is absent use level 0 and foundText empty. Return the complete corrected response, preserving facts and the selected locale.";continue;}
           if (!(error instanceof OutputLanguageError)) break;
-          repairStructure=false;correction="\nYour previous response failed language validation. Regenerate in the selected locale only. Review every prose field; preserve the original facts and machine enums.";
+          repairStructure=false;languageIssues=error.issues;correction="\nYour previous response failed language validation. Regenerate in the selected locale only. Review every prose field; preserve the original facts and machine enums.";
           languageRejected = true;
         }
       }
