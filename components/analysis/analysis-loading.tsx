@@ -31,13 +31,23 @@ export function AnalysisLoading({ step, description, writing = false, variant, c
     return () => { observer?.disconnect(); document.removeEventListener("visibilitychange", update); };
   }, []);
   const Heading = compact ? "h2" : "h1";
+  const rewriting = kind === "rewrite" || kind === "letter";
   return <div ref={root} className={styles.layout} data-kind={kind} data-compact={compact || undefined} role="status" aria-live="polite" aria-busy="true">
     <div className={styles.content}>
-      <div className={styles.art} aria-hidden="true">
+      {rewriting ? <div className={styles.writingDesk} aria-hidden="true">
+        <div className={styles.deskToolbar}><CurriculeMark width={23} height={23}/><span>Reescrita em andamento</span><span className={styles.deskDots}><i/><i/><i/></span></div>
+        <div className={styles.deskDocument}>
+          <div className={styles.deskName}/><div className={styles.deskContact}/>
+          <div className={styles.deskSection}><strong>{kind === "letter" ? "Sua apresentação" : "Resumo profissional"}</strong><div className={styles.deskLine}/><div className={styles.deskLine}/><div className={styles.deskLine}/></div>
+          <div className={styles.deskSection}><strong>{kind === "letter" ? "Experiência e oportunidade" : "Experiência profissional"}</strong><div className={styles.deskLine}/><div className={styles.deskLine}/></div>
+          <span className={styles.deskCaret}/>
+        </div>
+        <p className={styles.deskCaption}>Animação ilustrativa · O conteúdo aparece ao concluir.</p>
+      </div> : <div className={styles.art} aria-hidden="true">
         <div className={styles.orbit} />
         <div className={styles.source}><span>{kind === "compare" ? "A oportunidade" : "Seu material"}</span><i/><i/><i/><i/></div>
         <div className={styles.paper}>
-          <div className={styles.paperHeader}><CurriculeMark width={24} height={24}/><span>{kind === "letter" ? "Sua apresentação" : kind === "questions" ? "Sua experiência" : "Sua nova versão"}</span><span className={styles.paperDot}/></div>
+          <div className={styles.paperHeader}><CurriculeMark width={24} height={24}/><span>{kind === "questions" ? "Sua experiência" : "Sua nova versão"}</span><span className={styles.paperDot}/></div>
           <div className={styles.nameLine}/><div className={styles.contactLine}/>
           <div className={styles.section}><span className={styles.sectionLabel}/><div className={styles.lines}><i/><i/><i/></div></div>
           <div className={styles.section}><span className={styles.sectionLabel}/><div className={`${styles.lines} ${styles.bullets}`}><i/><i/><i/></div></div>
@@ -48,7 +58,7 @@ export function AnalysisLoading({ step, description, writing = false, variant, c
           {[0, 1, 2].map(index => <div className={styles.prompt} key={index}><span>?</span><div><i/><i/></div></div>)}
         </div>}
         <div className={styles.activity}><span/><span/><span/></div>
-      </div>
+      </div>}
       <div className={styles.copy}>
         <Heading>{step}</Heading>
         <p>{description || descriptions[kind]}</p>
