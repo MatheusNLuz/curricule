@@ -19,8 +19,23 @@ const {TaskProgress}=await import("../components/analysis/task-progress");
 const {notifyTaskActivity}=await import("../lib/task-events");
 const {FlagPicker}=await import("../components/ui/flag-picker");
 const {ReviewQuestions}=await import("../components/analysis/review-questions");
+const {TruthGuardPanel}=await import("../components/analysis/truth-guard-panel");
 const {answerForReview}=await import("../lib/question-answer");
 test.afterEach(()=>{cleanup();mock.restoreAll();dom.window.localStorage.clear();destinations.length=0;});
+
+test("fact review groups information and preserves the original decision indexes",async()=>{
+  let submitted:Record<string,boolean>|undefined;
+  const claim=(text:string,source:"confirmed_by_resume"|"low_confidence_inference"|"missing")=>({claim:text,source,canUseInResume:source==="confirmed_by_resume",canUseInCoverLetter:source==="confirmed_by_resume",explanation:"Detalhe"});
+  render(<TruthGuardPanel truthGuardData={{claims:[claim("Formação informada","confirmed_by_resume"),claim("Possível experiência","low_confidence_inference"),claim("Não confirmado","missing")],blockedClaims:["Não confirmado"],warnings:[],sourceHash:"x",decisions:{}}} onApprove={async decisions=>{submitted=decisions;}} onEditAnswers={()=>{}}/>);
+  const user=userEvent.setup({document:dom.window.document});
+  const approve=screen.getByRole("button",{name:"Revise as informações acima"}) as HTMLButtonElement;
+  assert.equal(approve.disabled,true);
+  assert.equal((screen.getByText(/Informações encontradas nas fontes/).closest("details") as HTMLDetailsElement).open,false);
+  assert.equal((screen.getByText(/Informações que não serão usadas/).closest("details") as HTMLDetailsElement).open,false);
+  await user.click(screen.getByRole("button",{name:"Confirmo esse fato"}));
+  await user.click(screen.getByRole("button",{name:"Salvar decisões e otimizar"}));
+  assert.deepEqual(submitted,{"1":true});
+});
 
 test("conditional and multi-select answers preserve edits while excluding declined details",async()=>{
   let latest:Record<string,string>={};
