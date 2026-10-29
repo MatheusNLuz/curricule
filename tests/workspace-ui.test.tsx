@@ -34,6 +34,7 @@ const { WorkspacePage } = await import("../components/workspace/workspace-ui");
 const { AppShellNav } = await import("../components/app-shell/app-shell-nav");
 const { ThemeProvider } = await import("../components/theme-provider");
 const { ResumeAnalysisView } = await import("../components/analysis/resume-analysis-view");
+const { ResumeLibraryCard } = await import("../components/resumes/resume-library-card");
 const { ReviewQuestions } = await import("../components/analysis/review-questions");
 const { ResumeEditingWorkspace } = await import("../components/editor/resume-editing-workspace");
 const { LinkedInDashboard } = await import("../components/analysis/linkedin-dashboard");
@@ -59,7 +60,7 @@ test("dashboard, history and library scope every collection to the signed-in own
     assert.match(html, /Atendimento ao cliente/);
     assert.doesNotMatch(html, /Ana Martins|Empresa Exemplo/);
   }
-  assert.match(renderToStaticMarkup(elements[2]), /Pontuação da versão atual indisponível/);
+  assert.match(renderToStaticMarkup(elements[2]), /Reavaliação pendente/);
   assert.equal(ownerReads.length, 3);
 });
 test("breadcrumb identifies the current workspace page without repeating its root", () => {
@@ -81,20 +82,33 @@ test("score panel shows actual decreases and missing values without fixed predic
   assert.match(initial, /Clareza/);
   assert.doesNotMatch(initial, /Ver detalhes da pontuação/);
   const zero = renderToStaticMarkup(<ResumeAnalysisView {...props} record={{...props.record,finalResumeJson:null}} scores={{ overall: 0 }} />);
-  assert.match(zero, /class="resultScoreValue">0<span>\/100/);
+  assert.match(zero, /aria-label="Antes da otimização"[^>]*aria-valuenow="0"/);
   const missing = renderToStaticMarkup(<ResumeAnalysisView {...props} scores={null} />);
   assert.match(missing, /Nota atual indisponível/);
   const edited=renderToStaticMarkup(<ResumeAnalysisView {...props}/>);
   assert.match(edited,/Edição salva; nota ainda não atualizada/);
   assert.match(edited,/Nota atual indisponível/);
-  assert.match(edited,/Reavalie a versão salva para atualizar a nota/);
-  assert.match(edited,/Avaliação inicial: <strong>55\/100/);
+  assert.match(edited,/Reavalie a versão salva/);
+  assert.match(edited,/aria-label="Antes da otimização"[^>]*aria-valuenow="55"/);
   assert.match(edited,/Baixar PDF/);assert.match(edited,/Baixar DOCX/);
   assert.match(edited,/1 ponto identificado/);
   assert.match(edited,/Atendimento por chat/);
   assert.doesNotMatch(edited,/Requisitos da vaga não comprovam sua experiência/);
   assert.match(edited,/Compatibilidade com a vaga/);
   assert.match(edited,/Pontos fortes e melhorias/);
+});
+
+test("resume thumbnail ring uses the final score and distinguishes before, after and pending", () => {
+  const final = renderToStaticMarkup(<ResumeLibraryCard resume={{ ...record, initialScores: '{"overall":64}', finalScores: '{"overall":75}' }}/>);
+  assert.match(final, /aria-label="Após a otimização"[^>]*aria-valuenow="75"/);
+  assert.match(final, /Antes da otimização<\/dt><dd>64\/100/);
+  assert.match(final, /Após a otimização<\/dt><dd>75\/100/);
+  assert.doesNotMatch(final, /Nota da versão reavaliada:/);
+  const pending = renderToStaticMarkup(<ResumeLibraryCard resume={{ ...record, initialScores: '{"overall":90}', finalScores: null }}/>);
+  assert.match(pending, /Após a otimização: avaliação pendente/);
+  assert.doesNotMatch(pending, /aria-valuenow="90"/);
+  const zero = renderToStaticMarkup(<ResumeLibraryCard resume={{ ...record, finalScores: '{"overall":0}' }}/>);
+  assert.match(zero, /aria-label="Após a otimização"[^>]*aria-valuenow="0"/);
 });
 
 test("reassessed recommendations and evidence belong to the same version as the final score",()=>{
