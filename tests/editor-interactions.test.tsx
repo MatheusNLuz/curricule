@@ -121,7 +121,7 @@ test("progress stops after repeated errors and lets the user explicitly retry",a
 const fixture=()=>OptimizedResumeSchema.parse({personalInfo:{name:"Ana Validação"},professionalSummary:"Experiência em atendimento ao cliente.",experiences:[{company:"Empresa A",title:"Cargo A",startDate:"01/2021",endDate:"12/2022",description:["Atendimento por e-mail."]},{company:"Empresa B",title:"Cargo B",startDate:"01/2023",endDate:"",description:["Organização de pedidos."]}]});
 
 test("a generated resume reopens on its preview after a full remount without generating questions",async()=>{
-  const record={id:"test",mode:"OPTIMIZE_FOR_JOB",finalResumeJson:JSON.stringify(fixture()),selectedLanguage:"pt-BR",selectedTemplate:"basic-ats",parsedResumeText:"Material original",revision:1,questions:[]};
+  const record={id:"test",mode:"OPTIMIZE_FOR_JOB",finalResumeJson:JSON.stringify(fixture()),initialScores:JSON.stringify({overall:61}),finalScores:JSON.stringify({overall:71}),selectedLanguage:"pt-BR",selectedTemplate:"basic-ats",parsedResumeText:"Material original",revision:1,questions:[]};
   const requests:string[]=[];
   mock.method(globalThis,"fetch",async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{requests.push(`${init?.method||"GET"} ${String(input)}`);return Response.json(String(input).endsWith("/tasks")?{tasks:[]}:record);});
   for(let refresh=0;refresh<2;refresh++){
@@ -129,6 +129,9 @@ test("a generated resume reopens on its preview after a full remount without gen
     const preview=await screen.findByRole("tab",{name:"Prévia e PDF"});
     await waitFor(()=>assert.equal(preview.getAttribute("aria-selected"),"true"));
     assert.ok(screen.getByText("Ana Validação"));
+    assert.equal(screen.getByRole("meter",{name:"Antes da otimização"}).getAttribute("aria-valuenow"),"61");
+    assert.equal(screen.getByRole("meter",{name:"Após a otimização"}).getAttribute("aria-valuenow"),"71");
+    assert.equal((screen.getByText("Conferir fontes e versões anteriores").closest("details") as HTMLDetailsElement).open,false);
     cleanup();
   }
   assert.equal(requests.some(request=>request.includes("/smart-questions")),false);

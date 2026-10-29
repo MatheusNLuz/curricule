@@ -1,0 +1,6 @@
+.resultSummary { display: grid; grid-template-columns: minmax(0,1fr); gap: 24px; padding: 24px; margin-bottom: 28px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.resultIntro h2 { font-size: 22px; line-height: 1.25; margin: 0 0 10px; font-weight: 600; letter-spacing: -.02em; }
+.resultIntro > p { color: var(--muted-foreground); font-size: 14px; line-height: 1.7; max-width: 44ch; margin: 0 0 16px; }
+.resultIntro a { font-size: 13px; }.resultIntro .scoreNote { font-size: 11px; margin: 16px 0 0; max-width: 48ch; }
+.resultSummary > div:last-child { border-top: 1px solid var(--border); padding-top: 22px; }.resultSummary > div:last-child p { font-size: 12px; line-height: 1.6; margin-top: 10px; color: var(--muted-foreground); }
+@media(min-width:900px) { .resultSummary { grid-template-columns: minmax(0,1fr) minmax(320px, .9fr); align-items: center; padding: 28px 32px; gap: 32px; }.resultSummary > div:last-child { border-top: 0; border-left: 1px solid var(--border); padding-top: 0; padding-left: 32px; } }

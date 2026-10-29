@@ -20,6 +20,7 @@ import type { ReviewedTruth } from "@/lib/ats/truth-policy";
 import type { OptimizedResume } from "@/lib/schemas/optimize.schema";
 import { ResumeFactReview } from "@/components/editor/resume-fact-review";
 import { ResumeVersions } from "@/components/editor/resume-versions";
+import { GeneratedResumeSummary } from "@/components/editor/generated-resume-summary";
 import { isEditorTab, resolveEditorTab, type EditorTab } from "@/lib/editor-tab";
 
 export function EditorClient({ analysisId }: { analysisId: string }) {
@@ -304,15 +305,16 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           {isLinkedIn 
             ? "Responda perguntas estratégicas para traduzir sua experiência em evidências reais de performance."
-            : "Responda perguntas, ajuste o conteúdo e leve uma versão pronta para cada oportunidade."}
+            : optimized ? "Veja a avaliação da nova versão, confira o currículo e baixe seu arquivo." : "Responda perguntas, ajuste o conteúdo e leve uma versão pronta para cada oportunidade."}
         </p>
         <Journey current={optimized?3:2}/>
       </div>
 
-      <p role="status" className="mb-5 text-xs text-muted-foreground">{answerSaveStatus}</p>
+      {optimized && !isLinkedIn && <GeneratedResumeSummary initialScores={data.initialScores} finalScores={data.finalScores} analysisId={analysisId}/>}
+      {answerSaveStatus && <p role="status" className="mb-5 text-xs text-muted-foreground">{answerSaveStatus}</p>}
+      {!optimized && <>
       <details className="mb-6 rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">Conferir o material original</summary><p className="mt-3 text-xs leading-6 text-muted-foreground">Compare as sugestões e a prévia com o conteúdo que você forneceu. Revise especialmente empresas, datas e resultados antes de usar.</p><pre className="mt-4 max-h-96 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7">{data.parsedResumeText}</pre></details>
-      {optimized&&<ResumeFactReview key={data.revision} analysisId={analysisId} revision={data.revision} disabled={editorDirty} onUpdated={async()=>{setTruthGuardData(null);await fetchData();}}/>}
-      {optimized && <ResumeVersions analysisId={analysisId} current={data.finalResumeJson||""} revision={data.revision} onRestore={fetchData} />}
+      </>}
 
       {isLinkedIn ? (<>{questionReview === "unavailable" && <AiReviewNotice subject="questions" />}<ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/></>
       ) : (
@@ -425,6 +427,11 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
         </TabsContent>
       </Tabs>
       )}
+      {optimized && <details className="sheet padded mt-8"><summary className="cursor-pointer text-sm font-semibold">Conferir fontes e versões anteriores</summary>
+        <details className="mt-5 rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">Conferir o material original</summary><pre className="mt-4 max-h-96 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7">{data.parsedResumeText}</pre></details>
+        <ResumeFactReview key={data.revision} analysisId={analysisId} revision={data.revision} disabled={editorDirty} onUpdated={async()=>{setTruthGuardData(null);await fetchData();}}/>
+        <ResumeVersions analysisId={analysisId} current={data.finalResumeJson||""} revision={data.revision} onRestore={fetchData}/>
+      </details>}
     </WorkspacePage>
   );
 }
