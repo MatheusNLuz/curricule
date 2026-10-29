@@ -20,6 +20,6 @@ export async function POST(request: Request) {
     reviewed.sourceHash=truthSourceHash({...analysis,rejectedClaimsJson});
     const updated=await prisma.analysis.updateMany({ where: { id: analysis.id,revision:analysis.revision,truthGuardJson:analysis.truthGuardJson }, data: { truthGuardJson: JSON.stringify(reviewed),rejectedClaimsJson,revision:{increment:1} } });
     if(!updated.count)throw new HttpError(409,"As respostas mudaram. Valide os fatos novamente.");
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, sourceHash: reviewed.sourceHash });
   } catch (error) { return apiError(error); }
 }

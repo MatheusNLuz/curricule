@@ -7,8 +7,8 @@ export const ResumeAnalysisSchema = z.object({
     foundText: z.string().default(""),
     reason: z.string(),
   })).optional(),
-  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "unknown"]).catch("unknown"),
-  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB"]).catch("pt-BR"),
+  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES", "unknown"]).catch("unknown"),
+  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES"]).catch("pt-BR"),
   detectedSeniority: z.enum(["junior", "mid", "senior", "lead", "unknown"]).catch("unknown"),
   recommendedLength: z.object({
     pages: z.string().default("1"),
@@ -45,16 +45,25 @@ export const ResumeAnalysisSchema = z.object({
 export type ResumeAnalysis = z.infer<typeof ResumeAnalysisSchema>;
 export function resumeAssessmentSchema(source:string){
   const normalized=(text:string)=>text.normalize("NFKC").replace(/\s+/g," ").trim().toLowerCase();
-  return ResumeAnalysisSchema.superRefine((value,context)=>{
+  const validated = ResumeAnalysisSchema.superRefine((value,context)=>{
     const keys=["ats","structure","clarity","impact","keywords"];
     if(!value.rubric||value.rubric.length!==keys.length||keys.some(key=>value.rubric!.filter(item=>item.criterion===key).length!==1)){context.addIssue({code:"custom",message:"Return exactly one structured rubric entry per criterion."});return;}
     value.rubric.forEach((item,index)=>{if(item.foundText&&!normalized(source).includes(normalized(item.foundText)))context.addIssue({code:"custom",path:["rubric",index,"foundText"],message:"Evidence must be an exact excerpt from the candidate source."});if(item.level>0&&!item.foundText.trim())context.addIssue({code:"custom",path:["rubric",index,"foundText"],message:"Positive levels require a source excerpt."});});
   });
+  // A positive rubric level must have evidence. Missing evidence cannot justify
+  // credit, but it should not prevent the rest of the assessment from loading.
+  return z.preprocess(value => {
+    if (!value || typeof value !== "object" || !("rubric" in value) || !Array.isArray(value.rubric)) return value;
+    return { ...value, rubric: value.rubric.map(item => {
+      if (!item || typeof item !== "object" || typeof item.level !== "number" || typeof item.foundText !== "string") return item;
+      return item.level > 0 && !item.foundText.trim() ? { ...item, level: 0 } : item;
+    }) };
+  }, validated);
 }
 
 export const LinkedInAnalysisSchema = z.object({
-  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "unknown"]).catch("unknown"),
-  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB"]).catch("pt-BR"),
+  detectedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES", "unknown"]).catch("unknown"),
+  recommendedLanguage: z.enum(["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES"]).catch("pt-BR"),
   detectedSeniority: z.enum(["junior", "mid", "senior", "lead", "unknown"]).catch("unknown"),
   strengths: z.array(z.string()).default([]),
   weaknesses: z.array(z.string()).default([]),

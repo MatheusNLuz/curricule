@@ -5,16 +5,17 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { parseAnalysisJson, type AnalysisView } from "@/lib/analysis-view";
 import type { ResumeAnalysis, LinkedInAnalysis } from "@/lib/schemas/analysis.schema";
-import { Loader2, AlertCircle, FileText } from "@/components/ui/app-icon";
+import { AlertCircle, FileText } from "@/components/ui/app-icon";
 import { ResumeAnalysisView } from "@/components/analysis/resume-analysis-view";
-import { WorkspacePage, PageHeading, Sheet, FactualNote } from "@/components/workspace/workspace-ui";
+import { WorkspacePage, PageHeading, Sheet } from "@/components/workspace/workspace-ui";
 import { useToast } from "@/components/ui/custom-toast";
-import { RouteLine } from "@/components/ui/route-line";
+import { AnalysisLoading } from "@/components/analysis/analysis-loading";
 import { getFetchErrorMessage, getLoginUrl, readApiError, fetchAnalysisTask } from "@/lib/api-client";
+import { AiReviewNotice } from "@/components/analysis/ai-review-notice";
 
 const LinkedInDashboard = dynamic(
   () => import("@/components/analysis/linkedin-dashboard").then((module) => module.LinkedInDashboard),
-  { loading: () => <div className="surface rounded-2xl p-6 text-sm text-muted-foreground">Carregando painel do LinkedIn...</div> },
+  { loading: () => <AnalysisLoading compact step="Preparando seu painel do LinkedIn." /> },
 );
 
 interface Props { analysisId: string; }
@@ -128,7 +129,7 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
       }
 
       if (!record.analysisJson) {
-        setStep("Rodando análise de ATS...");
+        setStep("Estamos olhando seu material.");
         const r = await fetchAnalysisTask("/api/analyze", { method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }, signal });
         if (!r.ok) throw new Error(await readApiError(r, "Análise de ATS falhou"));
       }
@@ -168,13 +169,7 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
   }, [runAnalysis]);
 
   if (loading) {
-    const activeRoute = step.includes("Comparando") ? 1 : step.includes("Concluído") ? 2 : 0;
-    return (
-      <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center gap-8 px-5 sm:px-8">
-        <div className="text-center"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-soft-primary text-primary"><Loader2 className="h-7 w-7 animate-spin" /></div><p className="mt-5 font-heading text-xl font-semibold tracking-[-0.03em]">{step}</p><p className="mt-2 text-[12px] text-muted-foreground">Isso pode levar alguns segundos.</p></div>
-        <RouteLine activeIndex={activeRoute} steps={[{ label: "Lendo o material" }, { label: "Entendendo o contexto" }, { label: "Organizando o resultado" }]} />
-      </div>
-    );
+    return <AnalysisLoading step={step} />;
   }
 
   if (error) {
@@ -200,21 +195,21 @@ export function AnalysisDashboardClient({ analysisId }: Props) {
   const finalScores=parseAnalysisJson<Record<string,number>>(analysisData.finalScores);
 
   if (analysisData.mode === "COVER_LETTER_ONLY") {
-    return <WorkspacePage><PageHeading title="Uma apresentação com a sua voz." description="Conecte sua experiência à oportunidade. Revise o tom e os fatos antes de enviar.">{analysisData.coverLetter&&<button onClick={handleDownloadCoverLetter} className="button primary"><FileText size={17}/>Baixar carta (.txt)</button>}</PageHeading><div className="letterLayout"><Sheet className="letterSheet"><div className="letterMeta"><span>Carta de apresentação</span><span>Texto para sua revisão</span></div><p className="sourceText">{analysisData.coverLetter||"Nenhuma carta gerada ainda."}</p></Sheet><aside className="contextAside"><h2>Antes de enviar.</h2><p>Confira o nome da empresa, o tom da apresentação e as informações da sua trajetória.</p><FactualNote/></aside></div></WorkspacePage>;
+    return <WorkspacePage><PageHeading title="Uma apresentação com a sua voz." description="Conecte sua experiência à oportunidade. Revise o tom e os fatos antes de enviar.">{analysisData.coverLetter&&<button onClick={handleDownloadCoverLetter} className="button primary"><FileText size={17}/>Baixar carta (.txt)</button>}</PageHeading><div className="letterLayout"><Sheet className="letterSheet"><div className="letterMeta"><span>Carta de apresentação</span><span>Texto para sua revisão</span></div><p className="sourceText">{analysisData.coverLetter||"Nenhuma carta gerada ainda."}</p></Sheet><aside className="contextAside"><h2>Antes de enviar.</h2><p>Confira o nome da empresa, o tom da apresentação e as informações da sua trajetória.</p></aside></div></WorkspacePage>;
   }
 
   if (analysisData.mode === "LINKEDIN_OPTIMIZATION") {
     return (
-      <LinkedInDashboard 
+      <><div className="mx-auto max-w-6xl px-5 pt-5">{analysisData.reviewStatuses?.ANALYZE === "unavailable" && <AiReviewNotice subject="analysis" />}</div><LinkedInDashboard 
         analysis={parseAnalysisJson<LinkedInAnalysis>(analysisData.finalResumeJson||analysisData.analysisJson)!}
         scores={finalScores || scores || {}}
         gamification={gamification} 
         analysisId={analysisId}
         language={analysisData.selectedLanguage}
         title={analysisData.professionalTarget}
-      />
+      /></>
     );
   }
 
-  return <ResumeAnalysisView analysisId={analysisId} record={analysisData} analysis={analysisData.finalAssessmentJson?parseAnalysisJson<ResumeAnalysis>(analysisData.finalAssessmentJson):analysis} scores={scores} finalScores={finalScores} onExport={handleExportPdf} exporting={exportingPdf} onGenerateLetter={handleGenerateCoverLetter} generatingLetter={generatingLetter} onDownloadLetter={handleDownloadCoverLetter} onRefresh={runAnalysis}/>;
+  return <>{analysisData.reviewStatuses?.ANALYZE === "unavailable" && <div className="mx-auto max-w-6xl px-5 pt-5"><AiReviewNotice subject="analysis" /></div>}<ResumeAnalysisView analysisId={analysisId} record={analysisData} analysis={analysisData.finalAssessmentJson?parseAnalysisJson<ResumeAnalysis>(analysisData.finalAssessmentJson):analysis} scores={scores} finalScores={finalScores} onExport={handleExportPdf} exporting={exportingPdf} onGenerateLetter={handleGenerateCoverLetter} generatingLetter={generatingLetter} onDownloadLetter={handleDownloadCoverLetter} onRefresh={runAnalysis}/></>;
 }

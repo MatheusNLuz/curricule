@@ -19,7 +19,6 @@ import {
   Key01Icon,
   LanguageCircleIcon,
   Layout01Icon,
-  Loading03Icon,
   MapPinIcon,
   PrinterIcon,
   Refresh01Icon,
@@ -29,6 +28,7 @@ import {
   UserIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeIcon } from "@/components/ui/huge-icon";
+import loadingStyles from "./loading-indicator.module.css";
 
 type AppIconProps = { className?: string; size?: number | string; strokeWidth?: number };
 
@@ -58,7 +58,13 @@ export const HelpCircle = icon(HelpCircleIcon);
 export const Key = icon(Key01Icon);
 export const Languages = icon(LanguageCircleIcon);
 export const Layout = icon(Layout01Icon);
-export const Loader2 = icon(Loading03Icon);
+export function Loader2({ className, size = 18 }: AppIconProps) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={`${loadingStyles.indicator} ${className?.replace(/\banimate-spin\b/g, "") || ""}`}>
+    <rect className={loadingStyles.bar} x="4" y="8" width="3" height="12" rx="1.5"/>
+    <rect className={loadingStyles.bar} x="10.5" y="4" width="3" height="16" rx="1.5"/>
+    <rect className={loadingStyles.bar} x="17" y="8" width="3" height="12" rx="1.5"/>
+  </svg>;
+}
 export const MapPin = icon(MapPinIcon);
 export const PenTool = icon(Edit02Icon);
 export const Plus = icon(Add01Icon);

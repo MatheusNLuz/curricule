@@ -1,0 +1,14 @@
+# Convenções de currículo por país
+
+Pesquisa consultada em 28/10/2026. São orientações para adaptar à vaga e à profissão, não obrigações legais ou garantias de compatibilidade com todo sistema ATS. Priorize instruções da vaga, fatos confirmados e a escolha da pessoa. O idioma do resultado é independente do país.
+
+- **Brasil:** a [Prefeitura de São Paulo](https://prefeitura.sp.gov.br/web/desenvolvimento/w/dicas/preparar_um_curriculo/619) recomenda clareza e foco na vaga. Um [material do Ministério do Desenvolvimento Social](https://www.gov.br/mds/pt-br/noticias-e-conteudos/publicacoes/desenvolvimento-social/Caderno_Oficinas_de_Criatividades_2023.pdf) orienta omitir documentos e filiação e destacar experiência pertinente.
+- **Portugal:** o [IEFP](https://www.iefp.pt/documents/10181/190644/Guia%2Bde%2BApoio%2B%C3%A0%20Procura%2Bde%2BEmprego/827d2ac3-7793-451e-b542-90d007a114d8) apresenta o Europass como exemplo. Não se presume que esse formato seja exigido por toda vaga.
+- **Estados Unidos:** o CareerOneStop orienta [organização legível](https://cloudfront.careeronestop.org/JobSearch/Resumes/ResumeGuide/formatting.aspx) e informa que o [endereço completo não é necessário](https://cloudfront.careeronestop.org/JobSearch/Resumes/ResumeGuide/top-portion-of-resume.aspx).
+- **Reino Unido:** o [National Careers Service](https://nationalcareers.service.gov.uk/careers-advice/cv-sections) recomenda adaptar à vaga e não incluir idade, data de nascimento, estado civil ou nacionalidade.
+- **Canadá:** o [Job Bank](https://www.jobbank.gc.ca/findajob/resources/write-good-resume?wbdisable=true) orienta evitar foto e informações pessoais desnecessárias. A página não abriu durante esta verificação; esta referência foi preservada da pesquisa anterior registrada nas pendências.
+- **Alemanha:** a [Bundesagentur für Arbeit](https://www.arbeitsagentur.de/bildung/bewerbung/lebenslauf) recomenda organização cronológica inversa e aponta que foto e informações familiares são opcionais. Suas orientações são voltadas também a jovens candidatos; podem variar conforme a vaga.
+- **Espanha:** o [SEPE](https://sepe.es/HomeSepe/que-es-el-sepe/comunicacion-institucional/publicaciones/publicaciones-oficiales/listado-pub-eures/trabajar-en-espana.html) sugere currículo claro de até duas páginas e diz que foto não é necessária, embora possa ser conveniente em algumas funções. Outro [guia do SEPE](https://www.sepe.es/SiteSepe/contenidos/personas/encontrar_empleo/encontrar_empleo_europa/pdf/2025/CV-y-CARTAS-de-PRESENTACION/2025_CV_Carta_Espa-a.pdf) recomenda foto: a divergência reforça que a decisão depende do contexto e da pessoa.
+- **Internacional/remoto:** não presumir país, idioma nem Europass; seguir a vaga e manter estrutura simples.
+
+Campos pessoais sensíveis não são exigidos pelo produto. Nenhuma orientação autoriza inventar informações ou incluir uma foto sem escolha da pessoa.

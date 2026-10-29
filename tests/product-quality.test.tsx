@@ -14,6 +14,7 @@ import { boundedJson,assertRequestOrigin } from "../lib/read-bounded-body";
 import { TelemetrySchema } from "../lib/telemetry";
 import { acquisitionSource } from "../lib/acquisition-source";
 import { resumeDocx } from "../lib/resume/docx";
+import { resumeDocumentHtml } from "../lib/resume/document-html";
 import JSZip from "jszip";
 const source="Atendimento a clientes por e-mail. Organização de pedidos em Excel.";
 const assessment=ResumeAnalysisSchema.parse({scores:{ats:95,impact:99},rubric:["ats","structure","clarity","impact","keywords"].map(criterion=>({criterion,level:3,foundText:"Atendimento a clientes por e-mail.",reason:"Há evidência na fonte."}))});
@@ -26,7 +27,7 @@ test("assessment requires one criterion per key and refuses invented source quot
   const schema=resumeAssessmentSchema(source);assert.equal(schema.safeParse(assessment).success,true);
   const invented=structuredClone(assessment);invented.rubric![0].foundText="Liderou uma equipe de 40 pessoas";assert.equal(schema.safeParse(invented).success,false);
   const duplicate=structuredClone(assessment);duplicate.rubric![0].criterion="structure";assert.equal(schema.safeParse(duplicate).success,false);
-  const missing=structuredClone(assessment);missing.rubric![0].foundText="";assert.equal(schema.safeParse(missing).success,false);
+  const missing=structuredClone(assessment);missing.rubric![0].foundText="";assert.equal(schema.parse(missing).rubric![0].level,0);
 });
 test("all templates preserve content and exact locale without tables, photos or hidden contact blocks",()=>{
   for(const locale of ["pt-BR","pt-PT","en-US","en-GB"])for(const option of TEMPLATE_OPTIONS){assert.equal(normalizeTemplateId(option.id),option.id);const html=renderToStaticMarkup(<AtsTemplate resume={resume} templateId={option.id} language={locale}/>);assert.match(html,/Camila Validação/);assert.match(html,/camila@example.test/);assert.match(html,/Organização do arquivo/);assert.match(html,/linkedin.com\/in\/camila-validacao/);assert.ok(html.includes(`lang="${locale}"`));assert.doesNotMatch(html,/<(?:table|img|canvas)\b/);const skills=html.indexOf(locale.startsWith("pt")?">Competências<":">Skills<"),experience=html.indexOf(locale.startsWith("pt")?">Experiência profissional<":">Professional Experience<");assert.ok(option.id==="direct-ats"?skills<experience:experience<skills);}
@@ -39,6 +40,16 @@ test("provenance does not claim paraphrases are exact evidence and edits reject 
 });
 test("DOCX contains the same optional sections and body contact, with no document header",async()=>{
   const bytes=await resumeDocx(resume,"pt-BR","executive-ats");const zip=await JSZip.loadAsync(bytes);const xml=await zip.file("word/document.xml")!.async("string");assert.match(xml,/Camila Validação/);assert.match(xml,/camila@example.test/);assert.match(xml,/Organização do arquivo/);assert.match(xml,/Português/);assert.doesNotMatch(xml,/<w:tbl\b/);assert.equal(Object.keys(zip.files).some(name=>/word\/header\d/.test(name)),false);
+});
+test("Spanish headings are shared by the preview and DOCX",async()=>{
+  const full={...resume,education:[{institution:"Example University",degree:"Grado",startDate:"2020",endDate:"2024"}],certifications:[{name:"Certificación oficial",issuer:"Example"}]};
+  const headings=["Perfil profesional","Experiencia profesional","Competencias","Formación académica","Certificaciones","Proyectos","Idiomas"];
+  const sections=resumeSections(full,"es-ES");assert.deepEqual(sections.map(section=>section.title).sort(),[...headings].sort());
+  const html=renderToStaticMarkup(<AtsTemplate resume={full} templateId="basic-ats" language="es-ES"/>);
+  const pdfHtml=resumeDocumentHtml(full,"es-ES","basic-ats");
+  const bytes=await resumeDocx(full,"es-ES","basic-ats");const zip=await JSZip.loadAsync(bytes);const xml=await zip.file("word/document.xml")!.async("string");
+  for(const heading of headings)for(const output of [html,pdfHtml,xml])assert.ok(output.includes(heading));
+  assert.ok(resumeSections(full,"pt-PT").some(section=>section.title==="Formação académica"));
 });
 test("bounded JSON rejects oversized chunked bodies and foreign-origin mutations",async()=>{
   const request=new Request("https://app.example/api/test",{method:"POST",body:JSON.stringify({text:"x".repeat(100)})});await assert.rejects(()=>boundedJson(request,40),error=>(error as {status:number}).status===413);

@@ -29,18 +29,18 @@ const themeInitScript = `
 `;
 
 export const metadata: Metadata = {
-  title: "Curricule | Dê direção ao seu próximo passo",
+  title: { default: "Curricule - Início", template: "Curricule - %s" },
   description: "Organize seu currículo, entenda uma oportunidade e prepare uma candidatura que representa sua história.",
   keywords: ["currículo", "vagas", "candidatura", "resume", "perfil profissional"],
   openGraph: {
-    title: "Curricule | Dê direção ao seu próximo passo",
+    title: "Curricule",
     description: "Um espaço calmo para melhorar seu currículo e preparar sua próxima candidatura.",
     type: "website",
     locale: "pt_BR",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Curricule | Dê direção ao seu próximo passo",
+    title: "Curricule",
     description: "Um espaço calmo para melhorar seu currículo e preparar sua próxima candidatura.",
   }
 };

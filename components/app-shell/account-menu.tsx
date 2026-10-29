@@ -45,10 +45,10 @@ export function AccountMenu({ session }: { session: SessionUser }) {
         aria-expanded={open}
         aria-controls={popupId}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-1.5 pr-2.5 text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:pl-2"
+        className="accountMenuTrigger inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-1.5 pr-2.5 text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:pl-2"
       >
         <UserAvatar key={session.image ?? "no-image"} session={session} />
-        <span className="hidden max-w-36 truncate text-[12px] font-semibold md:inline">{displayName}</span>
+        <span className="accountMenuName truncate text-[12px] font-semibold">{displayName}</span>
         <HugeIcon icon={ArrowDown01Icon} size={15} className={cn("hidden text-muted-foreground transition-transform md:block", open && "rotate-180")} />
       </button>
 

@@ -10,9 +10,11 @@ export class ChatProvider implements AiProviderInterface {
     if(!this.apiKey)throw new AiProviderError("NOT_CONFIGURED");
     const started=Date.now();let status="FAILED",errorCode:string|null=null,inputTokens:number|null=null,outputTokens:number|null=null,costUsd:number|null=null,estimated=false;
     try{
-      const timeout=AbortSignal.timeout(Math.min(60_000,Math.max(1000,Number(process.env.AI_TIMEOUT_MS)||45_000)));
+      const configuredTimeout=Math.min(90_000,Math.max(1000,Number(process.env.AI_TIMEOUT_MS)||(this.name === "NVIDIA NIM" ? 90_000 : 45_000)));
+      const timeout=AbortSignal.timeout("timeoutMs" in params && typeof params.timeoutMs === "number" ? Math.max(1000,Math.min(configuredTimeout,params.timeoutMs)) : configuredTimeout);
       const parent=taskSignal();const signal=parent?AbortSignal.any([parent,timeout]):timeout;
-      const response=await fetch(this.baseUrl,{method:"POST",signal,headers:{Authorization:"Bearer "+this.apiKey,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({...this.extraBody,model:this.model,messages:[{role:"system",content:params.systemPrompt+INPUT_RULES},{role:"user",content:params.userPrompt}],...(json?{response_format:{type:"json_object"}}:{}),temperature:0.1,max_tokens:Math.min(12_000,Number(process.env.AI_MAX_TOKENS)||8000)})});
+      const requestedMax = "maxTokens" in params && typeof params.maxTokens === "number" ? params.maxTokens : 8000;
+      const response=await fetch(this.baseUrl,{method:"POST",signal,headers:{Authorization:"Bearer "+this.apiKey,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({...this.extraBody,model:this.model,messages:[{role:"system",content:params.systemPrompt+INPUT_RULES},{role:"user",content:params.userPrompt}],...(json?{response_format:{type:"json_object"}}:{}),temperature:0.1,max_tokens:Math.max(1,Math.min(12_000,Number(process.env.AI_MAX_TOKENS)||8000,requestedMax))})});
       if(!response.ok){await response.body?.cancel();errorCode="HTTP_"+response.status;throw new AiProviderError("HTTP_ERROR",response.status);}
       const result=await response.json() as {error?:unknown;choices?:{message?:{content?:unknown}}[];usage?:{prompt_tokens?:number;completion_tokens?:number;cost?:number}};
       const content=result.choices?.[0]?.message?.content;

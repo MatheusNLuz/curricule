@@ -2,12 +2,19 @@ import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { CreateAnalysisSchema, UpdateAnalysisSchema } from "../lib/analysis-contract.ts";
 import { validateSourceUrl, isPublicAddress, extractSourceText, resolvePublicHost, importWebSource } from "../lib/web-source.ts";
+
+test("LinkedIn authentication redirects explain the public access limitation", async () => {
+  await assert.rejects(
+    () => importWebSource("https://www.linkedin.com/in/example/", "linkedin", async () => ({ status: 302, location: "/authwall", html: "" })),
+    /LinkedIn exige acesso.*PDF/,
+  );
+});
 import { pdfFileError, hasPdfSignature } from "../lib/upload-validation.ts";
 import { reviewTruth, truthContext, truthSourceHash, type ReviewedTruth } from "../lib/ats/truth-policy.ts";
 import { AnalysisOrchestrator } from "../lib/ai/analysis-orchestrator.ts";
 import { z } from "zod";
-import { TruthGuard } from "../lib/ats/truth-guard.ts";
-import { verifyOutput } from "../lib/ats/verify-output.ts";
+import { TruthGuard, normalizeTruthVerdict } from "../lib/ats/truth-guard.ts";
+import { generateVerifiedOutput, OutputVerificationError, verifyOutput } from "../lib/ats/verify-output.ts";
 import { hasSourceText, isSourceUrl } from "../lib/source-input.ts";
 
 test("PATCH rejects internal fields and validates published resume JSON", () => {
@@ -15,6 +22,8 @@ test("PATCH rejects internal fields and validates published resume JSON", () => 
   assert.equal(UpdateAnalysisSchema.safeParse({ selectedTemplate: "modern-ats", professionalTarget: "Analista" }).success, true);
   assert.equal(CreateAnalysisSchema.safeParse({ mode: "wrong", clientRequestId: crypto.randomUUID() }).success, false);
   assert.equal(CreateAnalysisSchema.parse({ mode: "OPTIMIZE_FOR_JOB", clientRequestId: crypto.randomUUID(), selectedLanguage: "pt-PT", jobLocation: "UK" }).selectedLanguage, "pt-PT");
+  assert.equal(CreateAnalysisSchema.parse({ mode: "OPTIMIZE_FOR_JOB", clientRequestId: crypto.randomUUID(), selectedLanguage: "es-ES", jobLocation: "BR" }).selectedLanguage, "es-ES");
+  assert.equal(CreateAnalysisSchema.parse({ mode: "OPTIMIZE_FOR_JOB", clientRequestId: crypto.randomUUID(), selectedLanguage: "en-US", jobLocation: "ES" }).jobLocation, "ES");
 });
 test("an address alone is never accepted as the job description", () => {
   const url = "https://careers.example.com/company/a-very-long-vacancy-id-1234567890";
@@ -35,6 +44,26 @@ test("job extraction prefers JobPosting structured description and strips markup
   const description = "<h2>Responsabilidades</h2><p>Organizar processos financeiros e acompanhar resultados com a equipe.</p><h2>Requisitos</h2><p>Formação na área e experiência em atendimento e organização de relatórios gerenciais, com comunicação clara e atenção aos detalhes.</p>";
   const result = extractSourceText('<html><head><title>Portal de vagas</title><script type="application/ld+json">' + JSON.stringify({ "@graph": [{ "@type": "JobPosting", title: "Analista financeiro", description }] }) + '</script></head><body><nav>Menu</nav><main>Carregando</main></body></html>', "job");
   assert.equal(result.title, "Analista financeiro"); assert.match(result.text, /Formação/); assert.doesNotMatch(result.text, /<p>|Menu|Carregando/);
+});
+test("job extraction avoids interface buttons and ambiguous lists of structured jobs", () => {
+  const text = "Responsabilidades: " + "Apoiar clientes e organizar pedidos com a equipe. ".repeat(6);
+  const result = extractSourceText(`<main><h1>Vaga</h1><p>${text}</p><button>Show more</button></main>`, "job");
+  assert.doesNotMatch(result.text, /Show more/);
+  const jobs = [{ "@type": "JobPosting", description: text }, { "@type": "JobPosting", description: text }];
+  assert.throws(() => extractSourceText(`<script type="application/ld+json">${JSON.stringify(jobs)}</script>`, "job"), /mais de uma vaga/);
+});
+test("LinkedIn-style semantic description excludes surrounding interface and preserves job details", () => {
+  const detail = "Desenvolver e manter sistemas web com orientação da equipe. ".repeat(6);
+  const html = `<title>Vaga de exemplo</title><main><p>Save · Use AI to assess how you fit</p><div class="description__text description__text--rich"><h2>Como será o seu dia a dia</h2><p>${detail}</p><h2>Requirements</h2><p>Conhecimento em HTML e CSS.</p><button>Show more</button></div><p>More jobs for you</p></main>`;
+  const result = extractSourceText(html,"job");
+  assert.match(result.text,/Desenvolver e manter/);assert.match(result.text,/Conhecimento em HTML/);assert.match(result.responsibilities || "",/Desenvolver/);assert.doesNotMatch(result.text,/Save|Show more|More jobs|Use AI/);
+  assert.throws(()=>extractSourceText(`<main><div class="description__text">${detail}</div><div class="description__text">${detail}</div></main>`,"job"),/mais de uma descrição/);
+});
+test("requirements keep an adjacent translated heading and its full list", () => {
+  const detail = "Graduação concluída ou em andamento. Conhecimentos em HTML5, CSS3 e JavaScript. ".repeat(3);
+  const html = `<main><div class="description__text"><h2>Requirements</h2><h2>O que você precisa para assumir o desafio</h2><p>${detail}</p><p>Inglês intermediário.</p><h2>Benefícios</h2><p>Plano de saúde.</p></div></main>`;
+  const result = extractSourceText(html,"job");
+  assert.match(result.requirements || "",/Graduação concluída/);assert.match(result.requirements || "",/Inglês intermediário/);assert.doesNotMatch(result.requirements || "",/Plano de saúde/);
 });
 test("mixed DNS records are rejected and DNS resolution obeys cancellation", async () => {
   const controller = new AbortController();
@@ -79,6 +108,11 @@ test("Truth Guard requires decisions and preserves rejects across resume and let
   const source = { parsedResumeText: "Original", comparisonJson: null, selectedLanguage: "pt-BR", questions: [{ id: "q", answer: "A" }] };
   assert.notEqual(truthSourceHash(source), truthSourceHash({ ...source, questions: [{ id: "q", answer: "B" }] }));
 });
+test("contradictory fact verdicts cannot become approved candidate facts", () => {
+  const result = normalizeTruthVerdict({ claims: [{ claim: "Acompanhou metas", source: "confirmed_by_user", canUseInResume: false, canUseInCoverLetter: false, explanation: "Não foi confirmado" }], blockedClaims: [], warnings: [] });
+  assert.equal(result.claims[0].source, "missing");
+  assert.deepEqual(truthContext({ ...result, sourceHash: "test", decisions: {} }), { approved: [], rejected: ["Acompanhou metas"] });
+});
 test("AI fallback validates schema before accepting provider output", async () => {
   const calls: string[] = [];
   function provider(name: string, value: unknown) { return { name, generateText: async () => "", generateJson: async <T>({ systemPrompt }: { systemPrompt: string }) => { calls.push(name); return (systemPrompt.startsWith("You are a strict language quality auditor.") ? { matchesSelectedLocale: true, containsMixedLanguage: false } : value) as T; } }; }
@@ -87,9 +121,26 @@ test("AI fallback validates schema before accepting provider output", async () =
   assert.deepEqual(await ai.analyzeLocalized("system", "input", z.object({ score: z.number() }), "pt-BR"), { score: 42 }); assert.deepEqual(calls, ["primary", "primary", "secondary", "secondary"]); logger.mock.restore();
 });
 test("final fact verification rejects declined and unconfirmed generated content", async () => {
-  const verify = mock.method(TruthGuard, "evaluate", async () => ({ claims: [{ claim: "Invented metric", source: "missing" as const, canUseInResume: false, canUseInCoverLetter: false, explanation: "No source" }], blockedClaims: [], warnings: [] }));
+  const verify = mock.method(TruthGuard, "evaluate", async (...args: Parameters<typeof TruthGuard.evaluate>) => { void args; return { claims: [{ claim: "Invented metric", source: "missing" as const, canUseInResume: false, canUseInCoverLetter: false, explanation: "No source" }], blockedClaims: [], warnings: [] }; });
   await assert.rejects(() => verifyOutput("Original", "", "Eu gerenciei uma equipe de 20 pessoas", ["gerenciei uma equipe de 20 pessoas"]));
   assert.equal(verify.mock.callCount(), 0);
   await assert.rejects(() => verifyOutput("Original", "", "Invented metric", []));
-  assert.equal(verify.mock.callCount(), 1); verify.mock.restore();
+  assert.equal(verify.mock.callCount(), 1);
+  assert.equal(verify.mock.calls[0].arguments[6], true); verify.mock.restore();
+});
+test("a rejected rewrite is corrected once and checked again before use", async () => {
+  const inputs: string[][] = [];
+  const checked: string[] = [];
+  const previousOutputs: (string | undefined)[] = [];
+  const output = await generateVerifiedOutput<string>(async (issues, previousOutput) => { inputs.push(issues); previousOutputs.push(previousOutput); return issues.length ? "supported" : "invented"; }, async value => { checked.push(value); if (value === "invented") throw new OutputVerificationError(["invented"]); });
+  assert.equal(output, "supported");
+  assert.deepEqual(inputs, [[], ["invented"]]);
+  assert.deepEqual(checked, ["invented", "supported"]);
+  assert.deepEqual(previousOutputs, [undefined, "invented"]);
+});
+test("a rewrite is never released if verification continues to fail or is unavailable", async () => {
+  await assert.rejects(generateVerifiedOutput(async () => "unsupported", async () => { throw new OutputVerificationError(["unsupported"]); }), OutputVerificationError);
+  let attempts = 0;
+  await assert.rejects(generateVerifiedOutput(async () => { attempts++; return "draft"; }, async () => { throw new Error("unavailable"); }));
+  assert.equal(attempts, 1);
 });

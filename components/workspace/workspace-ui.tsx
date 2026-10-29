@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { resumeSections } from "@/lib/resume/sections";
 import type { ReactNode } from "react";
-import { ArrowRight, Check, FileText, ShieldCheck } from "@/components/ui/app-icon";
+import { ArrowRight, Check, FileText } from "@/components/ui/app-icon";
 import { OptimizedResumeSchema } from "@/lib/schemas/optimize.schema";
+import { CurriculeLogo } from "@/components/brand/curricule-logo";
 
 export function WorkspacePage({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`work-ui ${className}`}><div className="mainContent">{children}</div><footer className="workspaceFooter"><span>curricule · clareza para o próximo passo</span><span>Sua história. Suas decisões.</span></footer></div>;
+  return <div className={`work-ui ${className}`}><div className="mainContent">{children}</div><footer className="workspaceFooter"><Link href="/dashboard" aria-label="Curricule, início" className="workspaceFooterLogo"><CurriculeLogo /></Link><nav aria-label="Links do rodapé"><Link href="/help">Ajuda</Link><Link href="/privacy">Privacidade</Link><Link href="/privacy#termos">Condições de uso</Link></nav></footer></div>;
 }
 export function PageHeading({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
   return <header className="pageHeading"><div><h1>{title}</h1><p>{description}</p></div>{children && <div className="headingActions">{children}</div>}</header>;
@@ -21,9 +22,6 @@ export function Journey({ current }: { current: number }) {
 }
 export function EmptyState({ title, description, href = "/analysis/new", action = "Começar uma análise" }: { title: string; description: string; href?: string; action?: string }) {
   return <div className="emptyState"><FileText size={30} /><h2>{title}</h2><p>{description}</p><Link className="button secondary" href={href}>{action}<ArrowRight size={16} /></Link></div>;
-}
-export function FactualNote() {
-  return <div className="asideNote"><ShieldCheck size={23} /><strong>Sem experiências inventadas.</strong><p>Você confirma informações e dá a palavra final antes de usar qualquer sugestão.</p></div>;
 }
 export function ResumeDocument({ value, language = "pt-BR", compact = false }: { value: string | null; language?: string; compact?: boolean }) {
   let raw: unknown;

@@ -7,7 +7,7 @@ import { getSessionUser } from "@/lib/auth";
 import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
 import { apiError } from "@/lib/http-error";
 
-export const maxDuration = 180;
+export const maxDuration = 270;
 
 const JOB_PARSE_PROMPT = `You are an expert technical recruiter. Extract the structured details from this job description.
 Return ONLY valid JSON matching this exact structure:

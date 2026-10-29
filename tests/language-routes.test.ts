@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { ZodType } from "zod";
 import { OutputLanguageError } from "../lib/ai/output-language";
 import { ResumeAnalysisSchema } from "../lib/schemas/analysis.schema";
+import { HttpError } from "../lib/http-error";
 
 const initial = { id: "a", userId: "owner", selectedLanguage: "en-GB", mode: "MAKE_ATS_FRIENDLY", parsedResumeText: "Ana trabalhou na Example Inc. Organizou arquivos e analisou relatórios.", comparisonJson: null, jobDescription: "Organise files and analyse reports.", jobParseJson: '{"title":"Dados antigos em português"}', revision: 1, truthGuardJson: null, finalResumeJson: null };
 let row = { ...initial };
@@ -13,8 +14,13 @@ let calls: { locale: string; system: string; input: string }[] = [];
 let writes: Record<string, unknown>[] = [];
 let tasks: { kind: string; input: unknown }[] = [];
 let verificationLocales: string[] = [];
+let dualReviews = 0;
 
 class FakeAI {
+  async analyzeWithReview<T>(system: string, input: string, schema: ZodType<T>, locale: string): Promise<{ value: T; review: "approved" }> {
+    dualReviews++;
+    return { value: await this.analyzeLocalized(system, input, schema, locale), review: "approved" };
+  }
   async analyzeLocalized<T>(system: string, input: string, schema: ZodType<T>, locale: string): Promise<T> {
     calls.push({ locale, system, input });
     const output = outputs.shift();
@@ -48,15 +54,16 @@ const compare = await import("../app/api/compare/route");
 const questioning = await import("../app/api/smart-questions/route");
 const letter = await import("../app/api/cover-letter/route");
 const request = () => new Request("https://app.example/api/test", { method: "POST", body: JSON.stringify({ analysisId: "a" }) });
-test.beforeEach(() => { row = { ...initial }; questions = []; outputs = []; calls = []; writes = []; tasks = []; verificationLocales = []; });
+test.beforeEach(() => { row = { ...initial }; questions = []; outputs = []; calls = []; writes = []; tasks = []; verificationLocales = []; dualReviews = 0; });
 
 test("analysis route forwards each selected locale and never saves a rejected output", async () => {
-  for (const locale of ["pt-BR", "pt-PT", "en-US", "en-GB"]) {
+  for (const locale of ["pt-BR", "pt-PT", "en-US", "en-GB", "es-ES"]) {
     row.selectedLanguage = locale;
     outputs.push(ResumeAnalysisSchema.parse({ recommendedLanguage: locale, rubric:["ats","structure","clarity","impact","keywords"].map(criterion=>({criterion,level:0,foundText:"",reason:"Not enough evidence"})), scores: {} }));
     assert.equal((await analyze.POST(request())).status, 200);
     assert.equal(calls.at(-1)!.locale, locale);
   }
+  assert.equal(dualReviews, 5);
   writes = [];
   outputs.push(new OutputLanguageError());
   const response = await analyze.POST(request());
@@ -74,9 +81,18 @@ test("comparison reparses legacy job data and scopes both calls and cache to the
   assert.ok((tasks[0].input as unknown[]).includes("en-GB"));
 });
 
+test("comparison provider failure preserves the previous result and returns a specific recovery error", async () => {
+  outputs.push({ title: "Assistant", seniority: "unknown", requiredSkills: [], niceToHaveSkills: [], keyResponsibilities: ["Organise files"] }, new HttpError(503, "Providers temporarily unavailable", "AI_PROVIDERS_UNAVAILABLE"));
+  const response = await compare.POST(request());
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, "AI_PROVIDERS_UNAVAILABLE");
+  assert.ok(writes.every(write => !("comparisonJson" in write)));
+});
+
 test("generated questions and cached letters receive the selected locale", async () => {
   outputs.push({ questions: [{ question: "How did you organise files?", reason: "Clarify experience", category: "experience", answerType: "text" }] });
   assert.equal((await questioning.POST(request())).status, 200);
+  assert.equal(dualReviews, 1);
   outputs.push({ content: "I am applying for this position. I organised files at Example Inc." });
   assert.equal((await letter.POST(request())).status, 200);
   assert.deepEqual(calls.map(c => c.locale), ["en-GB", "en-GB"]);

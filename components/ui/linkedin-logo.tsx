@@ -1,17 +1,3 @@
-type LinkedInLogoProps = {
-  className?: string;
-};
-
-export function LinkedInLogo({ className }: LinkedInLogoProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      role="img"
-    >
-      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.95v5.66H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.32 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM3.54 20.45H7.1V9H3.54v11.45Z" />
-    </svg>
-  );
+export function LinkedInLogo({ size = 22 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" role="img" aria-label="LinkedIn" className="linkedinIcon"><rect x="2" y="2" width="20" height="20" rx="3" fill="#0a66c2"/><circle cx="7.1" cy="7.1" r="1.3" fill="#fff"/><path fill="#fff" d="M5.9 9.5h2.4v8.6H5.9zm4 0h2.3v1.2c.5-.9 1.4-1.4 2.6-1.4 2.4 0 3.3 1.5 3.3 3.8v5h-2.4v-4.7c0-1.3-.3-2-1.5-2-1.3 0-1.9.9-1.9 2.3v4.4H9.9z"/></svg>;
 }

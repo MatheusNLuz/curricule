@@ -5,7 +5,7 @@ export const SmartQuestionSchema = z.object({
     question: z.string().default(""),
     reason: z.string().default(""),
     category: z.string().default("experience"),
-    answerType: z.enum(["text", "boolean", "multiple_choice"]).catch("text"),
+    answerType: z.enum(["text", "boolean", "multiple_choice", "multiple_select"]).catch("text"),
     options: z.array(z.string()).optional(),
     suggestedAnswer: z.string().optional()
   })).default([])

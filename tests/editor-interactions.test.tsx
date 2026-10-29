@@ -5,9 +5,10 @@ import { JSDOM } from "jsdom";
 import { OptimizedResumeSchema } from "../lib/schemas/optimize.schema";
 const dom=new JSDOM("<!doctype html><html><body></body></html>",{url:"http://localhost/",pretendToBeVisual:true});
 Object.defineProperty(globalThis,"navigator",{value:dom.window.navigator,configurable:true});
+Object.defineProperty(globalThis,"self",{value:dom.window,configurable:true});
 Object.assign(globalThis,{window:dom.window,localStorage:dom.window.localStorage,document:dom.window.document,HTMLElement:dom.window.HTMLElement,HTMLInputElement:dom.window.HTMLInputElement,Node:dom.window.Node,Event:dom.window.Event,MutationObserver:dom.window.MutationObserver,getComputedStyle:dom.window.getComputedStyle.bind(dom.window),requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window)});
-const destinations:string[]=[];const router={push:(value:string)=>destinations.push(value),replace:()=>{},refresh:()=>{}};const toast=()=>{};
-mock.module("next/navigation.js",{namedExports:{useRouter:()=>router,useSearchParams:()=>new URLSearchParams(),usePathname:()=>"/analysis/test/editor"}});
+const destinations:string[]=[];const replacements:string[]=[];let searchQuery="";const router={push:(value:string)=>destinations.push(value),replace:(value:string)=>replacements.push(value),refresh:()=>{}};const toast=()=>{};
+mock.module("next/navigation.js",{namedExports:{useRouter:()=>router,useSearchParams:()=>new URLSearchParams(searchQuery),usePathname:()=>"/analysis/test/editor"}});
 mock.module(new URL("../components/ui/custom-toast.tsx",import.meta.url).href,{namedExports:{useToast:()=>({toast})}});
 const {render,screen,within,cleanup,waitFor,act}=await import("@testing-library/react");
 const {default:userEvent}=await import("@testing-library/user-event");
@@ -16,7 +17,73 @@ const {EditorClient}=await import("../app/analysis/[id]/editor/client");
 const {SourceLinkInput}=await import("../components/analysis/source-link-input");
 const {TaskProgress}=await import("../components/analysis/task-progress");
 const {notifyTaskActivity}=await import("../lib/task-events");
-test.afterEach(()=>{cleanup();mock.restoreAll();dom.window.localStorage.clear();destinations.length=0;});
+const {FlagPicker}=await import("../components/ui/flag-picker");
+const {ReviewQuestions}=await import("../components/analysis/review-questions");
+const {TruthGuardPanel}=await import("../components/analysis/truth-guard-panel");
+const {LandingMotion}=await import("../components/home/landing-motion");
+const {answerForReview}=await import("../lib/question-answer");
+test.afterEach(()=>{cleanup();mock.restoreAll();dom.window.localStorage.clear();destinations.length=0;replacements.length=0;searchQuery="";});
+
+test("landing motion enters once, pauses offscreen and pauses in hidden tabs",()=>{
+  let callback:IntersectionObserverCallback=()=>{};
+  const observed:Element[]=[];
+  class Observer { constructor(handler:IntersectionObserverCallback){callback=handler;} observe(element:Element){observed.push(element);} disconnect(){} }
+  const previousGlobal=Object.getOwnPropertyDescriptor(globalThis,"IntersectionObserver");
+  const previousWindow=Object.getOwnPropertyDescriptor(dom.window,"IntersectionObserver");
+  const previousHidden=Object.getOwnPropertyDescriptor(dom.window.document,"hidden");
+  Object.defineProperty(globalThis,"IntersectionObserver",{value:Observer,configurable:true});
+  Object.defineProperty(dom.window,"IntersectionObserver",{value:Observer,configurable:true});
+  try{
+    const view=render(<LandingMotion className="landing"><section data-motion="hero">Conteúdo sempre disponível</section></LandingMotion>);
+    assert.equal(observed.length,1);
+    const target=observed[0] as HTMLElement;
+    callback([{target,isIntersecting:true}] as unknown as IntersectionObserverEntry[],{} as IntersectionObserver);
+    assert.equal(target.dataset.motionSeen,"true");
+    callback([{target,isIntersecting:false}] as unknown as IntersectionObserverEntry[],{} as IntersectionObserver);
+    assert.equal(target.dataset.motionSeen,"true");assert.equal(target.dataset.motionVisible,"false");
+    Object.defineProperty(dom.window.document,"hidden",{value:true,configurable:true});
+    dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange"));
+    assert.equal((view.container.firstElementChild as HTMLElement).dataset.motionPaused,"true");
+    assert.ok(screen.getByText("Conteúdo sempre disponível"));
+  }finally{
+    cleanup();
+    for(const [target,key,previous] of [[globalThis,"IntersectionObserver",previousGlobal],[dom.window,"IntersectionObserver",previousWindow],[dom.window.document,"hidden",previousHidden]] as const){if(previous)Object.defineProperty(target,key,previous);else Reflect.deleteProperty(target,key);}
+  }
+});
+
+test("fact review groups information and preserves the original decision indexes",async()=>{
+  let submitted:Record<string,boolean>|undefined;
+  const claim=(text:string,source:"confirmed_by_resume"|"low_confidence_inference"|"missing")=>({claim:text,source,canUseInResume:source==="confirmed_by_resume",canUseInCoverLetter:source==="confirmed_by_resume",explanation:"Detalhe"});
+  render(<TruthGuardPanel truthGuardData={{claims:[claim("Formação informada","confirmed_by_resume"),claim("Possível experiência","low_confidence_inference"),claim("Não confirmado","missing")],blockedClaims:["Não confirmado"],warnings:[],sourceHash:"x",decisions:{}}} onApprove={async decisions=>{submitted=decisions;}} onEditAnswers={()=>{}}/>);
+  const user=userEvent.setup({document:dom.window.document});
+  const approve=screen.getByRole("button",{name:"Revise as informações acima"}) as HTMLButtonElement;
+  assert.equal(approve.disabled,true);
+  assert.equal((screen.getByText(/Informações encontradas nas fontes/).closest("details") as HTMLDetailsElement).open,false);
+  assert.equal((screen.getByText(/Informações que não serão usadas/).closest("details") as HTMLDetailsElement).open,false);
+  await user.click(screen.getByRole("button",{name:"Confirmo esse fato"}));
+  await user.click(screen.getByRole("button",{name:"Salvar decisões e otimizar"}));
+  assert.deepEqual(submitted,{"1":true});
+});
+
+test("conditional and multi-select answers preserve edits while excluding declined details",async()=>{
+  let latest:Record<string,string>={};
+  function Example(){const [answers,setAnswers]=React.useState<Record<string,string>>({});React.useEffect(()=>{latest=answers;},[answers]);return <ReviewQuestions questions={[{id:"yesno",question:"Usou chat?",reason:"Detalhes",answerType:"boolean"},{id:"choices",question:"Canais?",reason:"Detalhes",answerType:"multiple_select",options:["Chat","E-mail"]}]} answers={answers} generating={false} validating={false} truth={null} onAnswer={(id,value)=>setAnswers(current=>({...current,[id]:value}))} onValidate={()=>{}} onApprove={async()=>{}} onEditAnswers={()=>{}} onRetry={()=>{}}/>;}
+  render(<Example/>);const user=userEvent.setup({document:dom.window.document});
+  await user.click(screen.getByRole("button",{name:"Sim"}));await user.type(screen.getByLabelText("Conte mais sobre isso"),"Atendi clientes");
+  await user.click(screen.getByRole("button",{name:"Não"}));assert.equal(answerForReview(latest.yesno),"Não.");
+  await user.click(screen.getByRole("button",{name:"Sim"}));assert.equal((screen.getByLabelText("Conte mais sobre isso") as HTMLTextAreaElement).value,"Atendi clientes");
+  await user.click(screen.getByRole("button",{name:"Chat"}));await user.click(screen.getByRole("button",{name:"E-mail"}));assert.equal(answerForReview(latest.choices),"Chat; E-mail");
+});
+
+test("flag picker lets a user choose a supported country while future options stay disabled",async()=>{
+  function Example(){const [value,setValue]=React.useState("BR");return <FlagPicker label="País" value={value} onChange={setValue} options={[{value:"BR",label:"Brasil",country:"BR"},{value:"PT",label:"Portugal",country:"PT"},{value:"ES",label:"Espanha — em preparação",country:"ES",disabled:true}]} />;}
+  render(<Example/>);
+  const user=userEvent.setup({document:dom.window.document});
+  await user.click(screen.getByText("Brasil",{selector:"summary span"}));
+  assert.equal((screen.getByRole("radio",{name:"Espanha — em preparação"}) as HTMLInputElement).disabled,true);
+  await user.click(screen.getByText("Portugal",{selector:"label span"}));
+  assert.match(screen.getByText("Portugal",{selector:"summary span"}).textContent || "",/Portugal/);
+});
 
 test("progress polling pauses in hidden tabs and wakes immediately for task activity",async context=>{
   context.mock.timers.enable({apis:["setTimeout"]});
@@ -52,6 +119,39 @@ test("progress stops after repeated errors and lets the user explicitly retry",a
   }finally{cleanup();context.mock.timers.reset();}
 });
 const fixture=()=>OptimizedResumeSchema.parse({personalInfo:{name:"Ana Validação"},professionalSummary:"Experiência em atendimento ao cliente.",experiences:[{company:"Empresa A",title:"Cargo A",startDate:"01/2021",endDate:"12/2022",description:["Atendimento por e-mail."]},{company:"Empresa B",title:"Cargo B",startDate:"01/2023",endDate:"",description:["Organização de pedidos."]}]});
+
+test("a generated resume reopens on its preview after a full remount without generating questions",async()=>{
+  const record={id:"test",mode:"OPTIMIZE_FOR_JOB",finalResumeJson:JSON.stringify(fixture()),initialScores:JSON.stringify({overall:61}),finalScores:JSON.stringify({overall:71}),selectedLanguage:"pt-BR",selectedTemplate:"basic-ats",parsedResumeText:"Material original",revision:1,questions:[]};
+  const requests:string[]=[];
+  mock.method(globalThis,"fetch",async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{requests.push(`${init?.method||"GET"} ${String(input)}`);return Response.json(String(input).endsWith("/tasks")?{tasks:[]}:record);});
+  for(let refresh=0;refresh<2;refresh++){
+    render(<EditorClient analysisId="test"/>);
+    const preview=await screen.findByRole("tab",{name:"Prévia e PDF"});
+    await waitFor(()=>assert.equal(preview.getAttribute("aria-selected"),"true"));
+    assert.ok(screen.getByText("Ana Validação"));
+    assert.equal(screen.getByRole("meter",{name:"Antes da otimização"}).getAttribute("aria-valuenow"),"61");
+    assert.equal(screen.getByRole("meter",{name:"Após a otimização"}).getAttribute("aria-valuenow"),"71");
+    assert.equal((screen.getByText("Conferir fontes e versões anteriores").closest("details") as HTMLDetailsElement).open,false);
+    cleanup();
+  }
+  assert.equal(requests.some(request=>request.includes("/smart-questions")),false);
+});
+
+test("editor tab navigation survives refresh and loading saved answers does not resave them",async()=>{
+  const record={id:"test",mode:"OPTIMIZE_FOR_JOB",finalResumeJson:JSON.stringify(fixture()),selectedLanguage:"pt-BR",selectedTemplate:"basic-ats",parsedResumeText:"Material original",revision:1,questions:[{id:"q1",question:"Como você atendia clientes?",reason:"Detalhar",answerType:"text",answer:"Por e-mail",confirmed:true}]};
+  const requests:string[]=[];
+  mock.method(globalThis,"fetch",async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{requests.push(`${init?.method||"GET"} ${String(input)}`);return Response.json(String(input).endsWith("/tasks")?{tasks:[]}:record);});
+  render(<EditorClient analysisId="test"/>);
+  const questions=await screen.findByRole("tab",{name:"Perguntas e fatos"});
+  await userEvent.setup({document:dom.window.document}).click(questions);
+  assert.equal(replacements.at(-1),"/analysis/test/editor?tab=questions");
+  cleanup();searchQuery="tab=questions";
+  render(<EditorClient analysisId="test"/>);
+  await waitFor(()=>assert.equal(screen.getByRole("tab",{name:"Perguntas e fatos"}).getAttribute("aria-selected"),"true"));
+  assert.equal((screen.getByLabelText("Resposta para a pergunta 1") as HTMLTextAreaElement).value,"Por e-mail");
+  await new Promise(resolve=>setTimeout(resolve,1000));
+  assert.equal(requests.some(request=>request.startsWith("POST ")),false);
+});
 test("an idle analysis wakes for another tab without background polling",async context=>{
   context.mock.timers.enable({apis:["setTimeout"]});
   const channels:MockChannel[]=[];

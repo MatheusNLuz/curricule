@@ -3,6 +3,7 @@ import { WorkspacePage } from "@/components/workspace/workspace-ui";
 import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { HttpError } from "@/lib/http-error";
+export const metadata = { title: "Administração" };
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   try { await requireAdmin(); } catch (error) {
     if (error instanceof HttpError && error.status === 401) redirect("/login?next=%2Fadmin");

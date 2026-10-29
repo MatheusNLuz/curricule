@@ -11,7 +11,7 @@ import { resumeText } from "@/lib/resume/resume-text";
 import { ScoreEngine } from "@/lib/ats/score-engine";
 import { runAnalysisTask,commitTask } from "@/lib/analysis-task";
 import { apiError,HttpError } from "@/lib/http-error";
-export const maxDuration=180;
+export const maxDuration=270;
 export async function POST(request:Request){try{
   const user=await getSessionUser();if(!user)throw new HttpError(401,"Faça login para continuar.");
   const {analysisId}=z.object({analysisId:z.string().min(1)}).strict().parse(await boundedJson(request));

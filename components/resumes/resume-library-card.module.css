@@ -1,0 +1,6 @@
+.thumbnail { position: relative; }
+.document { position: relative; padding-top: 96px; max-width: 275px; margin: 0 auto; background: white; border: 1px solid #e5e6ef; border-radius: 5px; box-shadow: 0 10px 22px #2525360b; color: #292937; }
+.document :global(.resumePaper) { padding-top: 0; border: 0; border-radius: 0; box-shadow: none; background: white; }
+.badge { position: absolute; top: 13px; left: 50%; transform: translateX(-50%); --ink: #292937; --line: #e5e6ef; --success: #25745e; --amber: #875e18; --signal: #c54f68; --violet: #5d4fd0; }
+.comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0 0; }
+.comparison dt { color: var(--quiet); font-size: 11px; line-height: 1.6; }.comparison dd { margin: 4px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.5; font-variant-numeric: tabular-nums; }

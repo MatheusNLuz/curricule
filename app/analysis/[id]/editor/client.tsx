@@ -8,17 +8,20 @@ import { useToast } from "@/components/ui/custom-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResumeEditingWorkspace } from "@/components/editor/resume-editing-workspace";
 import { ReviewQuestions } from "@/components/analysis/review-questions";
+import { AiReviewNotice } from "@/components/analysis/ai-review-notice";
 import { WorkspacePage, Journey } from "@/components/workspace/workspace-ui";
 import { DownloadDocumentButton } from "@/components/analysis/download-document-button";
 import { TaskProgress } from "@/components/analysis/task-progress";
 import { PreviewTemplate } from "@/components/preview/preview-template";
-import { RouteLine } from "@/components/ui/route-line";
+import { AnalysisLoading } from "@/components/analysis/analysis-loading";
 import { getFetchErrorMessage, getLoginUrl, readApiError, fetchAnalysisTask } from "@/lib/api-client";
 import { normalizeTemplateId, TEMPLATE_OPTIONS } from "@/lib/preview-template";
 import type { ReviewedTruth } from "@/lib/ats/truth-policy";
 import type { OptimizedResume } from "@/lib/schemas/optimize.schema";
 import { ResumeFactReview } from "@/components/editor/resume-fact-review";
 import { ResumeVersions } from "@/components/editor/resume-versions";
+import { GeneratedResumeSummary } from "@/components/editor/generated-resume-summary";
+import { isEditorTab, resolveEditorTab, type EditorTab } from "@/lib/editor-tab";
 
 export function EditorClient({ analysisId }: { analysisId: string }) {
   const router = useRouter();
@@ -27,19 +30,30 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   const [data, setData] = useState<AnalysisView|null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError,setLoadError]=useState<{status:number;message:string}|null>(null);
-  const [activeTab, setActiveTab] = useState(() => { const tab=params.get("tab");return tab&&["questions","match","edit","preview","coverletter"].includes(tab)?tab:"questions"; });
+  const [activeTab, setActiveTab] = useState<EditorTab | null>(() => { const tab=params.get("tab");return isEditorTab(tab)?tab:null; });
 
   const [questions, setQuestions] = useState<AnalysisQuestion[]>([]);
+  const [questionReview, setQuestionReview] = useState<"approved" | "unavailable" | undefined>();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [truthGuardData, setTruthGuardData] = useState<ReviewedTruth | null>(null);
   const [answerSaveStatus, setAnswerSaveStatus] = useState("");
   const [runningTruthGuard, setRunningTruthGuard] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [editorDirty,setEditorDirty]=useState(false);
   const [generatingLetter, setGeneratingLetter] = useState(false);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const generatingRef = useRef(false);
   const templateRequestRef = useRef(0);
+  const savedAnswersRef = useRef<string | null>(null);
+
+  function changeTab(value: string) {
+    if (!isEditorTab(value)) return;
+    setActiveTab(value);
+    const query = new URLSearchParams(params.toString());
+    query.set("tab", value);
+    router.replace(`/analysis/${analysisId}/editor?${query}`, { scroll: false });
+  }
 
 
   const fetchQuestions = useCallback(async () => {
@@ -51,11 +65,13 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       if (!res.ok) throw new Error(await readApiError(res, "Não foi possível gerar as perguntas."));
       const d = await res.json();
       if (d.success) {
+        if (d.review === "approved" || d.review === "unavailable") setQuestionReview(d.review);
         setQuestions(d.questions);
         const initialAnswers: Record<string, string> = {};
         d.questions.forEach((q: AnalysisQuestion) => {
           if (q.answer) initialAnswers[q.id] = q.answer;
         });
+        savedAnswersRef.current = JSON.stringify(initialAnswers);
         setAnswers(initialAnswers);
       }
     } catch (error: unknown) {
@@ -75,23 +91,18 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       if (!res.ok) throw Object.assign(new Error(await readApiError(res, "Não foi possível carregar a análise.")),{status:res.status});
       const d = await res.json() as AnalysisView;
       setData(d);
+      setQuestionReview(d.reviewStatuses?.QUESTIONS);
       
-      if (!d.comparisonJson && d.jobDescription) {
-        // Needs match
-      } else if (!d.questions || d.questions.length === 0) {
-        // Generate questions if not exist
+      setQuestions(d.questions || []);
+      const initialAnswers: Record<string, string> = {};
+      d.questions?.forEach((q: AnalysisQuestion) => { if (q.answer) initialAnswers[q.id] = q.answer; });
+      savedAnswersRef.current = JSON.stringify(initialAnswers);
+      setAnswers(initialAnswers);
+      if (!d.finalResumeJson && (!d.jobDescription || d.comparisonJson) && !d.questions?.length) {
         if (!generatingRef.current) {
           generatingRef.current = true;
-          fetchQuestions();
+          void fetchQuestions();
         }
-      } else {
-        setQuestions(d.questions);
-        // Load existing answers into state
-        const initialAnswers: Record<string, string> = {};
-        d.questions.forEach((q: AnalysisQuestion) => {
-          if (q.answer) initialAnswers[q.id] = q.answer;
-        });
-        setAnswers(initialAnswers);
       }
     } catch (error: unknown) {
       setLoadError({status:error&&typeof error==="object"&&"status" in error?Number(error.status):0,message:getFetchErrorMessage(error,"Tente novamente em instantes.")});
@@ -103,7 +114,6 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {generatingRef.current=false;void fetchData();},[fetchData]);
 
-// Translate the editor UI
   const handleTruthGuard = async () => {
     setRunningTruthGuard(true);
     try {
@@ -142,7 +152,10 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
 
       const decisionResponse = await fetch("/api/truth-guard/decisions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId, sourceHash: truthGuardData?.sourceHash, decisions }) });
       if (!decisionResponse.ok) throw new Error(await readApiError(decisionResponse, "Não foi possível salvar suas decisões."));
+      const savedDecision = await decisionResponse.json();
+      if (typeof savedDecision.sourceHash === "string") setTruthGuardData(current => current ? { ...current, sourceHash: savedDecision.sourceHash, decisions } : current);
 
+      setOptimizing(true);
       const res = await fetchAnalysisTask(`/api/optimize`, {
         method: "POST", body: JSON.stringify({ analysisId }), headers: { "Content-Type": "application/json" }
       });
@@ -154,14 +167,16 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
           router.push(`/analysis/${analysisId}`);
         } else {
           toast({ title: "Sucesso", description: "Currículo otimizado!", variant: "success" });
-          fetchData();
-          setActiveTab("preview");
+          await fetchData();
+          changeTab("preview");
         }
       } else {
         throw new Error(d.error || "Falha ao otimizar o currículo.");
       }
     } catch (error: unknown) {
       toast({ title: "Não foi possível otimizar", description: getFetchErrorMessage(error, "Tente novamente em instantes."), variant: "error" });
+    } finally {
+      setOptimizing(false);
     }
   };
 
@@ -250,12 +265,14 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   };
 
   useEffect(() => {
-    if (!questions.length) return;
+    const snapshot = JSON.stringify(answers);
+    if (!questions.length || savedAnswersRef.current === snapshot) return;
     const timer = setTimeout(async () => {
       setAnswerSaveStatus("Salvando respostas…");
       try {
         const response = await fetch("/api/smart-questions/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId, answers }) });
         if (!response.ok) throw new Error(await readApiError(response, "Respostas não salvas."));
+        savedAnswersRef.current = snapshot;
         setAnswerSaveStatus("Respostas salvas na sua conta.");
       } catch { setAnswerSaveStatus("Não foi possível salvar. Mantenha esta aba aberta e tente validar os fatos novamente."); }
     }, 900);
@@ -263,24 +280,8 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   }, [analysisId, answers, questions]);
 
   if (!data && loadError) return <WorkspacePage><section className="sheet padded" role="alert"><h1 className="text-2xl font-semibold">{loadError.status===404?"Análise não encontrada":loadError.status===403?"Acesso indisponível":"Não foi possível abrir o editor"}</h1><p className="my-4">{loadError.message} Seus rascunhos salvos não foram removidos.</p><div className="flex flex-wrap gap-3"><button className="button primary" onClick={()=>{setLoading(true);void fetchData();}}>Tentar novamente</button><button className="button secondary" onClick={()=>router.push("/history")}>Voltar ao histórico</button></div></section></WorkspacePage>;
-  if (loading || !data) return (
-    <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center px-5 py-16">
-      <div className="surface w-full rounded-2xl p-6 text-center sm:p-8">
-        <Loader2 className="mx-auto h-9 w-9 animate-spin text-primary" />
-        <p className="mt-4 text-sm font-semibold">Preparando seu espaço de edição</p>
-        <p className="mt-1 text-xs text-muted-foreground">Estamos organizando as próximas decisões do seu currículo.</p>
-        <RouteLine
-          className="mt-8 text-left"
-          activeIndex={1}
-          steps={[
-            { label: "Leitura", description: "Currículo recebido" },
-            { label: "Edição", description: "Espaço sendo preparado" },
-            { label: "Exportação", description: "Disponível depois" },
-          ]}
-        />
-      </div>
-    </div>
-  );
+  if (optimizing) return <AnalysisLoading step={data?.mode === "LINKEDIN_OPTIMIZATION" ? "Estamos reescrevendo seu perfil." : "Estamos reescrevendo seu currículo."} description={data?.jobDescription ? "Seu histórico é a base. A vaga orienta o foco, e o idioma escolhido orienta a escrita." : "Reescrevemos o conteúdo no idioma escolhido, preservando os fatos do seu histórico."} writing />;
+  if (loading || !data) return <AnalysisLoading step="Preparando seu espaço de edição." description="Estamos organizando seu material para você revisar e editar." />;
 
   const match = data.comparisonJson ? JSON.parse(data.comparisonJson) : null;
   const optimized = data.finalResumeJson ? JSON.parse(data.finalResumeJson) : null;
@@ -304,24 +305,25 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           {isLinkedIn 
             ? "Responda perguntas estratégicas para traduzir sua experiência em evidências reais de performance."
-            : "Responda perguntas, ajuste o conteúdo e leve uma versão pronta para cada oportunidade."}
+            : optimized ? "Veja a avaliação da nova versão, confira o currículo e baixe seu arquivo." : "Responda perguntas, ajuste o conteúdo e leve uma versão pronta para cada oportunidade."}
         </p>
-        <Journey current={optimized?3:2}/>
+        {!optimized && <Journey current={2}/>}
       </div>
 
-      <p role="status" className="mb-5 text-xs text-muted-foreground">{answerSaveStatus}</p>
+      {optimized && !isLinkedIn && <GeneratedResumeSummary initialScores={data.initialScores} finalScores={data.finalScores} analysisId={analysisId}/>}
+      {answerSaveStatus && <p role="status" className="mb-5 text-xs text-muted-foreground">{answerSaveStatus}</p>}
+      {!optimized && <>
       <details className="mb-6 rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">Conferir o material original</summary><p className="mt-3 text-xs leading-6 text-muted-foreground">Compare as sugestões e a prévia com o conteúdo que você forneceu. Revise especialmente empresas, datas e resultados antes de usar.</p><pre className="mt-4 max-h-96 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7">{data.parsedResumeText}</pre></details>
-      {optimized&&<ResumeFactReview key={data.revision} analysisId={analysisId} revision={data.revision} disabled={editorDirty} onUpdated={async()=>{setTruthGuardData(null);await fetchData();}}/>}
-      {optimized && <ResumeVersions analysisId={analysisId} current={data.finalResumeJson||""} revision={data.revision} onRestore={fetchData} />}
+      </>}
 
-      {isLinkedIn ? (<ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/>
+      {isLinkedIn ? (<>{questionReview === "unavailable" && <AiReviewNotice subject="questions" />}<ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/></>
       ) : (
-        <Tabs value={activeTab==="edit"&&!optimized?"questions":activeTab==="match"&&!match?"questions":activeTab} onValueChange={setActiveTab} className="w-full legacyPanels">
+        <Tabs value={resolveEditorTab(activeTab, Boolean(optimized), Boolean(match))} onValueChange={changeTab} className="w-full legacyPanels">
         <TabsList className="flowTabs">
           {match && <TabsTrigger value="match" className="shrink-0 text-xs sm:text-[13px]"><Briefcase className="mr-2 h-3.5 w-3.5" /> Comparação com a vaga</TabsTrigger>}
           <TabsTrigger value="questions" className="shrink-0 text-xs sm:text-[13px]"><HelpCircle className="mr-2 h-3.5 w-3.5" /> Perguntas e fatos</TabsTrigger>
           {optimized && <TabsTrigger value="edit" className="shrink-0 text-xs sm:text-[13px]"><PenTool className="mr-2 h-3.5 w-3.5" /> Editar currículo</TabsTrigger>}
-          <TabsTrigger value="preview" className="shrink-0 text-xs sm:text-[13px]"><Layout className="mr-2 h-3.5 w-3.5" /> Prévia e PDF</TabsTrigger>
+          <TabsTrigger value="preview" disabled={!optimized} className="shrink-0 text-xs sm:text-[13px]"><Layout className="mr-2 h-3.5 w-3.5" /> Prévia e PDF</TabsTrigger>
           <TabsTrigger value="coverletter" className="shrink-0 text-xs sm:text-[13px]"><FileText className="mr-2 h-3.5 w-3.5" /> Carta de Apresentação</TabsTrigger>
         </TabsList>
 
@@ -347,14 +349,14 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
                   </ul>
                 </div>
               </div>
-              <button onClick={() => setActiveTab("questions")} className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
+              <button onClick={() => changeTab("questions")} className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
                 Continuar para as Perguntas <ArrowRight className="ml-2 h-3.5 w-3.5" />
               </button>
             </div>
           </TabsContent>
         )}
 
-        <TabsContent value="questions"><ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/></TabsContent>
+        <TabsContent value="questions">{questionReview === "unavailable" && <AiReviewNotice subject="questions" />}<ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/></TabsContent>
 
         {optimized && (
           <TabsContent value="edit" className="space-y-6">
@@ -363,6 +365,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
         )}
 
         <TabsContent value="preview" className="space-y-6">
+          {exporting ? <AnalysisLoading step="Preparando seu PDF." variant="export" compact /> : <>
           <div className="surface rounded-2xl p-4 sm:p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-base font-semibold">Prévia do currículo</h2>
@@ -395,9 +398,11 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
               </div>
             )}
           </div>
+          </>}
         </TabsContent>
 
         <TabsContent value="coverletter" className="space-y-6">
+          {generatingLetter ? <AnalysisLoading step="Estamos escrevendo sua carta." variant="letter" compact /> : <>
           <div className="surface rounded-2xl p-4 sm:p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-base font-semibold">Carta de Apresentação</h2>
@@ -418,9 +423,15 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
               </div>
             )}
           </div>
+          </>}
         </TabsContent>
       </Tabs>
       )}
+      {optimized && <details className="sheet padded mt-8"><summary className="cursor-pointer text-sm font-semibold">Conferir fontes e versões anteriores</summary>
+        <details className="mt-5 rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-semibold">Conferir o material original</summary><pre className="mt-4 max-h-96 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-7">{data.parsedResumeText}</pre></details>
+        <ResumeFactReview key={data.revision} analysisId={analysisId} revision={data.revision} disabled={editorDirty} onUpdated={async()=>{setTruthGuardData(null);await fetchData();}}/>
+        <ResumeVersions analysisId={analysisId} current={data.finalResumeJson||""} revision={data.revision} onRestore={fetchData}/>
+      </details>}
     </WorkspacePage>
   );
 }

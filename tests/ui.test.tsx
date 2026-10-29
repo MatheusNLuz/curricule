@@ -28,6 +28,7 @@ test("login and registration expose only the supported email/password flow", () 
 test("landing renders the interactive writing example before any viewport event", async () => {
   const html=renderToStaticMarkup(await HomePage());
   assert.ok(html.includes("Laboratório de escrita"));assert.ok(html.includes("Confirmar essa informação no exemplo"));
+  assert.match(html,/data-motion="hero"/);assert.match(html,/data-motion="process"/);
   assert.doesNotMatch(html,/será carregado ao chegar|Carregando sua análise/);
 });
 test("application shell no longer renders optional measurement controls", async () => {
@@ -40,13 +41,23 @@ test("job form offers a link or pasted description and a separate output locale"
   savePreview("vaga", html);
   for (const text of ["Link da vaga", "Colar descrição", "Enviar PDF", "Idioma do resultado", "País ou convenção do currículo"]) assert.ok(html.includes(text), text);
   assert.ok(html.includes("pt-PT")); assert.ok(html.includes("en-GB"));
+  assert.match(html, /Ler descrição da vaga/);
+  assert.match(html, /Español \(España\)/);
+  assert.match(html, /Espanha/);
   assert.doesNotMatch(html, /Link do seu perfil do LinkedIn/);
 });
-test("LinkedIn form starts with public profile URL and includes PDF/text alternatives", () => {
+test("objective selection immediately shows all analysis options", () => {
+  mode = "";
+  const html = renderToStaticMarkup(React.createElement(NewAnalysisPage));
+  assert.match(html, /Otimizar para ATS/);
+  assert.match(html, /Otimizar LinkedIn/);
+  assert.doesNotMatch(html, /Um ponto de partida|Ver todos os objetivos/);
+});
+test("LinkedIn form offers PDF and text without a profile URL field", () => {
   mode = "LINKEDIN_OPTIMIZATION";
   const html = renderToStaticMarkup(React.createElement(NewAnalysisPage));
   savePreview("linkedin", html);
-  for (const text of ["Link do perfil", "Link do seu perfil do LinkedIn", "Ler perfil público", "Enviar PDF", "Colar texto", "somente o conteúdo público"]) assert.ok(html.includes(text), text);
-  assert.ok(html.includes("https://www.linkedin.com/in/seu-perfil/"));
+  for (const text of ["Enviar PDF", "Colar texto", "PDF exportado do LinkedIn"]) assert.ok(html.includes(text), text);
+  assert.doesNotMatch(html, /Link do perfil|Link do seu perfil do LinkedIn|Ler perfil público/);
   assert.doesNotMatch(html, /A vaga que você quer/);
 });
