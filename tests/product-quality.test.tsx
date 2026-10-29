@@ -14,6 +14,7 @@ import { boundedJson,assertRequestOrigin } from "../lib/read-bounded-body";
 import { TelemetrySchema } from "../lib/telemetry";
 import { acquisitionSource } from "../lib/acquisition-source";
 import { resumeDocx } from "../lib/resume/docx";
+import { resumeDocumentHtml } from "../lib/resume/document-html";
 import JSZip from "jszip";
 const source="Atendimento a clientes por e-mail. Organização de pedidos em Excel.";
 const assessment=ResumeAnalysisSchema.parse({scores:{ats:95,impact:99},rubric:["ats","structure","clarity","impact","keywords"].map(criterion=>({criterion,level:3,foundText:"Atendimento a clientes por e-mail.",reason:"Há evidência na fonte."}))});
@@ -41,9 +42,14 @@ test("DOCX contains the same optional sections and body contact, with no documen
   const bytes=await resumeDocx(resume,"pt-BR","executive-ats");const zip=await JSZip.loadAsync(bytes);const xml=await zip.file("word/document.xml")!.async("string");assert.match(xml,/Camila Validação/);assert.match(xml,/camila@example.test/);assert.match(xml,/Organização do arquivo/);assert.match(xml,/Português/);assert.doesNotMatch(xml,/<w:tbl\b/);assert.equal(Object.keys(zip.files).some(name=>/word\/header\d/.test(name)),false);
 });
 test("Spanish headings are shared by the preview and DOCX",async()=>{
-  const sections=resumeSections(resume,"es-ES");assert.equal(sections[0].title,"Perfil profesional");assert.ok(sections.some(section=>section.title==="Experiencia profesional"));
-  const html=renderToStaticMarkup(<AtsTemplate resume={resume} templateId="basic-ats" language="es-ES"/>);assert.match(html,/Experiencia profesional/);
-  const bytes=await resumeDocx(resume,"es-ES","basic-ats");const zip=await JSZip.loadAsync(bytes);const xml=await zip.file("word/document.xml")!.async("string");assert.match(xml,/Perfil profesional/);assert.match(xml,/Experiencia profesional/);
+  const full={...resume,education:[{institution:"Example University",degree:"Grado",startDate:"2020",endDate:"2024"}],certifications:[{name:"Certificación oficial",issuer:"Example"}]};
+  const headings=["Perfil profesional","Experiencia profesional","Competencias","Formación académica","Certificaciones","Proyectos","Idiomas"];
+  const sections=resumeSections(full,"es-ES");assert.deepEqual(sections.map(section=>section.title).sort(),[...headings].sort());
+  const html=renderToStaticMarkup(<AtsTemplate resume={full} templateId="basic-ats" language="es-ES"/>);
+  const pdfHtml=resumeDocumentHtml(full,"es-ES","basic-ats");
+  const bytes=await resumeDocx(full,"es-ES","basic-ats");const zip=await JSZip.loadAsync(bytes);const xml=await zip.file("word/document.xml")!.async("string");
+  for(const heading of headings)for(const output of [html,pdfHtml,xml])assert.ok(output.includes(heading));
+  assert.ok(resumeSections(full,"pt-PT").some(section=>section.title==="Formação académica"));
 });
 test("bounded JSON rejects oversized chunked bodies and foreign-origin mutations",async()=>{
   const request=new Request("https://app.example/api/test",{method:"POST",body:JSON.stringify({text:"x".repeat(100)})});await assert.rejects(()=>boundedJson(request,40),error=>(error as {status:number}).status===413);

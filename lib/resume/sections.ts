@@ -2,7 +2,7 @@ import type { OptimizedResume } from "../schemas/optimize.schema";
 
 export function resumeLabels(language = "pt-BR") {
   return language === "es-ES" ? { summary: "Perfil profesional", experience: "Experiencia profesional", skills: "Competencias", education: "Formación académica", certifications: "Certificaciones", projects: "Proyectos", languages: "Idiomas", present: "Actualidad" }
-    : language.startsWith("pt-") ? { summary: "Resumo profissional", experience: "Experiência profissional", skills: "Competências", education: "Formação acadêmica", certifications: "Certificações", projects: "Projetos", languages: "Idiomas", present: "Atual" }
+    : language.startsWith("pt-") ? { summary: "Resumo profissional", experience: "Experiência profissional", skills: "Competências", education: language === "pt-PT" ? "Formação académica" : "Formação acadêmica", certifications: "Certificações", projects: "Projetos", languages: "Idiomas", present: "Atual" }
     : { summary: "Professional Summary", experience: "Professional Experience", skills: "Skills", education: "Education", certifications: "Certifications", projects: "Projects", languages: "Languages", present: "Present" };
 }
 export function safeResumeLink(value: string | undefined) {
