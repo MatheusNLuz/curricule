@@ -34,10 +34,13 @@ export async function runAnalysisTask<T>(analysisId:string,userId:string,kind:st
     if(previous?.status==="COMPLETED"&&previous.inputHash===hash&&previous.resultJson)return {value:JSON.parse(previous.resultJson) as T};
     const imported=kind.startsWith("IMPORT_");
     if(!imported)await requireAnalysisAccess(tx,userId);
-    const {since}=dailyWindow();
+    const {since,resetsAt}=dailyWindow();
     const used=await tx.analysisUsage.count({where:{userId,createdAt:{gte:since},kind:imported?{startsWith:"IMPORT_"}:{not:{startsWith:"IMPORT_"}}}});
     const limit=imported?Math.max(1,Number(process.env.SOURCE_DAILY_LIMIT)||80):Math.max(1,Number(process.env.ANALYSIS_DAILY_LIMIT)||40);
-    if(used>=limit)throw new HttpError(429,imported?"Limite técnico diário de leitura de links atingido. Cole o texto para continuar.":"Limite técnico diário de processamento atingido. Consulte o horário de renovação na sua conta.");
+    if(used>=limit){
+      const renewal=resetsAt.toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"});
+      throw new HttpError(429,imported?`Limite diário de ${limit} leituras atingido. Renova em ${renewal} (horário de Brasília). Cole o texto para continuar.`:`Limite diário de ${limit} etapas de processamento atingido. Renova em ${renewal} (horário de Brasília). Cada etapa e tentativa, inclusive com falha, entra nessa contagem.`,"DAILY_PROCESSING_LIMIT");
+    }
     const usage=await tx.analysisUsage.create({data:{analysisId,userId,kind,status:"STARTED"}});
     const data={userId,inputHash:hash,status:"RUNNING",token,leaseUntil:new Date(Date.now()+budget+30_000),resultJson:null};
     await tx.analysisTask.upsert({where:{analysisId_kind:{analysisId,kind}},create:{...data,analysisId,kind},update:data});

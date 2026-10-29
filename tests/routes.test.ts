@@ -134,6 +134,21 @@ test("task quotas, ownership and failed-attempt recovery are enforced", async ()
   assert.deepEqual(await runAnalysisTask(row.id, "owner", "ANALYZE", "x", async () => ({ success: true })), { success: true }); assert.equal(used, 2);
 });
 
+test("daily processing limit explains its stage count and renewal without starting work", async () => {
+  used = Number(process.env.ANALYSIS_DAILY_LIMIT) || 40;
+  let called = false;
+  await assert.rejects(() => runAnalysisTask(row.id, "owner", "TRUTH", "facts", async () => { called = true; }), error => {
+    const failure = error as { status?: number; code?: string; message: string };
+    assert.equal(failure.status, 429);
+    assert.equal(failure.code, "DAILY_PROCESSING_LIMIT");
+    assert.match(failure.message, /etapas de processamento/);
+    assert.match(failure.message, /Renova em \d{2}\/\d{2}\/\d{4}.*horário de Brasília/);
+    return true;
+  });
+  assert.equal(called, false);
+  assert.equal(task, null);
+});
+
 test("total timeout marks a failed attempt and a late execution cannot commit over a resumed task",async context=>{
   const previous=process.env.ANALYSIS_TASK_TIMEOUT_MS;process.env.ANALYSIS_TASK_TIMEOUT_MS="10000";
   context.mock.timers.enable({apis:["setTimeout"]});let release:()=>void=()=>{},started:()=>void=()=>{};let lateBlocked=false;
