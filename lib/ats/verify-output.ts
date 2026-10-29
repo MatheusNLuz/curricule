@@ -9,7 +9,7 @@ export async function verifyOutput(original: string, confirmed: string, proposed
   const normalized = proposed.normalize("NFKC").toLowerCase();
   const presentRejected = rejected.filter(claim => claim.trim().length > 0 && normalized.includes(claim.normalize("NFKC").toLowerCase()));
   if (presentRejected.length) throw new OutputVerificationError(presentRejected.slice(0, 20).map(claim => claim.slice(0, 500)));
-  const report = await TruthGuard.evaluate(original, confirmed, proposed, rejected, language);
+  const report = await TruthGuard.evaluate(original, confirmed, proposed, rejected, language, false, true);
   const unconfirmed = report.claims.filter(claim => !(destination === "letter" ? claim.canUseInCoverLetter : claim.canUseInResume) || !["confirmed_by_resume", "confirmed_by_user"].includes(claim.source));
   if (!report.claims.length || report.blockedClaims.length || unconfirmed.length) throw new OutputVerificationError([...report.blockedClaims, ...unconfirmed.map(claim => claim.claim)].filter(Boolean).slice(0, 20).map(claim => claim.slice(0, 500)));
   return report;

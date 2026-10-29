@@ -121,11 +121,12 @@ test("AI fallback validates schema before accepting provider output", async () =
   assert.deepEqual(await ai.analyzeLocalized("system", "input", z.object({ score: z.number() }), "pt-BR"), { score: 42 }); assert.deepEqual(calls, ["primary", "primary", "secondary", "secondary"]); logger.mock.restore();
 });
 test("final fact verification rejects declined and unconfirmed generated content", async () => {
-  const verify = mock.method(TruthGuard, "evaluate", async () => ({ claims: [{ claim: "Invented metric", source: "missing" as const, canUseInResume: false, canUseInCoverLetter: false, explanation: "No source" }], blockedClaims: [], warnings: [] }));
+  const verify = mock.method(TruthGuard, "evaluate", async (...args: Parameters<typeof TruthGuard.evaluate>) => { void args; return { claims: [{ claim: "Invented metric", source: "missing" as const, canUseInResume: false, canUseInCoverLetter: false, explanation: "No source" }], blockedClaims: [], warnings: [] }; });
   await assert.rejects(() => verifyOutput("Original", "", "Eu gerenciei uma equipe de 20 pessoas", ["gerenciei uma equipe de 20 pessoas"]));
   assert.equal(verify.mock.callCount(), 0);
   await assert.rejects(() => verifyOutput("Original", "", "Invented metric", []));
-  assert.equal(verify.mock.callCount(), 1); verify.mock.restore();
+  assert.equal(verify.mock.callCount(), 1);
+  assert.equal(verify.mock.calls[0].arguments[6], true); verify.mock.restore();
 });
 test("a rejected rewrite is corrected once and checked again before use", async () => {
   const inputs: string[][] = [];

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const answers = analysis.questions.filter(q => q.confirmed).map(q => ({ question: q.question, answer: answerForReview(q.answer) })).filter(q => q.answer).map(q => q.question + ": " + q.answer).join("\n");
     const confirmed = answers + "\nExplicitly confirmed by candidate:\n" + facts.approved.join("\n");
     const result = await runAnalysisTask(analysisId, session.userId, "OPTIMIZE", [review, analysis.revision, analysis.selectedLanguage, analysis.jobLocation,resumeRegionGuidance(analysis.jobLocation),analysis.rejectedClaimsJson,analysis.confirmedClaimsJson], async () => {
-      const ai = new AnalysisOrchestrator([new OpenRouterProvider(), new NvidiaNimProvider(), new NvidiaNimProvider(process.env.NVIDIA_NIM_TRUTH_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b")]);
+      const ai = new AnalysisOrchestrator([new NvidiaNimProvider(process.env.NVIDIA_NIM_TRUTH_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b"), new OpenRouterProvider(), new NvidiaNimProvider()]);
       const payload = JSON.stringify({ original: analysis.parsedResumeText, confirmed, rejected: facts.rejected, job: analysis.jobDescription, language: languageLabel(analysis.selectedLanguage), region: analysis.jobLocation });
       let optimized: unknown, assessment: unknown, finalScores: unknown;
       if (analysis.mode === "LINKEDIN_OPTIMIZATION") {

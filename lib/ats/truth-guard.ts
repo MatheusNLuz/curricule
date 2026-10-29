@@ -32,12 +32,12 @@ export function normalizeTruthVerdict(result: TruthGuardGen): TruthGuardGen {
 }
 
 export class TruthGuard {
-  static async evaluate(resumeText: string, userAnswers: string, proposedChanges: string, rejected: string[] = [], language = "pt-BR", interactive = false): Promise<TruthGuardGen> {
+  static async evaluate(resumeText: string, userAnswers: string, proposedChanges: string, rejected: string[] = [], language = "pt-BR", interactive = false, verifyProposal = false): Promise<TruthGuardGen> {
     const fast = new NvidiaNimProvider(process.env.NVIDIA_NIM_TRUTH_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b");
     const configured = new NvidiaNimProvider();
     const orchestrator = new AnalysisOrchestrator(interactive
       ? [new OpenRouterProvider(), fast, configured]
-      : [new OpenRouterProvider(), configured, fast]);
+      : [fast, new OpenRouterProvider(), configured]);
     
     const userPrompt = `
 ORIGINAL RESUME:
@@ -58,7 +58,8 @@ ${proposedChanges}
 EXPLICITLY REJECTED CLAIMS (must not appear, including paraphrases, even if mentioned in sources):
 ${JSON.stringify(rejected)}
 
-Evaluate EVERY factual claim in the proposed content, including metrics, employers, dates and qualifications. Block anything not strictly supported by the original resume or user answers. Do not treat job requirements as evidence about the candidate. Return at least one claim for nonempty content.`;
+Evaluate EVERY factual claim in the proposed content, including metrics, employers, dates and qualifications. Block anything not strictly supported by the original resume or user answers. Do not treat job requirements as evidence about the candidate. Return at least one claim for nonempty content.
+${verifyProposal ? "For this final verification, claims and blockedClaims must describe ONLY assertions actually present in PROPOSED CHANGES/NEW CONTENT TO ADD. The rejected list is a prohibition, not proposed content: do not list a rejected item as blocked or missing merely because it appears in that list. If its meaning actually appears in the proposal, block it even when paraphrased. Never invent an assertion in the proposal." : ""}`;
 
     const rawResult = await orchestrator.analyzeLocalized<TruthGuardGen>(
       TRUTH_GUARD_SYSTEM_PROMPT,
