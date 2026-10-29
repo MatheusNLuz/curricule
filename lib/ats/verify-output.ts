@@ -15,14 +15,16 @@ export async function verifyOutput(original: string, confirmed: string, proposed
   return report;
 }
 
-export async function generateVerifiedOutput<T>(generate: (issues: string[]) => Promise<T>, verify: (value: T) => Promise<unknown>): Promise<T> {
+export async function generateVerifiedOutput<T>(generate: (issues: string[], previousOutput?: T) => Promise<T>, verify: (value: T) => Promise<unknown>): Promise<T> {
   let issues: string[] = [];
+  let previousOutput: T | undefined;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const value = await generate(issues);
+    const value = await generate(issues, previousOutput);
     try { await verify(value); return value; }
     catch (error) {
       if (!(error instanceof OutputVerificationError) || attempt === 1 || !error.issues.length) throw error;
       issues = error.issues;
+      previousOutput = value;
     }
   }
   throw new OutputVerificationError([]);

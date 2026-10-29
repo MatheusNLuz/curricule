@@ -131,10 +131,12 @@ test("final fact verification rejects declined and unconfirmed generated content
 test("a rejected rewrite is corrected once and checked again before use", async () => {
   const inputs: string[][] = [];
   const checked: string[] = [];
-  const output = await generateVerifiedOutput(async issues => { inputs.push(issues); return issues.length ? "supported" : "invented"; }, async value => { checked.push(value); if (value === "invented") throw new OutputVerificationError(["invented"]); });
+  const previousOutputs: (string | undefined)[] = [];
+  const output = await generateVerifiedOutput<string>(async (issues, previousOutput) => { inputs.push(issues); previousOutputs.push(previousOutput); return issues.length ? "supported" : "invented"; }, async value => { checked.push(value); if (value === "invented") throw new OutputVerificationError(["invented"]); });
   assert.equal(output, "supported");
   assert.deepEqual(inputs, [[], ["invented"]]);
   assert.deepEqual(checked, ["invented", "supported"]);
+  assert.deepEqual(previousOutputs, [undefined, "invented"]);
 });
 test("a rewrite is never released if verification continues to fail or is unavailable", async () => {
   await assert.rejects(generateVerifiedOutput(async () => "unsupported", async () => { throw new OutputVerificationError(["unsupported"]); }), OutputVerificationError);

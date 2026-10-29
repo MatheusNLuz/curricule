@@ -73,7 +73,8 @@ test("mixed prose is discarded and regenerated before returning", async () => {
   assert.deepEqual(await new AnalysisOrchestrator([fake]).analyzeLocalized("Summary", "Original", ContentSchema, "pt-BR"), corrected);
   assert.equal(calls.length, 4);
   assert.match(calls[2].systemPrompt, /failed language validation/);
-  assert.equal(calls[2].userPrompt, "Original");
+  assert.deepEqual(JSON.parse(calls[2].userPrompt), { previousOutput: wrong, languageIssues: [] });
+  assert.match(calls[2].systemPrompt, /professional translation editor/);
 });
 
 test("language rejection identifies fields so regeneration can fix the actual problem", async () => {
@@ -81,7 +82,27 @@ test("language rejection identifies fields so regeneration can fix the actual pr
   const result = await new AnalysisOrchestrator([fake]).analyzeLocalized("Summary", "Original", ContentSchema, "pt-BR");
   assert.equal(result.content, "Texto em português.");
   assert.match(calls[2].userPrompt, /English prose/);
-  assert.match(calls[2].userPrompt, /preserve source quotations/);
+  assert.match(calls[2].systemPrompt, /verbatim source evidence in foundText/);
+});
+
+test("language-only repair preserves structured facts and source quotations", async () => {
+  const wrong = { personalInfo: { name: "Ana Example" }, professionalSummary: "Desenvolveu serviços PHP.", experiences: [{ company: "Example Labs", title: "Software developer", startDate: "2022", description: ["Built web applications."] }], foundText: "Built web applications.", score: 75, source: "confirmed_by_resume" };
+  const corrected = { ...wrong, professionalSummary: "Desarrolló servicios PHP.", experiences: [{ ...wrong.experiences[0], title: "Desarrolladora de software", description: ["Desarrolló aplicaciones web."] }] };
+  const { fake, calls } = provider([wrong, corrected, approved]);
+  const result = await new AnalysisOrchestrator([fake]).analyzeLocalized("Rewrite", "Original input in another language", z.object({ ...Object.fromEntries(Object.keys(wrong).map(key => [key, z.unknown()])) }), "es-ES");
+  assert.deepEqual(result, corrected);
+  assert.deepEqual(JSON.parse(calls[1].userPrompt).previousOutput, wrong);
+  assert.match(calls[1].systemPrompt, /scores and machine enum values/);
+  assert.equal(result.foundText, wrong.foundText);
+  assert.equal(result.score, 75);
+});
+
+test("a translated request envelope is unwrapped and fully checked", async () => {
+  const wrong = { content: "Desarrolladora de software con experiencia en PHP." };
+  const corrected = { content: "Software developer with experience in PHP." };
+  const { fake, calls } = provider([wrong, { previousOutput: corrected, languageIssues: [] }, approved]);
+  assert.deepEqual(await new AnalysisOrchestrator([fake]).analyzeLocalized("Summary", "Original", ContentSchema, "en-US"), corrected);
+  assert.deepEqual(JSON.parse(calls[2].userPrompt).outputToAudit, corrected);
 });
 
 test("two different providers author and review before the result is returned", async () => {
@@ -211,6 +232,64 @@ test("a mixed-language source quotation is excluded from the generated-output au
   assert.equal(audited.content, output.content);
   assert.equal("foundText" in audited, false);
   assert.equal(output.foundText, "Built web applications and developed APIs.");
+});
+
+test("Portuguese output rejects an English resume sentence even if the model would approve it", async () => {
+  const { fake, calls } = provider([approved]);
+  await assert.rejects(assertOutputLanguage(fake, { professionalSummary: "Full-Stack Developer with expertise in modernizing web applications and delivering scalable solutions." }, "pt-BR"), OutputLanguageError);
+  assert.equal(calls.length, 0);
+});
+
+test("generic English role titles cannot remain in Portuguese or Spanish resumes", async () => {
+  for (const locale of ["pt-BR", "pt-PT", "es-ES"]) {
+    const { fake, calls } = provider([approved]);
+    await assert.rejects(assertOutputLanguage(fake, { experiences: [{ title: "Software developer", description: [] }] }, locale), OutputLanguageError);
+    assert.equal(calls.length, 0);
+  }
+});
+
+test("Spanish output rejects Portuguese descriptions and skill headings despite model approval", async () => {
+  for (const output of [
+    { experiences: [{ description: ["Desenvolveu aplicações com React."] }] },
+    { education: [{ degree: "Ensino superior em Sistemas de Informação" }] },
+    { skills: [{ category: "Desenvolvimento", items: ["PHP"] }] },
+  ]) {
+    const { fake, calls } = provider([approved]);
+    await assert.rejects(assertOutputLanguage(fake, output, "es-ES"), OutputLanguageError);
+    assert.equal(calls.length, 0);
+  }
+});
+
+test("Spanish professional prose preserves names and technical terms", async () => {
+  const { fake, calls } = provider([approved]);
+  await assertOutputLanguage(fake, { personalInfo: { name: "Ana Example" }, experiences: [{ title: "Desarrolladora de software", company: "Software Developer Labs", description: ["Mantuvo servicios PHP y API REST."] }], skills: [{ category: "Desarrollo web", items: ["React", "PHP"] }] }, "es-ES");
+  assert.equal(calls.length, 1);
+});
+
+test("shared Portuguese and Spanish vocabulary is not a language mismatch", async () => {
+  const { fake, calls } = provider([approved]);
+  await assertOutputLanguage(fake, { skills: [{ category: "Habilidades técnicas", items: ["React", "PHP"] }], languages: [{ name: "Portugués", proficiency: "Nativo" }] }, "es-ES");
+  assert.equal(calls.length, 1);
+});
+
+test("English output cannot retain Portuguese or Spanish professional descriptions", async () => {
+  for (const locale of ["en-US", "en-GB"]) for (const content of ["Desenvolvedora de software com experiência em PHP.", "Desarrolladora de software con experiencia en PHP.", "Mantuvo servicios PHP y APIs REST."]) {
+    const { fake, calls } = provider([approved]);
+    await assert.rejects(assertOutputLanguage(fake, { professionalSummary: content }, locale), OutputLanguageError);
+    assert.equal(calls.length, 0);
+  }
+});
+
+test("Portuguese output cannot retain Spanish professional descriptions", async () => {
+  const { fake, calls } = provider([approved]);
+  await assert.rejects(assertOutputLanguage(fake, { experiences: [{ description: ["Diseñó interfaces web."] }] }, "pt-BR"), OutputLanguageError);
+  assert.equal(calls.length, 0);
+});
+
+test("Portuguese output permits technical names and quoted source evidence", async () => {
+  const { fake, calls } = provider([approved]);
+  await assertOutputLanguage(fake, { professionalSummary: "Desenvolvi aplicações com React, TypeScript e PHP.", explanation: "O original menciona ‘Worked with React and TypeScript in production’." }, "pt-BR");
+  assert.equal(calls.length, 1);
 });
 
 test("generated language names and skill headings remain subject to the selected output locale", async () => {
