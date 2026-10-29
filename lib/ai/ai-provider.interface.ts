@@ -2,6 +2,7 @@ export interface AiGenerateJsonParams {
   systemPrompt: string;
   userPrompt: string;
   schema?: unknown;
+  maxTokens?: number;
 }
 
 export interface AiGenerateTextParams {

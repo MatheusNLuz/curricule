@@ -2,12 +2,35 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
 import { AnalysisOrchestrator } from "../lib/ai/analysis-orchestrator";
+import { OpenRouterProvider } from "../lib/ai/openrouter-provider";
 import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError } from "../lib/ai/output-language";
 import type { AiGenerateJsonParams, AiProviderInterface } from "../lib/ai/ai-provider.interface";
 
 const ContentSchema = z.object({ content: z.string(), recommendedLanguage: z.string().optional() });
 const approved = { matchesSelectedLocale: true, containsMixedLanguage: false };
 const rejected = { matchesSelectedLocale: false, containsMixedLanguage: true };
+test("OpenRouter disables reasoning for affected models without changing other models", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalModel = process.env.OPENROUTER_MODEL;
+  const originalKey = process.env.OPENROUTER_API_KEY;
+  const requests: Record<string, unknown>[] = [];
+  process.env.OPENROUTER_API_KEY = "test";
+  globalThis.fetch = (async (_input, init) => {
+    requests.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":true}' } }] }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    for (const model of ["nvidia/nemotron-3.5-super-vl:free", "xingchen-agi/xing4.0-29b-a4b:free", "openai/gpt-4o-mini"]) {
+      process.env.OPENROUTER_MODEL = model;
+      await new OpenRouterProvider().generateJson({ systemPrompt: "test", userPrompt: "test" });
+    }
+    assert.deepEqual(requests.map(request => request.reasoning), [{ enabled: false }, { enabled: false }, undefined]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalModel === undefined) delete process.env.OPENROUTER_MODEL; else process.env.OPENROUTER_MODEL = originalModel;
+    if (originalKey === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = originalKey;
+  }
+});
 function provider(responses: unknown[]) {
   const calls: AiGenerateJsonParams[] = [];
   const fake: AiProviderInterface = {
@@ -55,25 +78,40 @@ test("mixed prose is discarded and regenerated before returning", async () => {
 
 test("two different providers author and review before the result is returned", async () => {
   const author = provider([{ content: "Texto inicial." }, approved]);
-  const reviewer = provider([{ content: "Texto revisado." }, approved]);
+  const reviewer = provider([{ approved: true }]);
   author.fake.name = "author"; reviewer.fake.name = "reviewer";
   const result = await new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Material original", ContentSchema, "pt-BR");
-  assert.equal(result.content, "Texto revisado.");
-  assert.equal(author.calls.length, 2); assert.equal(reviewer.calls.length, 2);
-  assert.match(reviewer.calls[0].systemPrompt, /independent second reviewer/);
-  assert.deepEqual(JSON.parse(reviewer.calls[0].userPrompt), { originalInput: "Material original", firstDraft: { content: "Texto inicial." } });
+  assert.equal(result.content, "Texto inicial.");
+  assert.equal(author.calls.length, 2); assert.equal(reviewer.calls.length, 1);
+  assert.match(reviewer.calls[0].systemPrompt, /independent reviewer/);
+  assert.deepEqual(JSON.parse(reviewer.calls[0].userPrompt), { originalInput: "Material original", proposedOutput: { content: "Texto inicial." } });
+  assert.equal(reviewer.calls[0].maxTokens, 1024);
 });
 
 test("dual review fails closed when either provider fails", async () => {
   const author = provider([{ content: "Texto inicial." }, approved]);
-  const reviewer = provider([new Error("Unavailable")]);
+  const reviewer = provider([new Error("Unavailable"), new Error("Unavailable")]);
   author.fake.name = "author"; reviewer.fake.name = "reviewer";
   await assert.rejects(new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => (error as {code?: string}).code === "DUAL_AI_REVIEWER_UNAVAILABLE");
-  assert.equal(reviewer.calls.length, 1);
+  assert.equal(reviewer.calls.length, 2);
   const failed = provider([new Error("Unavailable")]); failed.fake.name = "author";
-  const unused = provider([]); unused.fake.name = "reviewer";
-  await assert.rejects(new AnalysisOrchestrator([failed.fake, unused.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => (error as {code?: string}).code === "DUAL_AI_AUTHOR_UNAVAILABLE");
-  assert.equal(unused.calls.length, 0);
+  const alsoFailed = provider([new Error("Unavailable")]); alsoFailed.fake.name = "reviewer";
+  await assert.rejects(new AnalysisOrchestrator([failed.fake, alsoFailed.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => (error as {code?: string}).code === "DUAL_AI_AUTHOR_UNAVAILABLE");
+  assert.equal(alsoFailed.calls.length, 1);
+});
+
+test("second provider can author when the first is unavailable, but both must contribute", async () => {
+  const first = provider([new Error("Unavailable"), { approved: true }]); first.fake.name = "first";
+  const second = provider([{ content: "Texto revisado." }, approved]); second.fake.name = "second";
+  const result = await new AnalysisOrchestrator([first.fake, second.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR");
+  assert.equal(result.content, "Texto revisado."); assert.equal(first.calls.length, 2); assert.equal(second.calls.length, 2);
+});
+
+test("an independent rejection never releases the draft", async () => {
+  const author = provider([{ content: "Texto inicial." }, approved]); author.fake.name = "author";
+  const reviewer = provider([{ approved: false }]); reviewer.fake.name = "reviewer";
+  await assert.rejects(new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => (error as {code?:string}).code === "DUAL_AI_REVIEW_REJECTED");
+  assert.equal(reviewer.calls.length, 1);
 });
 
 test("repeated wrong-language results exhaust a bounded retry and fall back", async () => {
