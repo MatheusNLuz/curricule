@@ -15,7 +15,7 @@ import { AiReviewNotice } from "@/components/analysis/ai-review-notice";
 
 const LinkedInDashboard = dynamic(
   () => import("@/components/analysis/linkedin-dashboard").then((module) => module.LinkedInDashboard),
-  { loading: () => <div className="surface rounded-2xl p-6 text-sm text-muted-foreground">Carregando painel do LinkedIn...</div> },
+  { loading: () => <AnalysisLoading compact step="Preparando seu painel do LinkedIn." /> },
 );
 
 interface Props { analysisId: string; }

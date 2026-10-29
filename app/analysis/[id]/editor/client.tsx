@@ -20,6 +20,7 @@ import type { ReviewedTruth } from "@/lib/ats/truth-policy";
 import type { OptimizedResume } from "@/lib/schemas/optimize.schema";
 import { ResumeFactReview } from "@/components/editor/resume-fact-review";
 import { ResumeVersions } from "@/components/editor/resume-versions";
+import { isEditorTab, resolveEditorTab, type EditorTab } from "@/lib/editor-tab";
 
 export function EditorClient({ analysisId }: { analysisId: string }) {
   const router = useRouter();
@@ -28,7 +29,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   const [data, setData] = useState<AnalysisView|null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError,setLoadError]=useState<{status:number;message:string}|null>(null);
-  const [activeTab, setActiveTab] = useState(() => { const tab=params.get("tab");return tab&&["questions","match","edit","preview","coverletter"].includes(tab)?tab:"questions"; });
+  const [activeTab, setActiveTab] = useState<EditorTab | null>(() => { const tab=params.get("tab");return isEditorTab(tab)?tab:null; });
 
   const [questions, setQuestions] = useState<AnalysisQuestion[]>([]);
   const [questionReview, setQuestionReview] = useState<"approved" | "unavailable" | undefined>();
@@ -43,6 +44,15 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const generatingRef = useRef(false);
   const templateRequestRef = useRef(0);
+  const savedAnswersRef = useRef<string | null>(null);
+
+  function changeTab(value: string) {
+    if (!isEditorTab(value)) return;
+    setActiveTab(value);
+    const query = new URLSearchParams(params.toString());
+    query.set("tab", value);
+    router.replace(`/analysis/${analysisId}/editor?${query}`, { scroll: false });
+  }
 
 
   const fetchQuestions = useCallback(async () => {
@@ -60,6 +70,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
         d.questions.forEach((q: AnalysisQuestion) => {
           if (q.answer) initialAnswers[q.id] = q.answer;
         });
+        savedAnswersRef.current = JSON.stringify(initialAnswers);
         setAnswers(initialAnswers);
       }
     } catch (error: unknown) {
@@ -81,22 +92,16 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
       setData(d);
       setQuestionReview(d.reviewStatuses?.QUESTIONS);
       
-      if (!d.comparisonJson && d.jobDescription) {
-        // Needs match
-      } else if (!d.questions || d.questions.length === 0) {
-        // Generate questions if not exist
+      setQuestions(d.questions || []);
+      const initialAnswers: Record<string, string> = {};
+      d.questions?.forEach((q: AnalysisQuestion) => { if (q.answer) initialAnswers[q.id] = q.answer; });
+      savedAnswersRef.current = JSON.stringify(initialAnswers);
+      setAnswers(initialAnswers);
+      if (!d.finalResumeJson && (!d.jobDescription || d.comparisonJson) && !d.questions?.length) {
         if (!generatingRef.current) {
           generatingRef.current = true;
-          fetchQuestions();
+          void fetchQuestions();
         }
-      } else {
-        setQuestions(d.questions);
-        // Load existing answers into state
-        const initialAnswers: Record<string, string> = {};
-        d.questions.forEach((q: AnalysisQuestion) => {
-          if (q.answer) initialAnswers[q.id] = q.answer;
-        });
-        setAnswers(initialAnswers);
       }
     } catch (error: unknown) {
       setLoadError({status:error&&typeof error==="object"&&"status" in error?Number(error.status):0,message:getFetchErrorMessage(error,"Tente novamente em instantes.")});
@@ -108,7 +113,6 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {generatingRef.current=false;void fetchData();},[fetchData]);
 
-// Translate the editor UI
   const handleTruthGuard = async () => {
     setRunningTruthGuard(true);
     try {
@@ -162,8 +166,8 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
           router.push(`/analysis/${analysisId}`);
         } else {
           toast({ title: "Sucesso", description: "Currículo otimizado!", variant: "success" });
-          fetchData();
-          setActiveTab("preview");
+          await fetchData();
+          changeTab("preview");
         }
       } else {
         throw new Error(d.error || "Falha ao otimizar o currículo.");
@@ -260,12 +264,14 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   };
 
   useEffect(() => {
-    if (!questions.length) return;
+    const snapshot = JSON.stringify(answers);
+    if (!questions.length || savedAnswersRef.current === snapshot) return;
     const timer = setTimeout(async () => {
       setAnswerSaveStatus("Salvando respostas…");
       try {
         const response = await fetch("/api/smart-questions/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId, answers }) });
         if (!response.ok) throw new Error(await readApiError(response, "Respostas não salvas."));
+        savedAnswersRef.current = snapshot;
         setAnswerSaveStatus("Respostas salvas na sua conta.");
       } catch { setAnswerSaveStatus("Não foi possível salvar. Mantenha esta aba aberta e tente validar os fatos novamente."); }
     }, 900);
@@ -273,7 +279,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
   }, [analysisId, answers, questions]);
 
   if (!data && loadError) return <WorkspacePage><section className="sheet padded" role="alert"><h1 className="text-2xl font-semibold">{loadError.status===404?"Análise não encontrada":loadError.status===403?"Acesso indisponível":"Não foi possível abrir o editor"}</h1><p className="my-4">{loadError.message} Seus rascunhos salvos não foram removidos.</p><div className="flex flex-wrap gap-3"><button className="button primary" onClick={()=>{setLoading(true);void fetchData();}}>Tentar novamente</button><button className="button secondary" onClick={()=>router.push("/history")}>Voltar ao histórico</button></div></section></WorkspacePage>;
-  if (optimizing) return <AnalysisLoading step={data?.mode === "LINKEDIN_OPTIMIZATION" ? "Estamos reescrevendo seu perfil." : "Estamos reescrevendo seu currículo."} description="Organizamos sua experiência e verificamos as informações antes de apresentar a nova versão." writing />;
+  if (optimizing) return <AnalysisLoading step={data?.mode === "LINKEDIN_OPTIMIZATION" ? "Estamos reescrevendo seu perfil." : "Estamos reescrevendo seu currículo."} description={data?.jobDescription ? "Seu histórico é a base. A vaga orienta o foco, e o idioma escolhido orienta a escrita." : "Reescrevemos o conteúdo no idioma escolhido, preservando os fatos do seu histórico."} writing />;
   if (loading || !data) return <AnalysisLoading step="Preparando seu espaço de edição." description="Estamos organizando seu material para você revisar e editar." />;
 
   const match = data.comparisonJson ? JSON.parse(data.comparisonJson) : null;
@@ -310,7 +316,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
 
       {isLinkedIn ? (<>{questionReview === "unavailable" && <AiReviewNotice subject="questions" />}<ReviewQuestions questions={questions} answers={answers} generating={generatingQuestions} validating={runningTruthGuard} truth={truthGuardData} onAnswer={(id,value)=>{setAnswers(current=>({...current,[id]:value}));setTruthGuardData(null);}} onValidate={handleTruthGuard} onApprove={handleOptimize} onEditAnswers={()=>setTruthGuardData(null)} onRetry={fetchQuestions}/></>
       ) : (
-        <Tabs value={activeTab==="edit"&&!optimized?"questions":activeTab==="match"&&!match?"questions":activeTab} onValueChange={setActiveTab} className="w-full legacyPanels">
+        <Tabs value={resolveEditorTab(activeTab, Boolean(optimized), Boolean(match))} onValueChange={changeTab} className="w-full legacyPanels">
         <TabsList className="flowTabs">
           {match && <TabsTrigger value="match" className="shrink-0 text-xs sm:text-[13px]"><Briefcase className="mr-2 h-3.5 w-3.5" /> Comparação com a vaga</TabsTrigger>}
           <TabsTrigger value="questions" className="shrink-0 text-xs sm:text-[13px]"><HelpCircle className="mr-2 h-3.5 w-3.5" /> Perguntas e fatos</TabsTrigger>
@@ -341,7 +347,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
                   </ul>
                 </div>
               </div>
-              <button onClick={() => setActiveTab("questions")} className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
+              <button onClick={() => changeTab("questions")} className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
                 Continuar para as Perguntas <ArrowRight className="ml-2 h-3.5 w-3.5" />
               </button>
             </div>
@@ -357,6 +363,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
         )}
 
         <TabsContent value="preview" className="space-y-6">
+          {exporting ? <AnalysisLoading step="Preparando seu PDF." variant="export" compact /> : <>
           <div className="surface rounded-2xl p-4 sm:p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-base font-semibold">Prévia do currículo</h2>
@@ -389,9 +396,11 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
               </div>
             )}
           </div>
+          </>}
         </TabsContent>
 
         <TabsContent value="coverletter" className="space-y-6">
+          {generatingLetter ? <AnalysisLoading step="Estamos escrevendo sua carta." variant="letter" compact /> : <>
           <div className="surface rounded-2xl p-4 sm:p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-base font-semibold">Carta de Apresentação</h2>
@@ -412,6 +421,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
               </div>
             )}
           </div>
+          </>}
         </TabsContent>
       </Tabs>
       )}

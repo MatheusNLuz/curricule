@@ -7,8 +7,8 @@ const dom=new JSDOM("<!doctype html><html><body></body></html>",{url:"http://loc
 Object.defineProperty(globalThis,"navigator",{value:dom.window.navigator,configurable:true});
 Object.defineProperty(globalThis,"self",{value:dom.window,configurable:true});
 Object.assign(globalThis,{window:dom.window,localStorage:dom.window.localStorage,document:dom.window.document,HTMLElement:dom.window.HTMLElement,HTMLInputElement:dom.window.HTMLInputElement,Node:dom.window.Node,Event:dom.window.Event,MutationObserver:dom.window.MutationObserver,getComputedStyle:dom.window.getComputedStyle.bind(dom.window),requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window)});
-const destinations:string[]=[];const router={push:(value:string)=>destinations.push(value),replace:()=>{},refresh:()=>{}};const toast=()=>{};
-mock.module("next/navigation.js",{namedExports:{useRouter:()=>router,useSearchParams:()=>new URLSearchParams(),usePathname:()=>"/analysis/test/editor"}});
+const destinations:string[]=[];const replacements:string[]=[];let searchQuery="";const router={push:(value:string)=>destinations.push(value),replace:(value:string)=>replacements.push(value),refresh:()=>{}};const toast=()=>{};
+mock.module("next/navigation.js",{namedExports:{useRouter:()=>router,useSearchParams:()=>new URLSearchParams(searchQuery),usePathname:()=>"/analysis/test/editor"}});
 mock.module(new URL("../components/ui/custom-toast.tsx",import.meta.url).href,{namedExports:{useToast:()=>({toast})}});
 const {render,screen,within,cleanup,waitFor,act}=await import("@testing-library/react");
 const {default:userEvent}=await import("@testing-library/user-event");
@@ -21,7 +21,7 @@ const {FlagPicker}=await import("../components/ui/flag-picker");
 const {ReviewQuestions}=await import("../components/analysis/review-questions");
 const {TruthGuardPanel}=await import("../components/analysis/truth-guard-panel");
 const {answerForReview}=await import("../lib/question-answer");
-test.afterEach(()=>{cleanup();mock.restoreAll();dom.window.localStorage.clear();destinations.length=0;});
+test.afterEach(()=>{cleanup();mock.restoreAll();dom.window.localStorage.clear();destinations.length=0;replacements.length=0;searchQuery="";});
 
 test("fact review groups information and preserves the original decision indexes",async()=>{
   let submitted:Record<string,boolean>|undefined;
@@ -39,7 +39,7 @@ test("fact review groups information and preserves the original decision indexes
 
 test("conditional and multi-select answers preserve edits while excluding declined details",async()=>{
   let latest:Record<string,string>={};
-  function Example(){const [answers,setAnswers]=React.useState<Record<string,string>>({});latest=answers;return <ReviewQuestions questions={[{id:"yesno",question:"Usou chat?",reason:"Detalhes",answerType:"boolean"},{id:"choices",question:"Canais?",reason:"Detalhes",answerType:"multiple_select",options:["Chat","E-mail"]}]} answers={answers} generating={false} validating={false} truth={null} onAnswer={(id,value)=>setAnswers(current=>({...current,[id]:value}))} onValidate={()=>{}} onApprove={async()=>{}} onEditAnswers={()=>{}} onRetry={()=>{}}/>;}
+  function Example(){const [answers,setAnswers]=React.useState<Record<string,string>>({});React.useEffect(()=>{latest=answers;},[answers]);return <ReviewQuestions questions={[{id:"yesno",question:"Usou chat?",reason:"Detalhes",answerType:"boolean"},{id:"choices",question:"Canais?",reason:"Detalhes",answerType:"multiple_select",options:["Chat","E-mail"]}]} answers={answers} generating={false} validating={false} truth={null} onAnswer={(id,value)=>setAnswers(current=>({...current,[id]:value}))} onValidate={()=>{}} onApprove={async()=>{}} onEditAnswers={()=>{}} onRetry={()=>{}}/>;}
   render(<Example/>);const user=userEvent.setup({document:dom.window.document});
   await user.click(screen.getByRole("button",{name:"Sim"}));await user.type(screen.getByLabelText("Conte mais sobre isso"),"Atendi clientes");
   await user.click(screen.getByRole("button",{name:"Não"}));assert.equal(answerForReview(latest.yesno),"Não.");
@@ -91,6 +91,36 @@ test("progress stops after repeated errors and lets the user explicitly retry",a
   }finally{cleanup();context.mock.timers.reset();}
 });
 const fixture=()=>OptimizedResumeSchema.parse({personalInfo:{name:"Ana Validação"},professionalSummary:"Experiência em atendimento ao cliente.",experiences:[{company:"Empresa A",title:"Cargo A",startDate:"01/2021",endDate:"12/2022",description:["Atendimento por e-mail."]},{company:"Empresa B",title:"Cargo B",startDate:"01/2023",endDate:"",description:["Organização de pedidos."]}]});
+
+test("a generated resume reopens on its preview after a full remount without generating questions",async()=>{
+  const record={id:"test",mode:"OPTIMIZE_FOR_JOB",finalResumeJson:JSON.stringify(fixture()),selectedLanguage:"pt-BR",selectedTemplate:"basic-ats",parsedResumeText:"Material original",revision:1,questions:[]};
+  const requests:string[]=[];
+  mock.method(globalThis,"fetch",async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{requests.push(`${init?.method||"GET"} ${String(input)}`);return Response.json(String(input).endsWith("/tasks")?{tasks:[]}:record);});
+  for(let refresh=0;refresh<2;refresh++){
+    render(<EditorClient analysisId="test"/>);
+    const preview=await screen.findByRole("tab",{name:"Prévia e PDF"});
+    await waitFor(()=>assert.equal(preview.getAttribute("aria-selected"),"true"));
+    assert.ok(screen.getByText("Ana Validação"));
+    cleanup();
+  }
+  assert.equal(requests.some(request=>request.includes("/smart-questions")),false);
+});
+
+test("editor tab navigation survives refresh and loading saved answers does not resave them",async()=>{
+  const record={id:"test",mode:"OPTIMIZE_FOR_JOB",finalResumeJson:JSON.stringify(fixture()),selectedLanguage:"pt-BR",selectedTemplate:"basic-ats",parsedResumeText:"Material original",revision:1,questions:[{id:"q1",question:"Como você atendia clientes?",reason:"Detalhar",answerType:"text",answer:"Por e-mail",confirmed:true}]};
+  const requests:string[]=[];
+  mock.method(globalThis,"fetch",async(input:Parameters<typeof fetch>[0],init?:RequestInit)=>{requests.push(`${init?.method||"GET"} ${String(input)}`);return Response.json(String(input).endsWith("/tasks")?{tasks:[]}:record);});
+  render(<EditorClient analysisId="test"/>);
+  const questions=await screen.findByRole("tab",{name:"Perguntas e fatos"});
+  await userEvent.setup({document:dom.window.document}).click(questions);
+  assert.equal(replacements.at(-1),"/analysis/test/editor?tab=questions");
+  cleanup();searchQuery="tab=questions";
+  render(<EditorClient analysisId="test"/>);
+  await waitFor(()=>assert.equal(screen.getByRole("tab",{name:"Perguntas e fatos"}).getAttribute("aria-selected"),"true"));
+  assert.equal((screen.getByLabelText("Resposta para a pergunta 1") as HTMLTextAreaElement).value,"Por e-mail");
+  await new Promise(resolve=>setTimeout(resolve,1000));
+  assert.equal(requests.some(request=>request.startsWith("POST ")),false);
+});
 test("an idle analysis wakes for another tab without background polling",async context=>{
   context.mock.timers.enable({apis:["setTimeout"]});
   const channels:MockChannel[]=[];
