@@ -3,7 +3,7 @@ import type { AiProviderInterface } from "./ai-provider.interface";
 import { OpenRouterProvider } from "./openrouter-provider";
 import { NvidiaNimProvider } from "./nvidia-nim-provider";
 import { aiFailureMetadata } from "./provider-error";
-import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError } from "./output-language";
+import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError, OutputLanguageAuditError } from "./output-language";
 import { taskSignal } from "../task-context";
 import { HttpError } from "../http-error";
 
@@ -16,7 +16,7 @@ export class AnalysisOrchestrator {
     let reviewer = second;
     let author = first;
     let generated = false;
-    let languageFailure: OutputLanguageError | undefined;
+    let languageFailure: OutputLanguageError | OutputLanguageAuditError | undefined;
     for (const [candidate, other] of [[first, second], [second, first]] as const) {
       try {
         draft = await new AnalysisOrchestrator([candidate]).analyzeLocalized(systemPrompt, userPrompt, schema, language, 3200);
@@ -24,7 +24,7 @@ export class AnalysisOrchestrator {
         reviewer = other;
         generated = true;
         break;
-      } catch (error) { taskSignal()?.throwIfAborted(); if (error instanceof OutputLanguageError) languageFailure = error; }
+      } catch (error) { taskSignal()?.throwIfAborted(); if (error instanceof OutputLanguageError || error instanceof OutputLanguageAuditError) languageFailure = error; }
     }
     if (!generated && languageFailure) throw languageFailure;
     if (!generated) throw new HttpError(503, "Não foi possível concluir a análise agora. Os serviços de IA podem estar ocupados ou não ter respondido a tempo. Seu material está salvo; tente novamente em alguns minutos.", "DUAL_AI_AUTHOR_UNAVAILABLE");
@@ -66,6 +66,7 @@ export class AnalysisOrchestrator {
   async analyzeLocalized<T>(systemPrompt: string, userPrompt: string, schema: ZodType<T>, language: string, maxTokens?: number): Promise<T> {
     const localizedPrompt = systemPrompt + "\n\n" + outputLanguagePolicy(language);
     let languageRejected = false;
+    let auditUnavailable: OutputLanguageAuditError | undefined;
     for (const provider of this.providers) {
       let correction="";
       let previous:unknown;
@@ -89,6 +90,7 @@ export class AnalysisOrchestrator {
         } catch (error) {
           taskSignal()?.throwIfAborted();
           console.warn("Localized AI attempt failed", { provider: provider.name, locale: language, ...aiFailureMetadata(error) });
+          if (error instanceof OutputLanguageAuditError) { auditUnavailable = error; break; }
           if(error instanceof ZodError){repairStructure=true;repairLanguage=false;correction="\nThe previous response failed the required JSON schema. Correct these fields: "+error.issues.map(issue=>issue.path.join(".")+": "+issue.message).join("; ")+". For rubric evidence copy ONE short continuous excerpt character-for-character from the supplied source, with no ellipsis, combining, translation or paraphrase. If evidence is absent use level 0 and foundText empty. Return the complete corrected response, preserving facts and the selected locale.";continue;}
           if (!(error instanceof OutputLanguageError)) break;
           repairStructure=false;repairLanguage=true;languageIssues=error.issues;correction="\nYour previous response failed language validation. Translate it into the selected locale only. Review every prose field; preserve the original facts and machine enums.";
@@ -96,6 +98,7 @@ export class AnalysisOrchestrator {
         }
       }
     }
+    if (auditUnavailable) throw auditUnavailable;
     if (languageRejected) throw new OutputLanguageError();
     throw new Error("AI providers unavailable or invalid language validation response");
   }

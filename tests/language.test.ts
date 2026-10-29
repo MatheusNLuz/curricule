@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { z } from "zod";
 import { AnalysisOrchestrator } from "../lib/ai/analysis-orchestrator";
 import { OpenRouterProvider } from "../lib/ai/openrouter-provider";
-import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError } from "../lib/ai/output-language";
+import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError, OutputLanguageAuditError } from "../lib/ai/output-language";
+import { AiProviderError } from "../lib/ai/provider-error";
 import type { AiGenerateJsonParams, AiProviderInterface } from "../lib/ai/ai-provider.interface";
 
 const ContentSchema = z.object({ content: z.string(), recommendedLanguage: z.string().optional() });
@@ -184,6 +185,45 @@ test("a missing, malformed or inconclusive audit fails closed", async () => {
 test("an audit transport failure never releases unaudited content", async () => {
   const { fake } = provider([{ content: "Texto não verificado." }, new Error("Audit unavailable")]);
   await assert.rejects(new AnalysisOrchestrator([fake]).analyzeLocalized("Summary", "Original", ContentSchema, "pt-BR"));
+});
+
+test("an invalid audit JSON is retried without regenerating the valid draft", async () => {
+  const draft = { content: "Organizei arquivos e analisei relatórios." };
+  const { fake, calls } = provider([draft, new AiProviderError("INVALID_JSON"), approved]);
+  assert.deepEqual(await new AnalysisOrchestrator([fake]).analyzeLocalized("Summary", "Original", ContentSchema, "pt-BR"), draft);
+  assert.equal(calls.length, 3);
+  assert.deepEqual(JSON.parse(calls[1].userPrompt), JSON.parse(calls[2].userPrompt));
+  assert.match(calls[2].systemPrompt, /previous audit response was invalid/);
+  assert.equal(calls[2].maxTokens, 1024);
+});
+
+test("malformed audit verdicts have a bounded retry and never release unchecked output", async () => {
+  const { fake, calls } = provider([{}, {}]);
+  await assert.rejects(assertOutputLanguage(fake, { content: "Texto em português." }, "pt-BR"), error => error instanceof OutputLanguageAuditError && error.code === "LANGUAGE_AUDIT_UNAVAILABLE");
+  assert.equal(calls.length, 2);
+});
+
+test("an unavailable author plus a transient invalid fallback audit can still complete", async () => {
+  const first = provider([new Error("HTTP 429"), new Error("HTTP 429"), new Error("HTTP 429")]); first.fake.name = "limited";
+  const second = provider([{ content: "Texto em português." }, new AiProviderError("INVALID_JSON"), approved]); second.fake.name = "available";
+  const result = await new AnalysisOrchestrator([first.fake, second.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR");
+  assert.deepEqual(result, { value: { content: "Texto em português." }, review: "unavailable" });
+  assert.equal(second.calls.length, 3);
+});
+
+test("an exhausted language audit reports its actual failure instead of an unavailable author", async () => {
+  const first = provider([new Error("HTTP 429")]); first.fake.name = "limited";
+  const second = provider([{ content: "Texto em português." }, new AiProviderError("INVALID_JSON"), new AiProviderError("INVALID_JSON")]); second.fake.name = "available";
+  await assert.rejects(new AnalysisOrchestrator([first.fake, second.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR"), error => error instanceof OutputLanguageAuditError);
+  const repaired = provider([{ content: "Wrong" }, rejected, { content: "Texto corrigido." }, new AiProviderError("INVALID_JSON"), new AiProviderError("INVALID_JSON")]);
+  await assert.rejects(new AnalysisOrchestrator([repaired.fake]).analyzeLocalized("Summary", "Original", ContentSchema, "pt-BR"), error => error instanceof OutputLanguageAuditError);
+});
+
+test("translated recommendations may quote a short source heading, but not hide foreign prose in quotes", async () => {
+  const { fake, calls } = provider([approved]);
+  await assertOutputLanguage(fake, { recommendation: "Substitua ‘Professional Summary’ por ‘Resumo profissional’." }, "pt-BR");
+  assert.equal(calls.length, 1);
+  await assert.rejects(assertOutputLanguage(fake, { title: "‘Software developer’" }, "pt-BR"), OutputLanguageError);
 });
 
 test("mismatched recommendedLanguage cannot override the selected locale", async () => {
