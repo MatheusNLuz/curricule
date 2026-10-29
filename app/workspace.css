@@ -56,6 +56,18 @@
 @media(min-width:1150px){.workspaceMain+[data-app-utilities]{margin-left:238px}}
 .structuredEditor button{min-height:44px}
 
+/* Rodapé de autenticação: acompanha a altura da página e mantém links acessíveis no celular. */
+.work-ui .authPage{display:flex;flex-direction:column}
+.work-ui .authHeader,.work-ui .authGrid{width:100%}
+.work-ui .authGrid{flex:1}
+.work-ui .authFooter{width:calc(100% - 48px);max-width:1080px;margin:0 auto;padding:16px 0 24px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:12px;line-height:1.5}
+.work-ui .authFooter nav{display:flex;flex-wrap:wrap;gap:0 20px}
+.work-ui .authFooter nav a{display:inline-flex;align-items:center;min-height:44px;color:var(--quiet)}
+.work-ui .authFooter nav a:hover{color:var(--violet)}
+.work-ui .authFooter nav a:focus-visible{outline:2px solid var(--violet);outline-offset:3px;border-radius:3px}
+@media(min-width:560px){.work-ui .authFooter{width:calc(100% - 74px);flex-direction:row;align-items:center;justify-content:space-between;gap:20px}}
+@media(min-width:860px){.work-ui .authFooter{width:calc(100% - 100px)}}
+
 /* Espaço de trabalho: conteúdo e controles dimensionados primeiro para toque. */
 .work-ui .dashboardLead{display:block;min-width:0}
 .work-ui .continueCopy{padding:25px 22px}
