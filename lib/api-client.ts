@@ -49,7 +49,7 @@ async function requestAnalysisTask(url: string, init: RequestInit): Promise<Resp
   const kind = ({ "/api/analyze": "ANALYZE", "/api/compare": "COMPARE", "/api/optimize": "OPTIMIZE", "/api/cover-letter": "COVER_LETTER", "/api/smart-questions": "QUESTIONS", "/api/truth-guard": "TRUTH", "/api/reassess":"REASSESS" } as Record<string, string>)[url];
   if (!kind) return response;
   const { analysisId } = JSON.parse(String(init.body));
-  const signal = init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(240_000)]) : AbortSignal.timeout(240_000);
+  const signal = init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(300_000)]) : AbortSignal.timeout(300_000);
   while (!signal.aborted) {
     await new Promise<void>((resolve, reject) => {
       const abort = () => { clearTimeout(timer); reject(signal.reason); };

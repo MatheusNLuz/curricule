@@ -80,7 +80,7 @@ Ask whether measurable results exist only when relevant, allowing a negative or 
 
 Use the user-selected output locale for every question, reason, option and suggested answer.`;
 
-export const maxDuration = 180;
+export const maxDuration = 270;
 
 export async function POST(req: Request) {
   try {

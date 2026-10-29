@@ -10,7 +10,7 @@ import { ScoreEngine } from "@/lib/ats/score-engine";
 import { GamificationEngine } from "@/lib/gamification/gamification-engine";
 import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
 import { apiError, HttpError } from "@/lib/http-error";
-export const maxDuration = 180;
+export const maxDuration = 270;
 export async function POST(request: Request) {
   try {
     const session = await getSessionUser(); if (!session) throw new HttpError(401, "Faça login para continuar.");

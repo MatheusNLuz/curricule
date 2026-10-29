@@ -17,7 +17,7 @@ import { resumeText } from "@/lib/resume/resume-text";
 import { recordRevision } from "@/lib/resume-revisions";
 import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
 import { apiError, HttpError } from "@/lib/http-error";
-export const maxDuration = 180;
+export const maxDuration = 270;
 
 const REWRITE = `You are a resume writer. Return ONLY JSON with this shape:
 {"personalInfo":{"name":"","email":"","phone":"","location":"","linkedin":"","portfolio":""},"professionalSummary":"","experiences":[{"company":"","title":"","startDate":"","endDate":"","location":"","description":[""]}],"education":[{"institution":"","degree":"","startDate":"","endDate":""}],"skills":[{"category":"","items":[""]}],"certifications":[{"name":"","issuer":"","date":""}]}

@@ -8,7 +8,7 @@ import { TruthGuard } from "@/lib/ats/truth-guard";
 import { storedConfirmedClaims,storedRejectedClaims,truthSourceHash } from "@/lib/ats/truth-policy";
 import { apiError, HttpError } from "@/lib/http-error";
 import { runAnalysisTask, commitTask } from "@/lib/analysis-task";
-export const maxDuration = 180;
+export const maxDuration = 270;
 export async function POST(request: Request) {
   try {
     const session = await getSessionUser(); if (!session) throw new HttpError(401, "Faça login para continuar.");

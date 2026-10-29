@@ -8,7 +8,7 @@ import { taskContext } from "./task-context";
 import { withAnalysisCapacity } from "./runtime/analysis-capacity";
 export const TASK_POLICY_VERSION="bounded-rubric-v3";
 export function inputHash(value:unknown){return createHash("sha256").update(JSON.stringify(value)).digest("hex");}
-export function taskBudgetMs(){return Math.min(150_000,Math.max(10_000,Number(process.env.ANALYSIS_TASK_TIMEOUT_MS)||150_000));}
+export function taskBudgetMs(){return Math.min(240_000,Math.max(10_000,Number(process.env.ANALYSIS_TASK_TIMEOUT_MS)||240_000));}
 export function dailyWindow(now=new Date()){const since=new Date(now);since.setUTCHours(0,0,0,0);return {since,resetsAt:new Date(since.getTime()+86_400_000)};}
 export async function commitTask<T>(operation:(tx:Prisma.TransactionClient)=>Promise<T>){
   const context=taskContext.getStore();
