@@ -10,7 +10,7 @@ export class ChatProvider implements AiProviderInterface {
     if(!this.apiKey)throw new AiProviderError("NOT_CONFIGURED");
     const started=Date.now();let status="FAILED",errorCode:string|null=null,inputTokens:number|null=null,outputTokens:number|null=null,costUsd:number|null=null,estimated=false;
     try{
-      const configuredTimeout=Math.min(60_000,Math.max(1000,Number(process.env.AI_TIMEOUT_MS)||45_000));
+      const configuredTimeout=Math.min(60_000,Math.max(1000,Number(process.env.AI_TIMEOUT_MS)||(this.name === "NVIDIA NIM" ? 60_000 : 45_000)));
       const timeout=AbortSignal.timeout("timeoutMs" in params && typeof params.timeoutMs === "number" ? Math.max(1000,Math.min(configuredTimeout,params.timeoutMs)) : configuredTimeout);
       const parent=taskSignal();const signal=parent?AbortSignal.any([parent,timeout]):timeout;
       const requestedMax = "maxTokens" in params && typeof params.maxTokens === "number" ? params.maxTokens : 8000;

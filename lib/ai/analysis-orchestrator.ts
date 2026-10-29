@@ -25,7 +25,7 @@ export class AnalysisOrchestrator {
         break;
       } catch { taskSignal()?.throwIfAborted(); }
     }
-    if (!generated) throw new HttpError(503, "As IAs não conseguiram concluir esta etapa. Seu material foi preservado; tente novamente mais tarde.", "DUAL_AI_AUTHOR_UNAVAILABLE");
+    if (!generated) throw new HttpError(503, "Não foi possível concluir a análise agora. Os serviços de IA podem estar ocupados ou não ter respondido a tempo. Seu material está salvo; tente novamente em alguns minutos.", "DUAL_AI_AUTHOR_UNAVAILABLE");
     const verdictSchema = z.object({ approved: z.boolean(), issues: z.array(z.string().max(500)).max(8).optional() }).strict();
     let repaired = false;
     let rejected = false;
