@@ -35,14 +35,14 @@ export function AnalysisLoading({ step, description, writing = false, variant, c
   return <div ref={root} className={styles.layout} data-kind={kind} data-compact={compact || undefined} role="status" aria-live="polite" aria-busy="true">
     <div className={styles.content}>
       {rewriting ? <div className={styles.writingDesk} aria-hidden="true">
-        <div className={styles.deskToolbar}><CurriculeMark width={23} height={23}/><span>Reescrita em andamento</span><span className={styles.deskDots}><i/><i/><i/></span></div>
+        <div className={styles.deskToolbar}><CurriculeMark width={26} height={26}/><span>curricule</span><span className={styles.deskDots}><i/><i/><i/></span></div>
         <div className={styles.deskDocument}>
-          <div className={styles.deskName}/><div className={styles.deskContact}/>
-          <div className={styles.deskSection}><strong>{kind === "letter" ? "Sua apresentação" : "Resumo profissional"}</strong><div className={styles.deskLine}/><div className={styles.deskLine}/><div className={styles.deskLine}/></div>
-          <div className={styles.deskSection}><strong>{kind === "letter" ? "Experiência e oportunidade" : "Experiência profissional"}</strong><div className={styles.deskLine}/><div className={styles.deskLine}/></div>
-          <span className={styles.deskCaret}/>
+          <div className={styles.deskTitle}>Sua experiência.<br/>Novas possibilidades.</div>
+          <div className={styles.deskSection}><strong>{kind === "letter" ? "Sua apresentação" : "Resumo profissional"}</strong><span className={styles.inkLine}>Um resumo direto, com foco</span><span className={styles.inkLine}>nas experiências relevantes.</span></div>
+          <div className={styles.deskSection}><strong>{kind === "letter" ? "Experiência e oportunidade" : "Experiência profissional"}</strong><span className={styles.inkLine}>Sua trajetória, reorganizada.</span><span className={styles.inkLine}>Cada detalhe, com mais clareza.</span></div>
+          <div className={styles.deskSignature}><i/><i/><i/></div>
         </div>
-        <p className={styles.deskCaption}>Animação ilustrativa · O conteúdo aparece ao concluir.</p>
+        <p className={styles.deskCaption}>Visualização da reescrita</p>
       </div> : <div className={styles.art} aria-hidden="true">
         <div className={styles.orbit} />
         <div className={styles.source}><span>{kind === "compare" ? "A oportunidade" : "Seu material"}</span><i/><i/><i/><i/></div>
