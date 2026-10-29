@@ -114,6 +114,15 @@ test("an independent rejection never releases the draft", async () => {
   assert.equal(reviewer.calls.length, 1);
 });
 
+test("specific review feedback is repaired and independently reviewed again", async () => {
+  const author = provider([{ content: "Texto inicial." }, approved, { content: "Texto corrigido." }, approved]); author.fake.name = "author";
+  const reviewer = provider([{ approved: false, issues: ["A afirmação não está no currículo."] }, { approved: true, issues: [] }]); reviewer.fake.name = "reviewer";
+  const result = await new AnalysisOrchestrator([author.fake, reviewer.fake]).analyzeWithReview("Summary", "Original", ContentSchema, "pt-BR");
+  assert.equal(result.content, "Texto corrigido.");
+  assert.equal(reviewer.calls.length, 2);
+  assert.deepEqual(JSON.parse(reviewer.calls[1].userPrompt).proposedOutput, { content: "Texto corrigido." });
+});
+
 test("repeated wrong-language results exhaust a bounded retry and fall back", async () => {
   const primary = provider([{ content: "Wrong" }, rejected, { content: "Still wrong" }, rejected]);
   const fallback = provider([{ content: "Texto correto." }, approved]);

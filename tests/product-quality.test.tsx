@@ -26,7 +26,7 @@ test("assessment requires one criterion per key and refuses invented source quot
   const schema=resumeAssessmentSchema(source);assert.equal(schema.safeParse(assessment).success,true);
   const invented=structuredClone(assessment);invented.rubric![0].foundText="Liderou uma equipe de 40 pessoas";assert.equal(schema.safeParse(invented).success,false);
   const duplicate=structuredClone(assessment);duplicate.rubric![0].criterion="structure";assert.equal(schema.safeParse(duplicate).success,false);
-  const missing=structuredClone(assessment);missing.rubric![0].foundText="";assert.equal(schema.safeParse(missing).success,false);
+  const missing=structuredClone(assessment);missing.rubric![0].foundText="";assert.equal(schema.parse(missing).rubric![0].level,0);
 });
 test("all templates preserve content and exact locale without tables, photos or hidden contact blocks",()=>{
   for(const locale of ["pt-BR","pt-PT","en-US","en-GB"])for(const option of TEMPLATE_OPTIONS){assert.equal(normalizeTemplateId(option.id),option.id);const html=renderToStaticMarkup(<AtsTemplate resume={resume} templateId={option.id} language={locale}/>);assert.match(html,/Camila Validação/);assert.match(html,/camila@example.test/);assert.match(html,/Organização do arquivo/);assert.match(html,/linkedin.com\/in\/camila-validacao/);assert.ok(html.includes(`lang="${locale}"`));assert.doesNotMatch(html,/<(?:table|img|canvas)\b/);const skills=html.indexOf(locale.startsWith("pt")?">Competências<":">Skills<"),experience=html.indexOf(locale.startsWith("pt")?">Experiência profissional<":">Professional Experience<");assert.ok(option.id==="direct-ats"?skills<experience:experience<skills);}
