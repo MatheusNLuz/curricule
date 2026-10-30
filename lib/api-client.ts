@@ -1,3 +1,5 @@
+import { ANALYSIS_REQUEST_HEADER } from "./analysis-request.ts";
+
 export function getLoginUrl(nextPath = "/") {
   const safePath = nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/";
   return `/login?${new URLSearchParams({ next: safePath }).toString()}`;
@@ -42,25 +44,56 @@ export async function fetchAnalysisTask(url: string, init: RequestInit): Promise
 }
 
 async function requestAnalysisTask(url: string, init: RequestInit): Promise<Response> {
-  const response = await fetch(url, init);
-  if (response.status !== 409) return response;
-  const payload = await response.clone().json().catch(() => null);
-  if (payload?.code !== "TASK_RUNNING") return response;
   const kind = ({ "/api/analyze": "ANALYZE", "/api/compare": "COMPARE", "/api/optimize": "OPTIMIZE", "/api/cover-letter": "COVER_LETTER", "/api/smart-questions": "QUESTIONS", "/api/truth-guard": "TRUTH", "/api/reassess":"REASSESS" } as Record<string, string>)[url];
-  if (!kind) return response;
-  const { analysisId } = JSON.parse(String(init.body));
-  const signal = init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(300_000)]) : AbortSignal.timeout(300_000);
-  while (!signal.aborted) {
-    await new Promise<void>((resolve, reject) => {
-      const abort = () => { clearTimeout(timer); reject(signal.reason); };
-      const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, 2000);
-      signal.addEventListener("abort", abort, { once: true });
-    });
-    const status = await fetch("/api/analysis/" + encodeURIComponent(analysisId) + "/tasks?kind=" + kind, { signal });
-    if (!status.ok) return status;
-    const task = await status.json();
-    if (task.status === "COMPLETED") return Response.json(task.result);
-    if (task.status === "FAILED" || task.status === "EXPIRED") return Response.json({ error: "A etapa foi interrompida. Tente novamente para retomar." }, { status: 503 });
+  let analysisId: unknown;
+  try { analysisId = JSON.parse(String(init.body)).analysisId; } catch { /* Untracked requests use ordinary fetch. */ }
+  if (!kind || typeof analysisId !== "string" || !analysisId) return fetch(url, init);
+  init.signal?.throwIfAborted();
+  const requestId = crypto.randomUUID();
+  const headers = new Headers(init.headers);
+  headers.set(ANALYSIS_REQUEST_HEADER, requestId);
+  let response: Response | undefined, networkError: unknown;
+  try { response = await fetch(url, { ...init, headers }); }
+  catch (error) {
+    init.signal?.throwIfAborted();
+    if (!(error instanceof TypeError)) throw error;
+    networkError = error;
   }
-  signal.throwIfAborted(); return response;
+  if (response && response.status !== 409 && ![408, 499, 502, 503, 504].includes(response.status)) return response;
+  const payload = response ? await response.clone().json().catch(() => null) : null;
+  const alreadyRunning = response?.status === 409 && payload?.code === "TASK_RUNNING";
+  const lostResponse = !response || ([408, 499, 502, 503, 504].includes(response.status) && !payload?.code);
+  if (!alreadyRunning && !lostResponse) return response!;
+  const fallback = () => { if (response) return response; throw networkError; };
+  const signal = init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(300_000)]) : AbortSignal.timeout(300_000);
+  let failures = 0;
+  while (!signal.aborted) {
+    try {
+      const status = await fetch("/api/analysis/" + encodeURIComponent(analysisId) + "/tasks?kind=" + kind, { cache: "no-store", signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]) });
+      if ([401, 403].includes(status.status)) return status;
+      if (!status.ok) throw new Error("Task status unavailable");
+      const task = await status.json();
+      // A previous result must never masquerade as this request's new output.
+      if (lostResponse && task.requestId !== requestId) return fallback();
+      if (task.status === "COMPLETED" && task.result != null) return Response.json(kind === "TRUTH" ? { success: true, truthGuard: task.result } : task.result);
+      if (task.status === "FAILED" || task.status === "EXPIRED") return response && !alreadyRunning ? response : Response.json({ error: "A etapa foi interrompida. Seu conteúdo foi preservado; retome pelo histórico.", code: "TASK_INTERRUPTED" }, { status: 503 });
+      if (task.status !== "RUNNING") return fallback();
+      failures = 0;
+    } catch (error) {
+      signal.throwIfAborted();
+      // Preserve a failed initial request when recovery cannot identify it.
+      if (error === networkError || ++failures >= 5) return fallback();
+    }
+    await waitForTaskPoll(signal, Math.min(16_000, 2000 * 2 ** failures));
+  }
+  signal.throwIfAborted(); return fallback();
+}
+
+function waitForTaskPoll(signal: AbortSignal, delay: number): Promise<void> {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => { clearTimeout(timer); reject(signal.reason); };
+    const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, delay);
+    signal.addEventListener("abort", abort, { once: true });
+  });
 }

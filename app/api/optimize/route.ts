@@ -1,3 +1,4 @@
+import { ANALYSIS_REQUEST_HEADER } from "@/lib/analysis-request";
 import { boundedJson } from "@/lib/read-bounded-body";
 import { answerForReview } from "@/lib/question-answer";
 import { resumeRegionGuidance } from "@/lib/resume/region-guidance";
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
         await tx.analysis.update({ where: { id: analysisId }, data: { finalResumeJson: JSON.stringify(optimized), editorDraftJson: null, finalReviewJson:null, finalScores: JSON.stringify(finalScores), finalAssessmentJson: JSON.stringify(assessment), coverLetter: null, revision: { increment: 1 } } });
       });
       return { success: true, optimized, finalScores };
-    });
+    }, request.headers.get(ANALYSIS_REQUEST_HEADER));
     return NextResponse.json(result);
   } catch (error) { return apiError(error, "A otimização não foi concluída. Seu conteúdo anterior foi preservado."); }
 }

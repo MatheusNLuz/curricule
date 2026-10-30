@@ -1,3 +1,4 @@
+import { ANALYSIS_REQUEST_HEADER } from "@/lib/analysis-request";
 import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
     await commitTask(tx=>tx.analysis.update({where:{id:analysisId},data:{comparisonJson:JSON.stringify(validatedCompare)}}));
 
     return { success: true, comparison: validatedCompare };
-    });
+    }, req.headers.get(ANALYSIS_REQUEST_HEADER));
     return NextResponse.json(result);
   } catch (error) {
     return apiError(error, "A comparação com a vaga não foi concluída. Tente novamente em instantes.");

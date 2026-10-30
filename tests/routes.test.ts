@@ -18,7 +18,7 @@ const db = {
     deleteMany: async ({ where }: { where: { id: string; userId: string } }) => ({ count: where.id === row.id && where.userId === row.userId ? 1 : 0 }),
   },
   analysisTask: {
-    findFirst: async () => null,
+    findFirst: async ({ where }: { where: { analysisId: string; userId: string } }) => where.analysisId === row.id && where.userId === row.userId ? task : null,
     findUnique: async () => task ? { ...task } : null,
     upsert: async ({ create, update }: { create: TaskState; update: TaskState }) => { task = task ? { ...task, ...update } : create; return task; },
     updateMany: async ({ where, data }: { where: { token: string }; data: Partial<TaskState> }) => { if (task?.token === where.token) { task = { ...task, ...data }; return { count: 1 }; } return { count: 0 }; },
@@ -44,6 +44,7 @@ const exporting = await import("../app/api/export/route.ts");
 const importing = await import("../app/api/import-source/route.ts");
 const { default: preview } = await import("../app/analysis/[id]/preview/page.tsx");
 const { runAnalysisTask, inputHash,commitTask } = await import("../lib/analysis-task.ts");
+const taskStatus = await import("../app/api/analysis/[id]/tasks/route.ts");
 const context = { params: Promise.resolve({ id: "analysis-a" }) };
 const jsonRequest = (body: unknown) => new Request("https://app.example/api/analysis/analysis-a", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 test.beforeEach(() => { user = { userId: "owner", email: "owner@example.com" }; row = { ...original }; writes = []; task = null; used = 0;renderedDocuments.length=0; });
@@ -123,6 +124,31 @@ test("persistent task blocks simultaneous work and reuses a completed response",
   release?.(); await first;
   assert.deepEqual(await runAnalysisTask(row.id, "owner", "ANALYZE", "same input", async () => { calls++; return { success: false }; }), { success: true });
   assert.equal(calls, 1); assert.equal(used, 1);
+});
+
+test("task recovery identifies the browser request without reusing its server write fence", async () => {
+  const requestId = crypto.randomUUID();
+  await runAnalysisTask(row.id, "owner", "OPTIMIZE", "first", async () => ({ success: true }), requestId);
+  const firstToken = task!.token;
+  assert.ok(firstToken.endsWith(":" + requestId));
+  await runAnalysisTask(row.id, "owner", "OPTIMIZE", "second", async () => ({ success: true }), requestId);
+  assert.notEqual(task!.token, firstToken);
+  assert.ok(task!.token.endsWith(":" + requestId));
+
+  const request = new Request("https://app.example/api/analysis/analysis-a/tasks?kind=OPTIMIZE");
+  const response = await taskStatus.GET(request, context);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { requestId, status: "COMPLETED", result: { success: true } });
+  assert.match(response.headers.get("Cache-Control") || "", /no-store/);
+  user = { userId: "other", email: "other@example.test" };
+  assert.equal((await taskStatus.GET(request, context)).status, 404);
+  user = null;
+  assert.equal((await taskStatus.GET(request, context)).status, 401);
+});
+
+test("untrusted correlation headers cannot choose a server task fence", async () => {
+  await runAnalysisTask(row.id, "owner", "OPTIMIZE", "input", async () => ({ success: true }), "invalid:untrusted");
+  assert.match(task!.token, /^[a-f0-9-]{36}$/);
 });
 test("task quotas, ownership and failed-attempt recovery are enforced", async () => {
   await assert.rejects(() => runAnalysisTask(row.id, "other", "ANALYZE", "x", async () => null), error => (error as { status?: number }).status === 404);

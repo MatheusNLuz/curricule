@@ -1,3 +1,4 @@
+import { ANALYSIS_REQUEST_HEADER } from "@/lib/analysis-request";
 import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
@@ -197,7 +198,7 @@ export async function POST(req: Request) {
 
     });
     return { success: true, questions: savedQuestions, review };
-    });
+    }, req.headers.get(ANALYSIS_REQUEST_HEADER));
     return NextResponse.json(result);
   } catch (error) {
     return apiError(error, "As perguntas não puderam ser geradas. Tente novamente em instantes.");

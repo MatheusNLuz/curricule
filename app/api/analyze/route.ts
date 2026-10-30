@@ -1,3 +1,4 @@
+import { ANALYSIS_REQUEST_HEADER } from "@/lib/analysis-request";
 import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
       const gamification = GamificationEngine.evaluate(analysis);
       await commitTask(tx => tx.analysis.update({ where: { id: analysisId }, data: { analysisJson: JSON.stringify(analysis), initialScores: JSON.stringify(analysis.scores), gamificationJson: JSON.stringify(gamification) } }));
       return { success: true, analysis, scores: analysis.scores, gamification, review };
-    });
+    }, request.headers.get(ANALYSIS_REQUEST_HEADER));
     return NextResponse.json(result);
   } catch (error) { return apiError(error, "Não foi possível concluir a análise. Tente novamente."); }
 }

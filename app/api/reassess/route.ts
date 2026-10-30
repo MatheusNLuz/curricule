@@ -1,3 +1,4 @@
+import { ANALYSIS_REQUEST_HEADER } from "@/lib/analysis-request";
 import { boundedJson } from "@/lib/read-bounded-body";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -23,5 +24,5 @@ export async function POST(request:Request){try{
     const scores=ScoreEngine.evaluate(assessment);
     await commitTask(async tx=>{const saved=await tx.analysis.updateMany({where:{id:analysisId,userId:user.userId,revision:analysis.revision,finalResumeJson:analysis.finalResumeJson},data:{finalScores:JSON.stringify(scores),finalAssessmentJson:JSON.stringify({...assessment,scores})}});if(!saved.count)throw new HttpError(409,"O currículo mudou. Reavalie a versão mais recente.");});
     return {success:true,finalScores:scores};
-  });return NextResponse.json(result);
+  },request.headers.get(ANALYSIS_REQUEST_HEADER));return NextResponse.json(result);
 }catch(error){return apiError(error,"Não foi possível reavaliar. O texto e os arquivos salvos foram preservados.");}}

@@ -1,3 +1,4 @@
+import { ANALYSIS_REQUEST_HEADER } from "@/lib/analysis-request";
 import { boundedJson } from "@/lib/read-bounded-body";
 import { answerForReview } from "@/lib/question-answer";
 import { NextResponse } from "next/server";
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
         if(!updated.count)throw new HttpError(409,"As respostas mudaram durante a validação. Valide os fatos novamente.");
       });
       return report;
-    });
+    }, request.headers.get(ANALYSIS_REQUEST_HEADER));
     return NextResponse.json({ success: true, truthGuard: result });
   } catch (error) { return apiError(error); }
 }

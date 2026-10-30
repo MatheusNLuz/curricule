@@ -1,3 +1,4 @@
+import { ANALYSIS_REQUEST_HEADER } from "@/lib/analysis-request";
 import { boundedJson } from "@/lib/read-bounded-body";
 import { answerForReview } from "@/lib/question-answer";
 import { NextResponse } from "next/server";
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
       const updated = await commitTask(tx => tx.analysis.updateMany({ where: { id: analysisId, revision: analysis.revision, truthGuardJson: analysis.truthGuardJson }, data: { coverLetter: letter.content } }));
       if (!updated.count) throw new HttpError(409, "O conteúdo mudou durante a geração. Tente novamente.");
       return { success: true, coverLetter: letter.content };
-    });
+    }, request.headers.get(ANALYSIS_REQUEST_HEADER));
     return NextResponse.json(result);
   } catch (error) { return apiError(error, "Não foi possível gerar a carta. Nenhum resultado anterior foi substituído."); }
 }

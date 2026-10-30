@@ -6,6 +6,7 @@ import { requireAnalysisAccess } from "./billing/service";
 import { LANGUAGE_POLICY_VERSION } from "./ai/output-language";
 import { taskContext } from "./task-context";
 import { withAnalysisCapacity } from "./runtime/analysis-capacity";
+import { validAnalysisRequestId } from "./analysis-request";
 export const TASK_POLICY_VERSION="bounded-rubric-v4";
 export function inputHash(value:unknown){return createHash("sha256").update(JSON.stringify(value)).digest("hex");}
 export function taskBudgetMs(){return Math.min(240_000,Math.max(10_000,Number(process.env.ANALYSIS_TASK_TIMEOUT_MS)||240_000));}
@@ -22,8 +23,10 @@ export async function commitTask<T>(operation:(tx:Prisma.TransactionClient)=>Pro
     return operation(tx);
   });
 }
-export async function runAnalysisTask<T>(analysisId:string,userId:string,kind:string,input:unknown,run:()=>Promise<T>):Promise<T>{
-  const hash=inputHash([LANGUAGE_POLICY_VERSION,TASK_POLICY_VERSION,input]);const token=randomUUID();const budget=taskBudgetMs();
+export async function runAnalysisTask<T>(analysisId:string,userId:string,kind:string,input:unknown,run:()=>Promise<T>,requestId?:string|null):Promise<T>{
+  // Keep the server fence unique even if a caller repeats a request identifier.
+  const token=randomUUID()+(validAnalysisRequestId(requestId)?":"+requestId:"");
+  const hash=inputHash([LANGUAGE_POLICY_VERSION,TASK_POLICY_VERSION,input]);const budget=taskBudgetMs();
   const cached=await prisma.$transaction(async tx=>{
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${analysisId}))`;
