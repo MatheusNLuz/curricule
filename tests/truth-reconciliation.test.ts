@@ -2,7 +2,7 @@ import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import type { ZodType } from "zod";
-import { truthContext, truthSourceHash, type ReviewedTruth } from "../lib/ats/truth-policy";
+import { reviewTruth, truthContext, truthSourceHash, type ReviewedTruth } from "../lib/ats/truth-policy";
 import { writeStructuredAnswer } from "../lib/question-answer";
 import type { TruthGuardGen } from "../lib/schemas/questions.schema";
 
@@ -93,4 +93,12 @@ test("a verdict cannot both approve an assertion and leave it in a contradictory
     verdict = { claims: [gitClaim], blockedClaims: [blocked], warnings: [] };
     await assert.rejects(TruthGuard.evaluate(source.parsedResumeText, gitClaim.claim, gitClaim.claim), error => error instanceof Error && "issues" in error);
   }
+});
+
+test("explicitly confirming an inference resolves only that assertion's former block", () => {
+  const report: ReviewedTruth = { claims: [{ ...gitClaim, source: "low_confidence_inference", canUseInResume: false, canUseInCoverLetter: false }], blockedClaims: [gitClaim.claim, "Experiência profissional com PHPUnit"], warnings: [], sourceHash: "synthetic", decisions: {} };
+  const confirmed = reviewTruth(report, { "0": true });
+  assert.deepEqual(truthContext(confirmed), { approved: [gitClaim.claim], rejected: ["Experiência profissional com PHPUnit"] });
+  assert.deepEqual(truthContext(reviewTruth(report, { "0": false })).approved, []);
+  assert.deepEqual(report.blockedClaims, [gitClaim.claim, "Experiência profissional com PHPUnit"]);
 });

@@ -22,7 +22,9 @@ export function reviewTruth(report: ReviewedTruth, decisions: Record<string, boo
     if (!/^\d+$/.test(index) || !claim || (claim.source !== "low_confidence_inference" && approved)) throw new Error("Decisão inválida para esse fato.");
   }
   if (report.claims.some((claim, index) => claim.source === "low_confidence_inference" && typeof decisions[index] !== "boolean")) throw new Error("Revise todas as inferências antes de continuar.");
-  return { ...report, decisions };
+  const confirmed = new Set(report.claims.filter((_, index) => decisions[index] === true).map(claim => claim.claim.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase()));
+  const blockedClaims = report.blockedClaims.filter(claim => !confirmed.has(claim.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase()));
+  return { ...report, blockedClaims, decisions };
 }
 export function truthContext(report: ReviewedTruth | null, destination: "resume" | "letter" = "resume") {
   if (!report) return { approved: [] as string[], rejected: [] as string[] };
