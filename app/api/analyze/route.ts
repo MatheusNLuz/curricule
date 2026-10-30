@@ -20,12 +20,12 @@ export async function POST(request: Request) {
     const result = await runAnalysisTask(analysisId, session.userId, "ANALYZE", ["optional-review-v1", record.parsedResumeText, record.mode, record.selectedLanguage], async () => {
       const ai = new AnalysisOrchestrator();
       if (record.mode === "LINKEDIN_OPTIMIZATION") {
-        const { value: analysis, review } = await ai.analyzeWithReview(getLinkedInSystemPrompt(record.selectedLanguage), generateLinkedInAnalyzerUserPrompt(record.parsedResumeText!, record.professionalTarget || "General", record.selectedLanguage), LinkedInAnalysisSchema, record.selectedLanguage);
+        const { value: analysis, review } = await ai.analyzeWithReview(getLinkedInSystemPrompt(record.selectedLanguage), generateLinkedInAnalyzerUserPrompt(record.parsedResumeText!, record.professionalTarget || "General", record.selectedLanguage), LinkedInAnalysisSchema, record.selectedLanguage, "initial_assessment");
         const gamification = { level: 1, levelName: "Perfil em revisão", missionsComplete: 0, totalMissions: 4, badges: [] };
         await commitTask(tx => tx.analysis.update({ where: { id: analysisId }, data: { analysisJson: JSON.stringify(analysis), initialScores: JSON.stringify(analysis.scores), gamificationJson: JSON.stringify(gamification) } }));
         return { success: true, analysis, scores: analysis.scores, gamification, review };
       }
-      const { value: analysis, review } = await ai.analyzeWithReview(ATS_ANALYZER_SYSTEM_PROMPT, generateAtsAnalyzerUserPrompt(record.parsedResumeText!, record.professionalTarget || "General", record.mode, record.selectedLanguage), resumeAssessmentSchema(record.parsedResumeText!), record.selectedLanguage);
+      const { value: analysis, review } = await ai.analyzeWithReview(ATS_ANALYZER_SYSTEM_PROMPT, generateAtsAnalyzerUserPrompt(record.parsedResumeText!, record.professionalTarget || "General", record.mode, record.selectedLanguage), resumeAssessmentSchema(record.parsedResumeText!), record.selectedLanguage, "initial_assessment");
       analysis.scores = ScoreEngine.evaluate(analysis);
       const gamification = GamificationEngine.evaluate(analysis);
       await commitTask(tx => tx.analysis.update({ where: { id: analysisId }, data: { analysisJson: JSON.stringify(analysis), initialScores: JSON.stringify(analysis.scores), gamificationJson: JSON.stringify(gamification) } }));

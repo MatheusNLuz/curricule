@@ -42,7 +42,7 @@ Rewrite the resume into the structured JSON format. Maximize impact without lyin
       REWRITE_SYSTEM_PROMPT,
       userPrompt,
       StructuredResumeSchema,
-      targetLanguage
+      targetLanguage, undefined, "resume_rewrite"
     );
     
     return StructuredResumeSchema.parse(rawResult);

@@ -19,7 +19,7 @@ export async function POST(request:Request){try{
   if(!analysis?.finalResumeJson||analysis.mode==="LINKEDIN_OPTIMIZATION")throw new HttpError(404,"Currículo salvo não encontrado.");
   const resume=OptimizedResumeSchema.parse(JSON.parse(analysis.finalResumeJson));
   const result=await runAnalysisTask(analysisId,user.userId,"REASSESS",[analysis.revision,analysis.finalResumeJson,analysis.selectedLanguage],async()=>{
-    const assessment=await new AnalysisOrchestrator().analyzeLocalized(ATS_ANALYZER_SYSTEM_PROMPT,generateAtsAnalyzerUserPrompt(resumeText(resume,analysis.selectedLanguage),analysis.professionalTarget||"General",analysis.mode,analysis.selectedLanguage),resumeAssessmentSchema(resumeText(resume,analysis.selectedLanguage)),analysis.selectedLanguage);
+    const assessment=await new AnalysisOrchestrator().analyzeLocalized(ATS_ANALYZER_SYSTEM_PROMPT,generateAtsAnalyzerUserPrompt(resumeText(resume,analysis.selectedLanguage),analysis.professionalTarget||"General",analysis.mode,analysis.selectedLanguage),resumeAssessmentSchema(resumeText(resume,analysis.selectedLanguage)),analysis.selectedLanguage,undefined,"reassessment");
     const scores=ScoreEngine.evaluate(assessment);
     await commitTask(async tx=>{const saved=await tx.analysis.updateMany({where:{id:analysisId,userId:user.userId,revision:analysis.revision,finalResumeJson:analysis.finalResumeJson},data:{finalScores:JSON.stringify(scores),finalAssessmentJson:JSON.stringify({...assessment,scores})}});if(!saved.count)throw new HttpError(409,"O currículo mudou. Reavalie a versão mais recente.");});
     return {success:true,finalScores:scores};

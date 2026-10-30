@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       JOB_PARSE_PROMPT,
       `Job Description:\n${analysis.jobDescription}`,
       JobParseSchema,
-      analysis.selectedLanguage
+      analysis.selectedLanguage, undefined, "job_parse"
     );
     const jobParseJson = JSON.stringify(parsedJob);
     await commitTask(tx=>tx.analysis.update({where:{id:analysisId},data:{jobParseJson}}));
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     const rawCompare = await orchestrator.analyzeLocalized<CompareAnalysis>(
       COMPARE_PROMPT,
       `Parsed Job:\n${jobParseJson}\n\nParsed Resume:\n${analysis.parsedResumeText}`,
-      CompareSchema, analysis.selectedLanguage);
+      CompareSchema, analysis.selectedLanguage, undefined, "comparison");
     const validatedCompare = CompareSchema.parse(rawCompare);
 
     await commitTask(tx=>tx.analysis.update({where:{id:analysisId},data:{comparisonJson:JSON.stringify(validatedCompare)}}));

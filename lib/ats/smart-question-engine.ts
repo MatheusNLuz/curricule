@@ -34,7 +34,7 @@ Generate questions to fill these gaps without encouraging the candidate to lie.`
       QUESTION_SYSTEM_PROMPT,
       userPrompt,
       SmartQuestionSchema,
-      language
+      language, undefined, "questions"
     );
     
     return SmartQuestionSchema.parse(rawResult);
