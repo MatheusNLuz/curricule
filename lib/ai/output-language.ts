@@ -3,7 +3,7 @@ import { setTimeout as retryDelay } from "node:timers/promises";
 import { LOCALES, languageLabel } from "../analysis-contract";
 import { HttpError } from "../http-error";
 import type { AiProviderInterface } from "./ai-provider.interface";
-import { isRetryableProviderFailure } from "./provider-error";
+import { aiFailureMetadata, isRetryableProviderFailure } from "./provider-error";
 import { taskSignal } from "../task-context";
 
 export const LANGUAGE_POLICY_VERSION = "selected-locale-v3";
@@ -113,7 +113,7 @@ Return ONLY JSON {"matchesSelectedLocale":boolean,"containsMixedLanguage":boolea
     } catch (error) {
       taskSignal()?.throwIfAborted();
       if (!(error instanceof ZodError) && !isRetryableProviderFailure(error)) throw error;
-      console.warn("Language audit needs recovery", { provider: provider.name, attempt: attempt + 1 });
+      console.warn("Language audit needs recovery", { provider: provider.name, attempt: attempt + 1, ...aiFailureMetadata(error) });
       if (attempt === 0) await retryDelay(500, undefined, { signal: taskSignal() });
     }
   }

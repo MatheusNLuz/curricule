@@ -4,7 +4,7 @@ import { z } from "zod";
 import { AnalysisOrchestrator } from "../lib/ai/analysis-orchestrator";
 import { OpenRouterProvider } from "../lib/ai/openrouter-provider";
 import { assertOutputLanguage, outputLanguagePolicy, OutputLanguageError, OutputLanguageAuditError } from "../lib/ai/output-language";
-import { AiProviderError } from "../lib/ai/provider-error";
+import { AiProviderError, aiFailureMetadata } from "../lib/ai/provider-error";
 import type { AiGenerateJsonParams, AiProviderInterface } from "../lib/ai/ai-provider.interface";
 import { taskContext } from "../lib/task-context";
 
@@ -48,6 +48,25 @@ function provider(responses: unknown[]) {
   };
   return { fake, calls };
 }
+
+test("timeout during language audit falls back after bounded retries", async () => {
+  const timeout = new DOMException("private response", "TimeoutError");
+  const first = provider([{ content: "Texto em português." }, timeout, timeout]);
+  const second = provider([{ content: "Outro texto em português." }, approved]);
+  const result = await new AnalysisOrchestrator([first.fake, second.fake]).analyzeLocalized("Summary", "Original", ContentSchema, "pt-BR");
+  assert.equal(result.content, "Outro texto em português.");
+  assert.equal(first.calls.length, 3);
+});
+
+test("schema failure metadata excludes values and paths", () => {
+  const result = ContentSchema.safeParse({ content: 42, secret: "private" });
+  assert.equal(result.success, false);
+  if (!result.success) {
+    const metadata = JSON.stringify(aiFailureMetadata(result.error));
+    assert.match(metadata, /SCHEMA_INVALID/);
+    assert.doesNotMatch(metadata, /content|private|42/);
+  }
+});
 
 for (const [locale, prose] of Object.entries({
   "pt-BR": "Organizei os arquivos e trabalhei com a equipe.",

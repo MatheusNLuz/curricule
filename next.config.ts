@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   cacheMaxMemorySize: 8 * 1024 * 1024,
   serverExternalPackages: ["pdf-parse", "puppeteer-core", "@sparticuz/chromium", "docx"],
-  outputFileTracingIncludes: { "/api/export": ["./node_modules/@sparticuz/chromium/bin/**/*"] },
+  outputFileTracingIncludes: { "/api/export": ["./node_modules/@sparticuz/chromium/bin/**/*"], "/api/*": ["./node_modules/@napi-rs/canvas/**/*", "./node_modules/@napi-rs/canvas-*/**/*"] },
   async headers(){return [{source:"/:path*",headers:[{key:"X-Content-Type-Options",value:"nosniff"},{key:"Referrer-Policy",value:"strict-origin-when-cross-origin"},{key:"X-Frame-Options",value:"SAMEORIGIN"}]}];},
 };
 
