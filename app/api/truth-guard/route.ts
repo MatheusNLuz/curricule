@@ -18,9 +18,11 @@ export async function POST(request: Request) {
     const hash = truthSourceHash(analysis);
     const rejected=storedRejectedClaims(analysis.rejectedClaimsJson);
     const result = await runAnalysisTask(analysisId, session.userId, "TRUTH", [hash,analysis.rejectedClaimsJson,analysis.confirmedClaimsJson], async () => {
-      const answers = analysis.questions.map(q => ({ question: q.question, answer: answerForReview(q.answer) })).filter(q => q.answer).map(q => q.question + ": " + q.answer).join("\n")+"\n"+storedConfirmedClaims(analysis.confirmedClaimsJson).join("\n");
-      const comparison = analysis.comparisonJson ? JSON.parse(analysis.comparisonJson) : null;
-      const additions = { answers, unconfirmedJobRequirements: comparison?.missingMandatorySkills || [] };
+      const submittedAnswers = analysis.questions.map(q => ({ question: q.question, answer: answerForReview(q.answer) })).filter(q => q.answer);
+      const confirmedClaims = storedConfirmedClaims(analysis.confirmedClaimsJson);
+      const answers = submittedAnswers.map(q => q.question + ": " + q.answer).join("\n") + "\n" + confirmedClaims.join("\n");
+      // Vacancy gaps are historical comparison results, not candidate claims.
+      const additions = { candidateStatements: submittedAnswers, explicitlyConfirmedClaims: confirmedClaims, ...(!answers.trim() ? { sourceStatements: analysis.parsedResumeText || "" } : {}) };
       const report = { ...await TruthGuard.evaluate(analysis.parsedResumeText || "", answers, JSON.stringify(additions), rejected, analysis.selectedLanguage, true), sourceHash: hash, decisions: {} };
       await commitTask(async tx=>{
         const updated=await tx.analysis.updateMany({where:{id:analysisId,revision:analysis.revision},data:{truthGuardJson:JSON.stringify(report)}});

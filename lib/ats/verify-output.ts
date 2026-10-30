@@ -1,17 +1,20 @@
 import { TruthGuard } from "./truth-guard";
 import { HttpError } from "../http-error";
+import { taskContext } from "../task-context";
 export class OutputVerificationError extends HttpError {
   constructor(public issues: string[]) {
     super(422, "A versão gerada contém informações que não foi possível confirmar. Ajuste suas respostas ou tente novamente; seu material foi preservado.", "OUTPUT_UNCONFIRMED");
   }
 }
 export async function verifyOutput(original: string, confirmed: string, proposed: string, rejected: string[], destination: "resume" | "letter" = "resume", language = "pt-BR") {
-  const normalized = proposed.normalize("NFKC").toLowerCase();
-  const presentRejected = rejected.filter(claim => claim.trim().length > 0 && normalized.includes(claim.normalize("NFKC").toLowerCase()));
-  if (presentRejected.length) throw new OutputVerificationError(presentRejected.slice(0, 20).map(claim => claim.slice(0, 500)));
+  // Restrictions concern assertions and their qualifiers, not string occurrences.
+  // The mandatory auditor checks every output, including rejected paraphrases.
   const report = await TruthGuard.evaluate(original, confirmed, proposed, rejected, language, false, true);
   const unconfirmed = report.claims.filter(claim => !(destination === "letter" ? claim.canUseInCoverLetter : claim.canUseInResume) || !["confirmed_by_resume", "confirmed_by_user"].includes(claim.source));
-  if (!report.claims.length || report.blockedClaims.length || unconfirmed.length) throw new OutputVerificationError([...report.blockedClaims, ...unconfirmed.map(claim => claim.claim)].filter(Boolean).slice(0, 20).map(claim => claim.slice(0, 500)));
+  if (!report.claims.length || report.blockedClaims.length || unconfirmed.length) {
+    console.warn("AI factual output rejected", { correlationId: taskContext.getStore()?.correlationId, destination, rule: "UNCONFIRMED_ASSERTION", blockedCount: report.blockedClaims.length, unconfirmedCount: unconfirmed.length, emptyReport: report.claims.length === 0 });
+    throw new OutputVerificationError([...report.blockedClaims, ...unconfirmed.map(claim => claim.claim)].filter(Boolean).slice(0, 20).map(claim => claim.slice(0, 500)));
+  }
   return report;
 }
 

@@ -123,9 +123,9 @@ test("AI fallback validates schema before accepting provider output", async () =
 test("final fact verification rejects declined and unconfirmed generated content", async () => {
   const verify = mock.method(TruthGuard, "evaluate", async (...args: Parameters<typeof TruthGuard.evaluate>) => { void args; return { claims: [{ claim: "Invented metric", source: "missing" as const, canUseInResume: false, canUseInCoverLetter: false, explanation: "No source" }], blockedClaims: [], warnings: [] }; });
   await assert.rejects(() => verifyOutput("Original", "", "Eu gerenciei uma equipe de 20 pessoas", ["gerenciei uma equipe de 20 pessoas"]));
-  assert.equal(verify.mock.callCount(), 0);
-  await assert.rejects(() => verifyOutput("Original", "", "Invented metric", []));
   assert.equal(verify.mock.callCount(), 1);
+  await assert.rejects(() => verifyOutput("Original", "", "Invented metric", []));
+  assert.equal(verify.mock.callCount(), 2);
   assert.equal(verify.mock.calls[0].arguments[6], true); verify.mock.restore();
 });
 test("a rejected rewrite is corrected once and checked again before use", async () => {

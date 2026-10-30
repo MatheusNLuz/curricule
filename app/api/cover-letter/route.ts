@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     if (!analysis?.parsedResumeText || !analysis.jobDescription) throw new HttpError(400, "Informe seu currículo e a descrição da vaga.");
     const review = readTruth(analysis.truthGuardJson);
     if (review && review.sourceHash !== truthSourceHash(analysis)) throw new HttpError(409, "As respostas mudaram. Valide os fatos novamente.");
-    const facts = truthContext(review);
+    const facts = truthContext(review, "letter");
     facts.approved=[...new Set([...facts.approved,...storedConfirmedClaims(analysis.confirmedClaimsJson)])];
     facts.rejected=[...new Set([...facts.rejected,...storedRejectedClaims(analysis.rejectedClaimsJson)])];
     const confirmed = analysis.questions.filter(q => q.confirmed).map(q => answerForReview(q.answer)).filter(Boolean).join("\n") + "\n" + facts.approved.join("\n");

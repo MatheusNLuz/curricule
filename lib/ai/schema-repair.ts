@@ -26,6 +26,7 @@ export function schemaRepairInstructions(operation: AiOperation, error: ZodError
   }
   if (error.issues.some(issue => issue.code === "custom" && issue.params?.validationCode === "RUBRIC_CRITERIA_INVALID")) instruction += " Return exactly one assessment entry for each criterion: ats, structure, clarity, impact, keywords.";
   if (error.issues.some(issue => issue.code === "custom" && issue.params?.validationCode === "POSITIVE_LEVEL_WITHOUT_EVIDENCE")) instruction += " An assessment level above zero requires a real candidate excerpt. With no evidence use level 0 and empty foundText.";
+  if (error.issues.some(issue => issue.code === "custom" && issue.params?.validationCode === "FACT_VERDICT_CONFLICT")) instruction += " Resolve the contradictory factual verdict: every blockedClaims item must exactly repeat the claim text of an existing disallowed claims entry. Do not copy input restrictions or historical vacancy gaps into the verdict. Do not invent assertions to justify a block. If all claims are confirmed and allowed, return an empty blockedClaims array.";
   instruction += " For evidence fields copy one continuous source excerpt without translation, paraphrase, combining or ellipsis. Never truncate a quotation to make it pass; select a shorter real excerpt and revalidate it.";
   return instruction;
 }

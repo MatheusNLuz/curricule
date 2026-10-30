@@ -8,7 +8,7 @@ export class AiProviderError extends Error {
 export function isRetryableProviderFailure(error: unknown): boolean {
   return (error instanceof Error && error.name === "TimeoutError") || (error instanceof AiProviderError && (error.code === "INVALID_JSON" || (error.code === "HTTP_ERROR" && [408, 500, 502, 503, 504].includes(error.status || 0))));
 }
-const validationCodes = new Set(["EVIDENCE_NOT_IN_SOURCE", "POSITIVE_LEVEL_WITHOUT_EVIDENCE", "RUBRIC_CRITERIA_INVALID"]);
+const validationCodes = new Set(["EVIDENCE_NOT_IN_SOURCE", "POSITIVE_LEVEL_WITHOUT_EVIDENCE", "RUBRIC_CRITERIA_INVALID", "FACT_VERDICT_CONFLICT"]);
 const languageRules = new Set(["LOCALE_METADATA", "REGIONAL_PROSE", "PORTUGUESE_PROSE", "SPANISH_PROSE", "ENGLISH_PHRASE", "ENGLISH_SENTENCE", "AUDITOR_REJECTED"]);
 export function aiFailureMetadata(error: unknown, schema?: ZodType) {
   const allowed = schema ? knownSchemaPaths(schema) : new Set<string>();
