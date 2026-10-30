@@ -21,7 +21,7 @@ DB_CONNECTION_LIMIT=3
 ANALYSIS_DAILY_LIMIT=200
 ```
 
-`AI_DEFAULT_TEMPERATURE` está no arquivo, mas não é lida pelo provedor atual: o código envia temperatura **0.1**. `AI_MAX_TOKENS` é um teto; cada chamada pode pedir menos tokens.
+Desde a correção de 30/10/2026, `AI_DEFAULT_TEMPERATURE` é lida pelo provedor: aceita valores finitos de 0 a 2, incluindo `0.0`. Ausência, vazio ou valor inválido usa **0.1**. `AI_MAX_TOKENS` é um teto; cada chamada pode pedir menos tokens.
 
 ## IAs e fluxo
 

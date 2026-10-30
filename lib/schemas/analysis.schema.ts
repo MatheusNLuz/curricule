@@ -47,8 +47,8 @@ export function resumeAssessmentSchema(source:string){
   const normalized=(text:string)=>text.normalize("NFKC").replace(/\s+/g," ").trim().toLowerCase();
   const validated = ResumeAnalysisSchema.superRefine((value,context)=>{
     const keys=["ats","structure","clarity","impact","keywords"];
-    if(!value.rubric||value.rubric.length!==keys.length||keys.some(key=>value.rubric!.filter(item=>item.criterion===key).length!==1)){context.addIssue({code:"custom",message:"Return exactly one structured rubric entry per criterion."});return;}
-    value.rubric.forEach((item,index)=>{if(item.foundText&&!normalized(source).includes(normalized(item.foundText)))context.addIssue({code:"custom",path:["rubric",index,"foundText"],message:"Evidence must be an exact excerpt from the candidate source."});if(item.level>0&&!item.foundText.trim())context.addIssue({code:"custom",path:["rubric",index,"foundText"],message:"Positive levels require a source excerpt."});});
+    if(!value.rubric||value.rubric.length!==keys.length||keys.some(key=>value.rubric!.filter(item=>item.criterion===key).length!==1)){context.addIssue({code:"custom",path:["rubric"],params:{validationCode:"RUBRIC_CRITERIA_INVALID"},message:"Return exactly one structured rubric entry per criterion."});return;}
+    value.rubric.forEach((item,index)=>{if(item.foundText&&!normalized(source).includes(normalized(item.foundText)))context.addIssue({code:"custom",path:["rubric",index,"foundText"],params:{validationCode:"EVIDENCE_NOT_IN_SOURCE"},message:"Evidence must be an exact excerpt from the candidate source."});if(item.level>0&&!item.foundText.trim())context.addIssue({code:"custom",path:["rubric",index,"foundText"],params:{validationCode:"POSITIVE_LEVEL_WITHOUT_EVIDENCE"},message:"Positive levels require a source excerpt."});});
   });
   // A positive rubric level must have evidence. Missing evidence cannot justify
   // credit, but it should not prevent the rest of the assessment from loading.

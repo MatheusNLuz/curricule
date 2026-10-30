@@ -66,7 +66,7 @@ ${verifyProposal ? "For this final verification, claims and blockedClaims must d
       TRUTH_GUARD_SYSTEM_PROMPT,
       userPrompt,
       TruthGuardSchema,
-      language
+      language, undefined, "factual_verification"
     );
     
     const result = TruthGuardSchema.parse(rawResult);

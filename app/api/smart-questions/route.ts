@@ -103,7 +103,7 @@ export async function POST(req: Request) {
         const ordered = [...existingQuestions].sort((a, b) => a.id.localeCompare(b.id));
         const source = ordered.map(q => ({ question: q.question, reason: q.reason, category: q.category, answerType: q.answerType, options: q.options ? JSON.parse(q.options) : undefined, suggestedAnswer: q.suggestedAnswer || undefined }));
         const schema = SmartQuestionSchema.refine(value => value.questions.length === ordered.length && value.questions.every((q, i) => q.category === source[i].category && q.answerType === source[i].answerType), "Preserve question order, count and machine fields");
-        const translated = await new AnalysisOrchestrator().analyzeLocalized("Faithfully translate these existing questions into the selected locale. Preserve their exact order, count, meaning, category and answerType. Do not generate new questions or facts. Preserve already-correct text. Return JSON {questions:[{question,reason,category,answerType,options?,suggestedAnswer?}]}. Options and suggestedAnswer are prose and must also use the selected locale.", JSON.stringify({ questions: source }), schema, analysis.selectedLanguage);
+        const translated = await new AnalysisOrchestrator().analyzeLocalized("Faithfully translate these existing questions into the selected locale. Preserve their exact order, count, meaning, category and answerType. Do not generate new questions or facts. Preserve already-correct text. Return JSON {questions:[{question,reason,category,answerType,options?,suggestedAnswer?}]}. Options and suggestedAnswer are prose and must also use the selected locale.", JSON.stringify({ questions: source }), schema, analysis.selectedLanguage, undefined, "questions_translation");
         const questions = translated.questions.map((q, i) => ({ ...q, id: ordered[i].id }));
         await commitTask(tx=>Promise.all(questions.map(q => tx.smartQuestion.update({ where: { id: q.id }, data: { question: q.question, reason: q.reason, options: q.options ? JSON.stringify(q.options) : null, suggestedAnswer: q.suggestedAnswer || null } }))));
         return questions;
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
     }
 
     prompt += "\nAdapt questions to the candidate's actual profession. Never require invented metrics; explicitly permit 'I do not know' or 'I have not done this'. Suggestions are unconfirmed until the candidate chooses and submits them. Use boolean for a neutral yes/no question, multiple_choice for one option, multiple_select for several options, and text for open questions. Include at most eight relevant neutral options of at most 100 characters each; never assume a suggestion is a fact.";
-    const { value: rawQuestions, review } = await orchestrator.analyzeWithReview<SmartQuestionGen>(prompt, payload, SmartQuestionSchema, analysis.selectedLanguage);
+    const { value: rawQuestions, review } = await orchestrator.analyzeWithReview<SmartQuestionGen>(prompt, payload, SmartQuestionSchema, analysis.selectedLanguage, "questions");
     const validated = SmartQuestionSchema.parse(rawQuestions);
 
     const savedQuestions: { id: string; question: string; reason: string; category: string; answerType: string; options: string[] | undefined; suggestedAnswer: string | null }[] = [];

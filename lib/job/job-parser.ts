@@ -14,7 +14,7 @@ export class JobParser {
       JOB_PARSER_SYSTEM_PROMPT,
       `Job Description:\n"""\n${jobDescription}\n"""\n\nExtract all the requirements into the JSON schema.`,
       JobParseSchema,
-      language
+      language, undefined, "job_parse"
     );
     
     return JobParseSchema.parse(rawResult);

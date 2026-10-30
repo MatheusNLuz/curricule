@@ -26,6 +26,7 @@ jobs:
       - name: Build and package standalone
         run: |
           npm run build
+          node scripts/validate-standalone-pdf.mjs
           if find .next/standalone -maxdepth 1 -name '.env*' | grep -q .; then
             echo 'Environment file found in artifact' >&2
             exit 1

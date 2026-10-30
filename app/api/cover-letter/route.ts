@@ -28,10 +28,10 @@ export async function POST(request: Request) {
       const writer=new AnalysisOrchestrator();
       const prompt="Write a concise cover letter in " + languageLabel(analysis.selectedLanguage) + ". Return only JSON {\"content\":\"...\"}. Use only facts supported by ORIGINAL or CONFIRMED; never invent skills, metrics or qualifications from the job. Do not use REJECTED claims, even paraphrased. No contact blocks or email headers. Avoid unsupported self-descriptions such as expert, proven excellence, high performance or a track record of improvements. Interest in a role is not evidence of a qualification.";
       const payload=JSON.stringify({original:analysis.parsedResumeText,confirmed,rejected:facts.rejected,job:analysis.jobDescription});
-      let letter=await writer.analyzeLocalized(prompt,payload,CoverLetterSchema,analysis.selectedLanguage);
+      let letter=await writer.analyzeLocalized(prompt,payload,CoverLetterSchema,analysis.selectedLanguage,undefined,"cover_letter");
       try{await verifyOutput(analysis.parsedResumeText!,confirmed,letter.content,facts.rejected,"letter",analysis.selectedLanguage);}catch(error){
         if(!(error instanceof HttpError)||error.status!==422)throw error;
-        letter=await writer.analyzeLocalized(prompt+" The previous draft failed factual verification. Start again from ORIGINAL and CONFIRMED only. Keep it brief, omit all inferred achievements, skills and personal qualities, and connect only explicitly documented activities to the role. Do not add missing facts to make the candidate fit.",payload,CoverLetterSchema,analysis.selectedLanguage);
+        letter=await writer.analyzeLocalized(prompt+" The previous draft failed factual verification. Start again from ORIGINAL and CONFIRMED only. Keep it brief, omit all inferred achievements, skills and personal qualities, and connect only explicitly documented activities to the role. Do not add missing facts to make the candidate fit.",payload,CoverLetterSchema,analysis.selectedLanguage,undefined,"cover_letter");
         await verifyOutput(analysis.parsedResumeText!,confirmed,letter.content,facts.rejected,"letter",analysis.selectedLanguage);
       }
       const updated = await commitTask(tx => tx.analysis.updateMany({ where: { id: analysisId, revision: analysis.revision, truthGuardJson: analysis.truthGuardJson }, data: { coverLetter: letter.content } }));

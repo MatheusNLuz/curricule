@@ -29,7 +29,7 @@ Compare them and return the requirement matrix.`;
       COMPARISON_SYSTEM_PROMPT,
       userPrompt,
       RequirementMatrixSchema,
-      language
+      language, undefined, "comparison"
     );
     
     return RequirementMatrixSchema.parse(rawResult);

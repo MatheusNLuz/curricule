@@ -6,7 +6,7 @@ import { requireAnalysisAccess } from "./billing/service";
 import { LANGUAGE_POLICY_VERSION } from "./ai/output-language";
 import { taskContext } from "./task-context";
 import { withAnalysisCapacity } from "./runtime/analysis-capacity";
-export const TASK_POLICY_VERSION="bounded-rubric-v3";
+export const TASK_POLICY_VERSION="bounded-rubric-v4";
 export function inputHash(value:unknown){return createHash("sha256").update(JSON.stringify(value)).digest("hex");}
 export function taskBudgetMs(){return Math.min(240_000,Math.max(10_000,Number(process.env.ANALYSIS_TASK_TIMEOUT_MS)||240_000));}
 export function dailyWindow(now=new Date()){const since=new Date(now);since.setUTCHours(0,0,0,0);return {since,resetsAt:new Date(since.getTime()+86_400_000)};}
@@ -47,18 +47,20 @@ export async function runAnalysisTask<T>(analysisId:string,userId:string,kind:st
     return {usageId:usage.id};
   });
   if("value" in cached)return cached.value as T;
-  const started=Date.now();const controller=new AbortController();
+  const started=Date.now();const controller=new AbortController();const correlationId=randomUUID();
   const timer=setTimeout(()=>controller.abort(new HttpError(504,"A etapa excedeu o tempo disponível. O conteúdo anterior foi preservado; retome pelo histórico.","TASK_TIMEOUT")),budget);
   let abortHandler:()=>void=()=>{};
   const aborted=new Promise<never>((_,reject)=>{abortHandler=()=>reject(controller.signal.reason);controller.signal.addEventListener("abort",abortHandler,{once:true});});
   try{
-    const result=await Promise.race([withAnalysisCapacity(()=>taskContext.run({analysisId,userId,kind,token,signal:controller.signal},run),controller.signal),aborted]);
+    const result=await Promise.race([withAnalysisCapacity(()=>taskContext.run({analysisId,userId,kind,token,signal:controller.signal,correlationId},run),controller.signal),aborted]);
     controller.signal.throwIfAborted();
     const completed=await prisma.analysisTask.updateMany({where:{analysisId,kind,token,status:"RUNNING"},data:{status:"COMPLETED",resultJson:JSON.stringify(result)}});
     if(!completed.count)throw new HttpError(409,"A etapa foi retomada em outra sessão. Atualize para conferir o resultado.","TASK_EXPIRED");
     await prisma.analysisUsage.updateMany({where:{id:cached.usageId},data:{status:"SUCCEEDED",completedAt:new Date(),elapsedMs:Date.now()-started}});
+    console.info("Analysis task completed",{correlationId,status:"SUCCEEDED",elapsedMs:Date.now()-started});
     return result;
   }catch(error){
+    console.warn("Analysis task failed",{correlationId,status:"FAILED",elapsedMs:Date.now()-started,code:error instanceof HttpError?error.code||"TASK_FAILED":"TASK_FAILED"});
     await prisma.analysisTask.updateMany({where:{analysisId,kind,token,status:"RUNNING"},data:{status:"FAILED",resultJson:null}});
     await prisma.analysisUsage.updateMany({where:{id:cached.usageId},data:{status:"FAILED",completedAt:new Date(),elapsedMs:Date.now()-started,errorCode:error instanceof HttpError?error.code||"TASK_FAILED":"TASK_FAILED"}});
     throw error;
