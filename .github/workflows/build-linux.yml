@@ -1,29 +1,54 @@
-name: Build Linux release
+name: Test, release and deploy
 on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: curricule-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  release:
+  validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    outputs:
+      version: ${{ steps.package.outputs.version }}
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       DATABASE_URL: postgresql://build:placeholder@127.0.0.1:5432/curricule
       DIRECT_URL: postgresql://build:placeholder@127.0.0.1:5432/curricule
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '24.22.1'
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Tests
+      - name: Application tests
         run: npm test
+      - name: Deployment tests
+        run: |
+          node --test tests/release-package.test.mjs
+          python3 -m unittest discover -s deploy -p 'test_*.py' -v
+          bash -n deploy/remote-deploy.sh
+          for command in 'whoami' 'deploy master v0.1.1' 'deploy aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa v0.1.1;id'; do
+            if SSH_ORIGINAL_COMMAND="$command" bash deploy/remote-deploy.sh; then
+              echo 'Deployment command restriction failed' >&2
+              exit 1
+            else
+              result=$?
+              test "$result" = 64
+            fi
+          done
       - name: Lint
         run: npm run lint -- --max-warnings=0
-      - name: Build and package standalone
+      - name: Build standalone
         run: |
           npm run build
           node scripts/validate-standalone-pdf.mjs
@@ -31,11 +56,96 @@ jobs:
             echo 'Environment file found in artifact' >&2
             exit 1
           fi
-          printf '%s\n' "$GITHUB_SHA" > .next/standalone/RELEASE_COMMIT
-          tar -C .next/standalone -czf curricule-linux-x64.tgz .
+      - name: Package versioned release
+        id: package
+        run: node scripts/package-release.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: curricule-linux-x64
-          path: curricule-linux-x64.tgz
+          path: dist/
           retention-days: 7
-          compression-level: 0
+  release-deploy:
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://curricule.com.br
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_REPO: ${{ github.repository }}
+      SOURCE_SHA: ${{ github.sha }}
+      RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: curricule-linux-x64
+          path: dist
+      - name: Check master and package identity
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GH_REPO/git/ref/heads/master" --jq .object.sha)
+          if [ "$head" != "$SOURCE_SHA" ]; then
+            echo 'active=false' >> "$GITHUB_OUTPUT"
+            echo 'A newer master supersedes this release.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node --input-type=module -e 'import {readFileSync} from "node:fs"; const m=JSON.parse(readFileSync("dist/release.json","utf8")); if(m.commit!==process.env.SOURCE_SHA||m.version!==process.env.RELEASE_VERSION)throw new Error("Release identity mismatch");'
+          (cd dist && sha256sum -c SHA256SUMS)
+          echo 'active=true' >> "$GITHUB_OUTPUT"
+      - name: Publish versioned package
+        if: steps.current.outputs.active == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_VERSION" --repo "$GH_REPO" >/dev/null 2>&1; then
+            tag=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_VERSION" --jq .object.sha)
+            test "$tag" = "$SOURCE_SHA"
+            gh release download "$RELEASE_VERSION" --repo "$GH_REPO" --pattern SHA256SUMS --dir "$RUNNER_TEMP/existing-release"
+            cmp dist/SHA256SUMS "$RUNNER_TEMP/existing-release/SHA256SUMS"
+          else
+            printf 'Commit: `%s`\n\nBuild: %s/%s/actions/runs/%s\n\nTests, lint, standalone and PDF extraction passed. Promotion to latest occurs after deployment health checks.\n' "$SOURCE_SHA" "$GITHUB_SERVER_URL" "$GH_REPO" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/release-notes.md"
+            gh release create "$RELEASE_VERSION" dist/curricule-linux-x64.tgz dist/SHA256SUMS dist/release.json --repo "$GH_REPO" --target "$SOURCE_SHA" --title "Curricule $RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md" --latest=false
+          fi
+      - name: Deploy verified release
+        id: deploy
+        if: steps.current.outputs.active == 'true'
+        env:
+          DEPLOY_HOST: ${{ vars.CURRICULE_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.CURRICULE_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.CURRICULE_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.CURRICULE_SSH_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          key="$RUNNER_TEMP/curricule-deploy-key"
+          hosts="$RUNNER_TEMP/curricule-known-hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          umask 077
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$hosts"
+          set +e
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$hosts" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 "$DEPLOY_USER@$DEPLOY_HOST" "deploy $SOURCE_SHA $RELEASE_VERSION"
+          result=$?
+          set -e
+          if [ "$result" = 78 ]; then
+            echo 'deployed=false' >> "$GITHUB_OUTPUT"
+            echo 'Deployment skipped: a newer master is pending.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          test "$result" = 0
+          echo 'deployed=true' >> "$GITHUB_OUTPUT"
+      - name: Promote successful release
+        if: steps.deploy.outputs.deployed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "$RELEASE_VERSION" --repo "$GH_REPO" --latest
+          printf '### Production deployed\n\nVersion: `%s`\n\nCommit: `%s`\n\nhttps://curricule.com.br\n' "$RELEASE_VERSION" "$SOURCE_SHA" >> "$GITHUB_STEP_SUMMARY"

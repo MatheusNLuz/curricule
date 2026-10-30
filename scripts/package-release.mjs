@@ -1,0 +1,23 @@
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+
+const sha = process.env.GITHUB_SHA;
+const number = process.env.GITHUB_RUN_NUMBER;
+if (!/^[a-f0-9]{40}$/.test(sha || "") || !/^[1-9]\d*$/.test(number || "")) throw new Error("Missing release identity");
+const { version: packageVersion } = JSON.parse(readFileSync("package.json", "utf8"));
+const [major, minor] = packageVersion.split(".");
+if (!/^\d+$/.test(major) || !/^\d+$/.test(minor)) throw new Error("Invalid package version");
+const version = `v${major}.${minor}.${number}`;
+const root = ".next/standalone";
+if (!existsSync(`${root}/server.js`)) throw new Error("Standalone build is missing");
+if (readdirSync(root).some(name => name === ".env" || name.startsWith(".env."))) throw new Error("Environment file in standalone");
+writeFileSync(`${root}/RELEASE_COMMIT`, `${sha}\n`);
+writeFileSync(`${root}/RELEASE_VERSION`, `${version}\n`);
+mkdirSync("dist", { recursive: true });
+execFileSync("tar", ["-C", root, "-czf", "dist/curricule-linux-x64.tgz", "."], { stdio: "inherit" });
+const digest = createHash("sha256").update(readFileSync("dist/curricule-linux-x64.tgz")).digest("hex");
+writeFileSync("dist/SHA256SUMS", `${digest}  curricule-linux-x64.tgz\n`);
+writeFileSync("dist/release.json", JSON.stringify({ version, commit: sha, sha256: digest }));
+if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`, { flag: "a" });
+console.info(`Packaged ${version} from ${sha}`);
