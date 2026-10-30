@@ -29,6 +29,16 @@ def extract_release(archive_path, destination, expected_sha, version):
                 raise ValueError("Unsupported archive member")
             tarfile.data_filter(item, str(target))
         archive.extractall(target, members=members, filter="data")
+    # The deploy user uses umask 077 for temporary state. Runtime code must
+    # remain readable by the distinct, unprivileged application identity.
+    for path in target.rglob("*"):
+        if path.is_symlink():
+            continue
+        if path.is_dir():
+            path.chmod(0o755)
+        elif path.is_file():
+            path.chmod(0o755 if path.stat().st_mode & 0o111 else 0o644)
+    target.chmod(0o755)
     for name, expected in [("RELEASE_COMMIT", expected_sha), ("RELEASE_VERSION", version)]:
         manifest = target / name
         if manifest.is_symlink() or manifest.read_text().strip() != expected:

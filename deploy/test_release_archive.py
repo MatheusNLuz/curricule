@@ -1,4 +1,5 @@
 import io
+import os
 import sys
 import tarfile
 import tempfile
@@ -87,6 +88,21 @@ class ReleaseArchiveTests(unittest.TestCase):
         for sha, version in [("master", VERSION), (SHA, "../../bad"), (SHA, "v0.1.1;id")]:
             with self.assertRaises(ValueError):
                 extract_release(self.archive, self.target, sha, version)
+
+    def test_application_can_read_dependencies_with_restrictive_deploy_umask(self):
+        item = tarfile.TarInfo("./node_modules/example/package.json")
+        item.size = 2
+        item.mode = 0o600
+        self.package((item, b"{}"))
+        previous = os.umask(0o077)
+        try:
+            extract_release(self.archive, self.target, SHA, VERSION)
+        finally:
+            os.umask(previous)
+        dependency = self.target / "node_modules" / "example" / "package.json"
+        self.assertEqual(dependency.stat().st_mode & 0o777, 0o644)
+        self.assertEqual(dependency.parent.stat().st_mode & 0o777, 0o755)
+        self.assertEqual(self.target.stat().st_mode & 0o777, 0o755)
 
     def test_retention_removes_only_owned_backups(self):
         backups = self.root / "backups"
