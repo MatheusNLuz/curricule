@@ -1,5 +1,7 @@
 # Curricule: shared cutout rig
 
+**Historical approach, superseded by [the 3D performances](../3d/README.md).** The live cutout component was removed after the user rejected the gesture anatomy and repetition. `review.html` now opens the current performance review.
+
 Refinement requested on 2026-10-31: the independent `read`/`verify` renders changed arm anatomy. The live component now uses **one body and the same arms for every action**. The previous six flat renders remain historical design sources, rather than the live animation.
 
 `components/mascot/mascot-rig.tsx` assembles eight transparent WebP pieces. `rig.module.css` authors a shared 4.8 second clock with separate tracks for body, gesture, document, gaze, eyelids, brows, smile and contact shadow. All actions return to their initial state for seamless replay. CSS animation clocks share pause/reduced-motion/visibility behavior from `Mascot`.

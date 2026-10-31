@@ -40,3 +40,7 @@ O trabalho fica nesta branch para refinamento antes de integrar à `master`. Cap
 ## Motion refinement · 2026-10-31
 
 The live mascot now uses a shared articulated cutout rig rather than independent whole-character pose renders. See [rig/README.md](rig/README.md) for animation tracks, exact generation prompts and limits. Historical notes above describe the first implementation.
+
+## Current: 3D performance reconstruction
+
+The user rejected the cutout gestures. Live playback now uses the authored 3D performances described in [3d/README.md](3d/README.md), rendered to transparent clips. The cutout notes above are historical. Explain, Analyze, Think and Verify have distinct prop-led actions; thumbs-up and confetti belong to Complete. The procedural model is a visual reconstruction of the concept, with its finish open for user review.
