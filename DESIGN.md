@@ -154,6 +154,12 @@ Nos formulários de autenticação, os campos usam (16px) e rótulos (13px) no c
 
 O logotipo vem de `components/brand/curricule-logo.tsx` e `public/brand/`; ícones passam pelo adaptador HugeIcons existente. Transições de estado são contidas (180ms); `prefers-reduced-motion: reduce` elimina transições, animações e rolagem suave dentro do escopo.
 
+## Mascote e orientação
+
+O personagem aprovado parte do primeiro C tridimensional em `design/mascot/poses/welcome.png`: violeta, duas linhas de currículo e expressão acolhedora. Há seis poses consistentes para receber, explicar, analisar, pensar, conferir e concluir. A interface consome WebP com transparência; as fontes PNG ficam disponíveis na prévia autenticada `/mascot` para materiais futuros.
+
+Sua presença acompanha pontos de orientação: recepção dispensável, apresentação guiada, escolhas de análise, processamento, estados vazios, revisão de fatos, ajuda e resultado. No editor a ajuda é recolhível e fica fora do documento. O guia de seis etapas usa controles reais e não inicia processamentos. Preferências locais separam usuários e permitem ocultar o personagem e pausar seus movimentos. Animação reduzida e abas ocultas são respeitadas; as animações da interface são em 2D e não estabelecem um modelo 3D articulado.
+
 ## Do's and Don'ts
 
 ### Do:
