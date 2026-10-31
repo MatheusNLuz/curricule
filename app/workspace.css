@@ -340,3 +340,5 @@
   .work-ui .authForm form>div>label { font-size:11px; }
   .work-ui .collectionView>span { width:auto;margin-right:8px; }
 }
+
+[data-guide]{scroll-margin-top:100px}

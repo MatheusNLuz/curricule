@@ -5,11 +5,12 @@ import { TruthGuardPanel } from "./truth-guard-panel";
 import { Sheet } from "@/components/workspace/workspace-ui";
 import { answerForReview, readStructuredAnswer, writeStructuredAnswer } from "@/lib/question-answer";
 import { AnalysisLoading } from "./analysis-loading";
+import { GuideCard } from "@/components/mascot/guide-card";
 
 type Question = { id: string; question: string; reason: string; suggestedAnswer?: string | null; options?: string | string[] | null; answerType?: string };
 export function ReviewQuestions({ questions, answers, generating, validating, truth, onAnswer, onValidate, onApprove, onEditAnswers, onRetry }: { questions: Question[]; answers: Record<string, string>; generating: boolean; validating: boolean; truth: ReviewedTruth | null; onAnswer: (id: string, value: string) => void; onValidate: () => void; onApprove: (decisions: Record<string, boolean>) => Promise<void>; onEditAnswers: () => void; onRetry: () => void }) {
   if (generating || validating) return <AnalysisLoading compact variant={validating ? "verify" : "questions"} step={validating ? "Conferindo suas informações." : "Preparando suas perguntas."} />;
-  return <div className="formLayout formLayoutSingle reviewQuestionsLayout"><div><Sheet className="padded">{!questions.length ? <div className="emptyState"><h2>Nenhuma pergunta disponível.</h2><p>Você pode tentar gerar as perguntas novamente.</p><button className="button secondary" onClick={onRetry}>Gerar perguntas</button></div> : <><div className="questionProgress"><span>{questions.length} perguntas para revisar</span></div>{questions.map((question, index) => {
+  return <div className="formLayout formLayoutSingle reviewQuestionsLayout" data-guide="fact-review"><div><GuideCard title="Seus fatos dão direção à reescrita." pose="verify" compact><p>Responda com o que você realmente fez. Você pode dizer que não sabe ou que não teve uma experiência. Números e resultados entram somente quando puder confirmá-los.</p></GuideCard><Sheet className="padded">{!questions.length ? <div className="emptyState"><h2>Nenhuma pergunta disponível.</h2><p>Você pode tentar gerar as perguntas novamente.</p><button className="button secondary" onClick={onRetry}>Gerar perguntas</button></div> : <><div className="questionProgress"><span>{questions.length} perguntas para revisar</span></div>{questions.map((question, index) => {
     let options: string[] = [];
     try { options = typeof question.options === "string" ? JSON.parse(question.options) : question.options || []; } catch { options = []; }
     if (!Array.isArray(options) || options.length > 8 || options.some(option => typeof option !== "string" || !option.trim() || option.length > 100)) options = [];

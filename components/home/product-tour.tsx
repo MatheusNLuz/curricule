@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Mascot } from "@/components/mascot/mascot";
 import { ArrowDownToLine, ArrowRight, BriefcaseBusiness, Check, CheckCheck, FileText, Link2, MessageSquareText, Search, ShieldCheck, UserRound } from "lucide-react";
 import styles from "@/app/landing.module.css";
 import { CurriculeLogo } from "@/components/brand/curricule-logo";
@@ -21,6 +22,7 @@ export function ProductTour() {
       {selected === 1 && <><div className={styles.previewTop}><span><Link2 size={14} aria-hidden="true" /> Vaga + seu currículo</span><span>Comparação de conteúdo</span></div><div className={styles.jobPreview}><div className={styles.jobHeading}><BriefcaseBusiness size={25} aria-hidden="true" /><div><h3>Assistente de atendimento</h3><p>Vaga de exemplo · descrição revisada</p></div></div><p className={styles.previewDescription}>O que a oportunidade pede e o que aparece no material de Ana.</p><div className={styles.matchRow}><span>Atendimento ao cliente</span><span><Check size={14} aria-hidden="true" /> Encontrado</span></div><div className={styles.matchRow}><span>Organização em planilhas</span><span><Check size={14} aria-hidden="true" /> Encontrado</span></div><div className={styles.matchRow}><span>Experiência com CRM</span><span className={styles.unconfirmed}>Não identificado</span></div><div className={styles.jobQuestion}><MessageSquareText size={20} aria-hidden="true" /><div><strong>Uma pergunta antes de reescrever</strong><p>Você já utilizou algum CRM? Se sim, qual ferramenta e em que atividades?</p></div></div><p className={styles.previewDisclaimer}>Um requisito da vaga só entra no currículo se fizer parte da sua experiência.</p></div></>}
       {selected === 2 && <><div className={styles.previewTop}><span><UserRound size={14} aria-hidden="true" /> Perfil profissional</span><span>Sugestões para revisar</span></div><div className={styles.profilePreview}><div className={styles.profileCover} /><div className={styles.profileAvatar}>AM</div><h3>Ana Martins</h3><p className={styles.profileHeadline}>Atendimento ao cliente | Organização de pedidos | Excel</p><span className={styles.profileLocation}>São Paulo, Brasil</span><div className={styles.profileAbout}><strong>Sobre</strong><p>Atuo no atendimento a clientes por e-mail, esclarecendo dúvidas e acompanhando solicitações. Minha experiência inclui a organização de pedidos em planilhas Excel.</p></div><div className={styles.profileSuggestion}><Check size={17} aria-hidden="true" /><p>Um título específico e um resumo que conectam atividades e competências já informadas.</p></div><p className={styles.previewDisclaimer}>Você revisa e aplica as sugestões no seu LinkedIn.</p></div></>}
     </div>
+    <div className={styles.tourGuide}><Mascot pose={selected === 1 ? "think" : selected === 2 ? "explain" : "read"} size="small" /><p>Eu acompanho o caminho. Você confere os fatos e decide o que usar.</p></div>
     <div className={styles.tourCaption}><span>Ana é uma personagem fictícia. Nenhuma análise está sendo executada.</span><ArrowRight size={14} aria-hidden="true" /></div>
   </div>;
 }

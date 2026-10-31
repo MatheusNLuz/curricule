@@ -13,6 +13,7 @@ import { WorkspacePage, Journey } from "@/components/workspace/workspace-ui";
 import { DownloadDocumentButton } from "@/components/analysis/download-document-button";
 import { TaskProgress } from "@/components/analysis/task-progress";
 import { PreviewTemplate } from "@/components/preview/preview-template";
+import { GuideCard } from "@/components/mascot/guide-card";
 import { AnalysisLoading } from "@/components/analysis/analysis-loading";
 import { getFetchErrorMessage, getLoginUrl, readApiError, fetchAnalysisTask } from "@/lib/api-client";
 import { normalizeTemplateId, TEMPLATE_OPTIONS } from "@/lib/preview-template";
@@ -364,7 +365,7 @@ export function EditorClient({ analysisId }: { analysisId: string }) {
           </TabsContent>
         )}
 
-        <TabsContent value="preview" className="space-y-6">
+        <TabsContent value="preview" className="space-y-6"><div data-guide="result-actions">{optimized && <GuideCard title="Seu material está pronto para conferir." pose="celebrate" compact><p>Revise a prévia e confira cada informação. Você pode voltar ao editor antes de baixar o PDF.</p></GuideCard>}</div>
           {exporting ? <AnalysisLoading step="Preparando seu PDF." variant="export" compact /> : <>
           <div className="surface rounded-2xl p-4 sm:p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

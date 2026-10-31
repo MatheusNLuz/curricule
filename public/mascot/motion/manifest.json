@@ -1,0 +1,16 @@
+{
+  "renderer": "Three.js 0.187.0",
+  "fps": 25,
+  "frames": 120,
+  "duration": 4.8,
+  "size": 512,
+  "alpha": true,
+  "poses": [
+    "welcome",
+    "explain",
+    "read",
+    "think",
+    "verify",
+    "celebrate"
+  ]
+}

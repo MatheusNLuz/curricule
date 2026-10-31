@@ -262,3 +262,5 @@
 .tourTabs button,.demoTabs button{font-size:12px;min-height:44px;}
 .footer nav{font-size:12px;}.footer nav a{min-height:44px;display:inline-flex;align-items:center;}
 @media(max-width:600px){.tourCaption{font-size:11px;}.goalCard p,.faq summary{font-size:14px;}.footerNote{font-size:11px;}.finalNote{font-size:12px;}}
+
+.tourGuide{display:flex;align-items:center;gap:14px;padding:14px 22px 0}.tourGuide p{font-size:12px;line-height:1.7;color:var(--quiet);max-width:36ch}.finalMascot{display:flex;justify-content:center;margin-bottom:18px}

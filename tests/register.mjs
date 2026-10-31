@@ -7,6 +7,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 registerHooks({
   resolve(specifier, context, next) {
     if (context.parentURL?.includes("/node_modules/")) return next(specifier, context);
+    if (specifier === "next/image") return { url: "test:next-image", shortCircuit: true };
     if (specifier.startsWith("next/") && !path.extname(specifier) && existsSync(path.join(root, "node_modules", specifier + ".js"))) return next(specifier + ".js", context);
     let candidate;
     if (specifier.startsWith("@/")) candidate = path.join(root, specifier.slice(2));
@@ -18,6 +19,11 @@ registerHooks({
     return next(specifier, context);
   },
   load(url, context, next) {
+    // Node exposes this CJS entry as a namespace; Next's bundler unwraps its default.
+    if (url === "test:next-image") {
+      const entry = pathToFileURL(path.join(root, "node_modules/next/image.js")).href;
+      return { format: "module", source: `import imageModule from ${JSON.stringify(entry)}; export default imageModule.default; export const getImageProps = imageModule.getImageProps;`, shortCircuit: true };
+    }
     if (/\.css(?:\?|$)/.test(url) && url.startsWith(pathToFileURL(root).href)) {
       return { format: "module", source: 'export default new Proxy({}, { get: (_target, name) => String(name) });', shortCircuit: true };
     }

@@ -7,8 +7,10 @@ import type { SessionUser } from "@/lib/auth";
 import { HugeIcon } from "@/components/ui/huge-icon";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useMascotGuide } from "@/components/mascot/guide-context";
 
 export function AccountMenu({ session }: { session: SessionUser }) {
+  const { startTour } = useMascotGuide();
   const [open, setOpen] = useState(false);
   const popupId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -64,6 +66,7 @@ export function AccountMenu({ session }: { session: SessionUser }) {
           <div className="my-1 h-px bg-border" />
           <Link href="/settings/account" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Sua conta e dados</Link>
           <Link href="/help" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Ajuda e solicitações</Link>
+          <button type="button" onClick={() => { setOpen(false); startTour(); }} className="block min-h-11 w-full rounded-xl px-3 py-3 text-left text-xs hover:bg-secondary">Conhecer meu espaço</button>
           <Link href="/settings/billing" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs hover:bg-secondary">Acesso e cobrança</Link>
           {session.role === "ADMIN" && <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-3 text-xs font-semibold text-primary hover:bg-secondary">Administração</Link>}
           <form action="/logout" method="post">

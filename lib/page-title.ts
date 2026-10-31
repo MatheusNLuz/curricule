@@ -21,5 +21,6 @@ export function pageTitle(path: string): string {
   if (path === "/register") return "Criar conta";
   if (path === "/privacy") return "Privacidade";
   if (path === "/help") return "Ajuda";
+  if (path === "/mascot") return "O C em movimento";
   return "Curricule";
 }

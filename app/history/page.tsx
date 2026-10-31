@@ -54,8 +54,8 @@ export default async function HistoryPage({ searchParams }: {
       <CollectionView compact={compact} fullHref={href(query.cursor, "full")} compactHref={href(query.cursor, "compact")} />
     </>}
     <CollectionPagination {...pagination} label="Paginação do histórico, início da lista" />
-    <Sheet className={compact ? "historyCompact" : undefined}>
-      {!page.length ? <EmptyState title={query.q || query.mode ? "Nenhuma análise encontrada." : "Suas análises aparecerão aqui."} description={query.q || query.mode ? "Ajuste os filtros para encontrar outra análise." : "Comece com seu currículo e acompanhe cada versão neste espaço."} /> : <>
+    <div data-guide="analysis-history"><Sheet className={compact ? "historyCompact" : undefined}>
+      {!page.length ? <EmptyState mascot mascotPose={query.q || query.mode ? "think" : "welcome"} title={query.q || query.mode ? "Nenhuma análise encontrada." : "Suas análises aparecerão aqui."} description={query.q || query.mode ? "Ajuste os filtros para encontrar outra análise." : "Comece com seu currículo e acompanhe cada versão neste espaço."} /> : <>
         <div className="tableHeading"><span>Análise</span><span>Status</span><span>Atualização</span><span /></div>
         {page.map(item => {
           const running = !!(item.taskStatus === "RUNNING" && item.taskLeaseUntil && item.taskLeaseUntil > new Date());
@@ -75,7 +75,7 @@ export default async function HistoryPage({ searchParams }: {
           </div>;
         })}
       </>}
-    </Sheet>
+    </Sheet></div>
     <CollectionPagination {...pagination} label="Paginação do histórico, fim da lista" />
   </WorkspacePage>;
 }
