@@ -16,11 +16,11 @@ export function MascotStudio() {
   const [backdrop, setBackdrop] = useState("light");
   return <>
     <section className={styles.playground} aria-label="Prévia do personagem">
-      <div className={styles.stage} data-backdrop={backdrop}><Mascot key={pose + replay} pose={pose} size="hero" label={`Personagem do Curricule na pose ${labels[pose].toLowerCase()}`} /><span>{labels[pose]}</span></div>
-      <div className={styles.controls}><h2>O mesmo C, em cada momento.</h2><p>Experimente as poses, o movimento e o contraste com os dois fundos. A apresentação usa o personagem escolhido como referência.</p>
+      <div className={styles.stage} data-backdrop={backdrop}><Mascot key={pose + replay} pose={pose} size="hero" repeat label={`Personagem do Curricule na ação ${labels[pose].toLowerCase()}`} /><span>{labels[pose]}</span></div>
+      <div className={styles.controls}><h2>O mesmo C, agora articulado.</h2><p>Braços, olhar e expressão têm movimentos próprios. Cada ação usa a mesma base do personagem, com antecipação, gesto e acomodação.</p>
         <div className={styles.poses} role="group" aria-label="Pose do personagem">{MASCOT_POSES.map(value => <button key={value} type="button" aria-pressed={pose === value} onClick={() => setPose(value)}>{labels[value]}</button>)}</div>
         <div className={styles.poses} role="group" aria-label="Fundo da prévia"><button type="button" aria-pressed={backdrop === "light"} onClick={() => setBackdrop("light")}>Fundo claro</button><button type="button" aria-pressed={backdrop === "dark"} onClick={() => setBackdrop("dark")}>Fundo escuro</button></div>
-        <div className={styles.poses}><button type="button" onClick={() => setReplay(value => value + 1)}>Repetir movimento</button><a href={`/mascot/source/${pose}.png`} download={`curricule-${pose}.png`}>Baixar PNG transparente</a></div>
+        <div className={styles.poses}><button type="button" onClick={() => setReplay(value => value + 1)}>Repetir movimento</button><a href="/mascot/source/welcome.png" download="curricule-conceito-original.png">Baixar conceito original</a></div>
         <GuideReplayButton>Experimentar tutorial guiado</GuideReplayButton>
       </div>
     </section>

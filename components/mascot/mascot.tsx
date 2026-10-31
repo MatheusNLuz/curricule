@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { MascotPose } from "@/lib/mascot-guide";
 import { useMascotGuide } from "./guide-context";
 import styles from "./mascot.module.css";
+import { MascotRig } from "./mascot-rig";
 
 export function Mascot({ pose = "welcome", size = "medium", repeat = false, label = "", className = "" }: {
   pose?: MascotPose;
@@ -29,7 +29,7 @@ export function Mascot({ pose = "welcome", size = "medium", repeat = false, labe
   }, [paused, preferences.motion, preferences.visible]);
   if (!preferences.visible) return null;
   return <figure ref={root} className={`${styles.character} ${styles[size]} ${className}`} data-mascot data-pose={pose} data-repeat={repeat} data-active={!paused && preferences.motion}>
-    <Image key={pose} src={`/mascot/${pose}.webp`} width={640} height={660} alt={label} className={styles.art} sizes={size === "hero" ? "(max-width: 600px) 200px, 280px" : size === "large" ? "224px" : size === "small" ? "72px" : "128px"} />
+    <span key={pose} role={label ? "img" : undefined} aria-label={label || undefined}><MascotRig /></span>
     {repeat && preferences.motion && <button className={styles.pause} type="button" onClick={() => setPaused(value => !value)} aria-pressed={paused}>{paused ? "Animar personagem" : "Pausar personagem"}</button>}
   </figure>;
 }

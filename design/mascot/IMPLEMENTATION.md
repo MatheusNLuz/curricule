@@ -37,3 +37,6 @@ Esta versão não contém um modelo 3D articulado, sincronização labial, narra
 ## Revisão
 
 O trabalho fica nesta branch para refinamento antes de integrar à `master`. Capturas e registros de verificação ficam em `docs/mascot-review-2026-10-30/` no workspace local.
+## Motion refinement · 2026-10-31
+
+The live mascot now uses a shared articulated cutout rig rather than independent whole-character pose renders. See [rig/README.md](rig/README.md) for animation tracks, exact generation prompts and limits. Historical notes above describe the first implementation.

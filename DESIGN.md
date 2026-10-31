@@ -156,7 +156,7 @@ O logotipo vem de `components/brand/curricule-logo.tsx` e `public/brand/`; ícon
 
 ## Mascote e orientação
 
-O personagem aprovado parte do primeiro C tridimensional em `design/mascot/poses/welcome.png`: violeta, duas linhas de currículo e expressão acolhedora. Há seis poses consistentes para receber, explicar, analisar, pensar, conferir e concluir. A interface consome WebP com transparência; as fontes PNG ficam disponíveis na prévia autenticada `/mascot` para materiais futuros.
+O personagem aprovado parte do primeiro C tridimensional em `design/mascot/poses/welcome.png`: violeta, duas linhas de currículo e expressão acolhedora. As seis ações usam uma única base com braços, documento, olhos, sobrancelhas e sorriso em camadas transparentes compartilhadas. Uma coreografia de 4,8 segundos combina antecipação, gesto e acomodação; o corpo inteiro não substitui a atuação dos membros. As peças WebP vêm de `design/mascot/rig/`; a prévia autenticada `/mascot` permite experimentar as ações e baixar o conceito original.
 
 Sua presença acompanha pontos de orientação: recepção dispensável, apresentação guiada, escolhas de análise, processamento, estados vazios, revisão de fatos, ajuda e resultado. No editor a ajuda é recolhível e fica fora do documento. O guia de seis etapas usa controles reais e não inicia processamentos. Preferências locais separam usuários e permitem ocultar o personagem e pausar seus movimentos. Animação reduzida e abas ocultas são respeitadas; as animações da interface são em 2D e não estabelecem um modelo 3D articulado.
 
