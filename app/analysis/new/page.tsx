@@ -66,7 +66,7 @@ function NewAnalysisContent() {
         if (!response.ok) throw new Error(await readApiError(response, "Não foi possível recuperar o rascunho."));
         const record = await response.json();
         if (record.mode !== mode) throw new Error("Esse rascunho pertence a outro tipo de análise.");
-        if (record.analysisJson || record.coverLetter) { router.replace("/analysis/" + record.id); return; }
+        if (record.analysisJson || record.coverLetter || record.finalResumeJson) { router.replace(record.finalResumeJson && record.mode !== "LINKEDIN_OPTIMIZATION" ? "/analysis/" + record.id + "/preview" : "/analysis/" + record.id); return; }
         if (record.draftJson) {
           const draft = DraftSchema.parse(JSON.parse(record.draftJson));
           setTitle(draft.title); setPastedText(draft.pastedText); setJobDescription(draft.jobDescription); setJobUrl(draft.jobUrl); setProfileUrl(draft.profileUrl); setActiveTab(draft.activeTab === "link" ? (draft.pastedText.trim() ? "paste" : "pdf") : draft.activeTab); setJobInput(draft.jobInput); setRegion(draft.jobLocation); setLanguage(draft.selectedLanguage); setSavedDraft(JSON.stringify(draft));

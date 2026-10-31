@@ -140,9 +140,13 @@ Campos têm rótulo explícito, fundo próprio, borda suave, padding do frontmat
 
 ### Navigation
 
+Biblioteca e histórico oferecem visualização completa ou compacta, selecionada por `view=compact` na URL e preservada nos filtros e na paginação. Na compacta, a biblioteca apresenta o título como acesso à prévia e oculta miniaturas; avaliação, PDF e editor ficam em uma seção expansível. O histórico reúne ações secundárias em `details` com operação por teclado. Listas paginadas oferecem controles no início e no fim, com alvos de pelo menos (44px). Um currículo já gerado abre sua prévia mesmo sem análise inicial armazenada.
+
 Sidebar com logotipo completo aprovado, quatro destinos principais, conta e acesso à cobrança; administração depende da função real da sessão. Estado ativo usa violeta e fundo tonal com `aria-current`. No celular, os quatro destinos ficam em uma barra inferior com ícone e texto. O topbar reúne contexto, tema e conta; breadcrumbs são reduzidos no celular para caber com segurança.
 
 ### Auth, editor and results
+
+Nos formulários de autenticação, os campos usam (16px) e rótulos (13px) no celular; a partir de (860px), preservam as escalas de desktop. O envio com erros move o foco para o primeiro campo inválido, sem apagar o conteúdo já informado. O menu da conta e os botões de PDF têm altura mínima de (44px), consistente com o botão de tema.
 
 `AuthLayout` reúne marca, troca de tema, alternância entre acesso/cadastro, formulário e uma história lateral. O currículo de Ana Martins é rotulado como exemplo fictício. A identidade Google mantém sua marca própria.
 

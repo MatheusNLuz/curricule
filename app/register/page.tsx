@@ -28,7 +28,11 @@ export default function RegisterPage() {
     setErrorMessage(null);
     const validationErrors = validateRegistration({ name, email, password });
     setFieldErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+    const firstInvalid = (["name", "email", "password"] as const).find(field => validationErrors[field]);
+    if (firstInvalid) {
+      event.currentTarget.querySelector<HTMLInputElement>(`#${firstInvalid}`)?.focus();
+      return;
+    }
 
     setLoading(true);
     try {

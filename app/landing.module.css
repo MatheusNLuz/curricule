@@ -35,7 +35,7 @@
 .statusDot{width:5px;height:5px;background:var(--violet);border-radius:50%}
 .resumeWorkspace{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;padding:17px}
 .resumePaper{padding:21px 19px;background:#fff;color:#242333;box-shadow:0 6px 18px #14102c0a;border-radius:3px}
-.paperName{font-family:var(--font-display);font-size:22px;font-weight:650;letter-spacing:-.03em}
+.landing .paperName{margin:0;line-height:1.65;font-family:var(--font-display);font-size:22px;font-weight:650;letter-spacing:-.03em}
 .resumePaper .paperRole{font-size:9px;color:#554880;margin:3px 0 8px}
 .paperContact{font-size:7px;color:#676575;padding-bottom:13px;border-bottom:1px solid #e6e3ed}
 .resumePaper h3{font-size:9px;letter-spacing:0;margin:17px 0 8px;color:#554880;font-weight:650}
@@ -259,6 +259,6 @@
 /* Supporting UI stays readable at mobile sizes. */
 .landing{--quiet:color-mix(in srgb,var(--foreground) 76%,var(--paper));}
 .exampleLabel,.tourCaption,.demoFootnote,.footerNote{font-size:12px;line-height:1.6;}
-.tourTabs button,.demoTabs button{font-size:12px;min-height:40px;}
-.footer nav{font-size:12px;}.footer nav a{min-height:36px;display:inline-flex;align-items:center;}
+.tourTabs button,.demoTabs button{font-size:12px;min-height:44px;}
+.footer nav{font-size:12px;}.footer nav a{min-height:44px;display:inline-flex;align-items:center;}
 @media(max-width:600px){.tourCaption{font-size:11px;}.goalCard p,.faq summary{font-size:14px;}.footerNote{font-size:11px;}.finalNote{font-size:12px;}}

@@ -46,7 +46,7 @@ export function DownloadResumeButton({ analysisId, title }: { analysisId: string
       onClick={handleDownload}
       disabled={loading}
       aria-busy={loading}
-      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3.5 text-[12px] font-semibold text-foreground transition-colors hover:bg-soft-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-wait disabled:opacity-60"
+      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3.5 text-[12px] font-semibold text-foreground transition-colors hover:bg-soft-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-wait disabled:opacity-60"
     >
       <HugeIcon icon={loading ? Loading03Icon : Download01Icon} size={16} className={loading ? "animate-spin" : undefined} />
       {loading ? "Preparando PDF…" : "Baixar PDF"}

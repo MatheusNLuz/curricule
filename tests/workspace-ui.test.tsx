@@ -44,6 +44,30 @@ const { default: library } = await import("../app/resumes/page");
 const { default: NewAnalysis } = await import("../app/analysis/new/page");
 
 const noop = () => {};
+test("history opens an existing resume rather than treating it as a draft without assessment", async () => {
+  const assessment = record.analysisJson;
+  record.analysisJson = "";
+  try {
+    const html = renderToStaticMarkup(await history({ searchParams: Promise.resolve({}) }));
+    assert.match(html, /class="historyRow" href="\/analysis\/example\/preview"/);
+    assert.match(html, /Resultado disponível/);
+    assert.doesNotMatch(html, /draft=example/);
+  } finally {
+    record.analysisJson = assessment;
+  }
+});
+
+test("compact collections retain filters and result access while disclosing secondary actions", async () => {
+  const historyHtml = renderToStaticMarkup(await history({ searchParams: Promise.resolve({ q: "Atendimento", mode: "OPTIMIZE_FOR_JOB", view: "compact" }) }));
+  assert.match(historyHtml, /<details class="collectionDetails">/);
+  assert.match(historyHtml, /name="view" value="compact"/);
+  assert.match(historyHtml, /q=Atendimento&amp;mode=OPTIMIZE_FOR_JOB&amp;view=compact/);
+  const libraryHtml = renderToStaticMarkup(await library({ searchParams: Promise.resolve({ view: "compact" }) }));
+  assert.doesNotMatch(libraryHtml, /class="resumeThumbnail/);
+  assert.match(libraryHtml, /Avaliação e ações/);
+  assert.match(libraryHtml, /\/analysis\/example\/preview/);
+  assert.match(libraryHtml, /Abrir no editor/);
+});
 const props = { analysisId: "example", record: { ...record, updatedAt: record.updatedAt.toISOString() }, analysis: assessment, scores: assessment.scores, finalScores: null, onExport: noop, exporting: false, onGenerateLetter: noop, generatingLetter: false, onDownloadLetter: noop };
 
 test("workspace requires a session before loading any user data", async () => {
@@ -54,6 +78,7 @@ test("workspace requires a session before loading any user data", async () => {
   signedIn = true;
 });
 test("dashboard, history and library scope every collection to the signed-in owner", async () => {
+  const before = ownerReads.length;
   const elements = [await dashboard(), await history({ searchParams: Promise.resolve({}) }), await library({ searchParams: Promise.resolve({}) })];
   for (const element of elements) {
     const html = renderToStaticMarkup(element);
@@ -61,7 +86,7 @@ test("dashboard, history and library scope every collection to the signed-in own
     assert.doesNotMatch(html, /Ana Martins|Empresa Exemplo/);
   }
   assert.match(renderToStaticMarkup(elements[2]), /Reavaliação pendente/);
-  assert.equal(ownerReads.length, 3);
+  assert.equal(ownerReads.length - before, 3);
 });
 test("breadcrumb identifies the current workspace page without repeating its root", () => {
   pathname = "/dashboard";
