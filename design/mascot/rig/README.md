@@ -2,11 +2,22 @@
 
 Refinement requested on 2026-10-31: the independent `read`/`verify` renders changed arm anatomy. The live component now uses **one body and the same arms for every action**. The previous six flat renders remain historical design sources, rather than the live animation.
 
-`components/mascot/mascot-rig.tsx` assembles seven transparent WebP pieces. `rig.module.css` authors a shared 4.8 second clock with separate tracks for body, gesture, document, gaze, eyelids, brows, smile and contact shadow. All actions return to their initial state for seamless replay. CSS animation clocks share pause/reduced-motion/visibility behavior from `Mascot`.
+`components/mascot/mascot-rig.tsx` assembles eight transparent WebP pieces. `rig.module.css` authors a shared 4.8 second clock with separate tracks for body, gesture, document, gaze, eyelids, brows, smile and contact shadow. All actions return to their initial state for seamless replay. CSS animation clocks share pause/reduced-motion/visibility behavior from `Mascot`.
 
 This is a layered 2D rig with rendered 3D artwork. It is not a 3D mesh, skeletal model, lip-sync system or full-turn animation. The document-holding arm is one layer; individual fingers are not separately articulated.
 
 `review.html` is a portable snapshot of the actual component's markup and CSS, with all image layers embedded. Open it without a server to inspect the six actions, scrub the shared timeline, change speed, pause or replay. Live application behavior remains owned by the React component.
+
+## Anatomy correction
+
+The initial `inspect` track reused the isolated pointing hand and rotated it 165 degrees. Browser inspection confirmed that `read` and `verify` shared this exact hand track. That track and the isolated pointing hand were removed from the live rig. `arms-v2.png` adds complete resting and thumbs-up arms, generated from the original mascot reference (exact built-in imagegen prompt in `arms-v2-prompt.txt`). New limbs use small joint rotations rather than rotating the hand into a different pose.
+
+- Read: resting right arm, raised document, eyes scan the lines.
+- Verify: complete thumbs-up arm, gaze toward the user, short nod; the document stays steady.
+- Explain: complete original open-palm arm, two restrained presentation beats.
+- Think: relaxed arm and upward gaze, with no wrist inversion.
+
+Rebuild the portable snapshot with `node --import ./tests/register.mjs scripts/build-mascot-motion-review.mjs`. Visual review uses six timestamps per action, not just a midpoint screenshot; evidence is kept locally in `docs/mascot-review-2026-10-30/phases/`.
 
 ## Artwork provenance
 

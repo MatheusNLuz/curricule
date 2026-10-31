@@ -20,3 +20,7 @@ for (const [name, [left, top, width, height]] of Object.entries(regions)) {
   await image.webp({ quality: 92, alphaQuality: 100, effort: 6 }).toFile(`${target}/${name}.webp`);
   console.log(name, fs.statSync(`${target}/${name}.webp`).size);
 }
+for (const [name, region] of Object.entries({ rest: { left: 100, top: 235, width: 610, height: 590 }, approve: { left: 845, top: 225, width: 630, height: 580 } })) {
+  await sharp('design/mascot/rig/arms-v2.png').extract(region).resize({ width: 320, height: 320, fit: 'contain', background: '#00000000' }).webp({ quality: 92, alphaQuality: 100, effort: 6 }).toFile(`${target}/${name}.webp`);
+  console.log(name, fs.statSync(`${target}/${name}.webp`).size);
+}

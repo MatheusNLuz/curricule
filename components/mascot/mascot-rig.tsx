@@ -10,8 +10,9 @@ export function MascotRig() {
       <span className={styles.documentArm}><Image src="/mascot/rig/document.webp" width={320} height={320} alt="" sizes="120px" /></span>
       <span className={styles.gestureArm}>
         <Image src="/mascot/rig/wave.webp" width={320} height={320} alt="" className={styles.waveHand} sizes="120px" />
-        <Image src="/mascot/rig/point.webp" width={320} height={320} alt="" className={styles.pointHand} sizes="120px" />
       </span>
+      <span className={styles.restingArm}><Image src="/mascot/rig/rest.webp" width={240} height={360} alt="" sizes="90px" /></span>
+      <span className={styles.confirmArm}><Image src="/mascot/rig/approve.webp" width={320} height={320} alt="" sizes="120px" /></span>
       <span className={styles.face}>
         <Image src="/mascot/rig/brows.webp" width={320} height={65} alt="" className={styles.brows} sizes="90px" />
         <span className={styles.eyes}><Image src="/mascot/rig/eyes.webp" width={320} height={160} alt="" sizes="90px" /></span>

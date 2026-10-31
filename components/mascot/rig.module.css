@@ -6,23 +6,28 @@
 .documentArm img{width:100%;height:100%;object-fit:contain}
 .gestureArm{left:66%;top:27%;width:34%;height:36%;transform-origin:10% 90%;animation:wave var(--duration) cubic-bezier(.35,0,.2,1) both;z-index:-1}
 .gestureArm img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
-.pointHand{visibility:hidden}
+.restingArm,.confirmArm{position:absolute;display:block;visibility:hidden;z-index:-1}
+.restingArm{left:60%;top:58%;width:32%;height:33%;transform-origin:18% 12%;animation:rest var(--duration) ease-in-out both}
+.confirmArm{left:63%;top:29%;width:34%;height:35%;transform-origin:12% 88%;animation:approve var(--duration) cubic-bezier(.3,0,.2,1) both}
+.restingArm img,.confirmArm img{display:block;width:100%;height:100%;object-fit:fill}
 .face{left:35%;top:14%;width:25%;height:17%;transform-origin:50% 60%;animation:attention var(--duration) cubic-bezier(.3,0,.2,1) both}
 .brows{position:absolute;inset:0 0 auto;width:100%;height:auto;animation:brows var(--duration) ease-in-out both}
 .eyes{inset:33% 0 auto;transform-origin:50% 50%;animation:blink var(--duration) linear both}
 .eyes img{display:block;width:100%;height:auto}
 .smile{position:absolute;left:32%;top:85%;width:41%;height:auto;transform-origin:50% 20%;animation:smile var(--duration) ease-in-out both}
 .ground{position:absolute;left:20%;bottom:4%;width:60%;height:3%;border-radius:50%;background:radial-gradient(ellipse,#20193724,transparent 70%);animation:shadow var(--duration) ease-in-out both}
-[data-pose=explain] .waveHand,[data-pose=read] .waveHand,[data-pose=verify] .waveHand{visibility:hidden}
-[data-pose=explain] .pointHand,[data-pose=read] .pointHand,[data-pose=verify] .pointHand{visibility:visible}
+[data-pose=read] .gestureArm,[data-pose=verify] .gestureArm,[data-pose=think] .gestureArm{visibility:hidden}
+[data-pose=read] .restingArm,[data-pose=think] .restingArm{visibility:visible}
+[data-pose=verify] .confirmArm{visibility:visible}
 [data-pose=explain] .gestureArm{animation-name:explain}
 [data-pose=explain] .face{animation-name:lookRight}
-[data-pose=read] .gestureArm,[data-pose=verify] .gestureArm{animation-name:inspect}
-[data-pose=read] .gestureArm,[data-pose=verify] .gestureArm{z-index:1}
-[data-pose=read] .face,[data-pose=verify] .face{animation-name:lookDown}
-[data-pose=read] .documentArm,[data-pose=verify] .documentArm{animation-name:presentDocument}
+[data-pose=read] .performer{animation-name:readingBody}
+[data-pose=read] .face{animation-name:scanDocument}
+[data-pose=read] .documentArm{animation-name:presentDocument}
 [data-pose=verify] .performer{animation-name:nod}
-[data-pose=think] .gestureArm{animation-name:ponder}
+[data-pose=verify] .documentArm{animation-name:holdDocument}
+[data-pose=verify] .face{animation-name:confirmGaze}
+[data-pose=think] .performer{animation-name:thinkingBody}
 [data-pose=think] .face{animation-name:lookUp}
 [data-pose=celebrate] .performer{animation-name:celebrate}
 [data-pose=celebrate] .gestureArm{animation-name:cheer}
@@ -38,13 +43,17 @@
 @keyframes brows{0%,100%{transform:none}22%,59%{transform:translateY(-8%) rotate(-2deg)}78%{transform:none}}
 @keyframes smile{0%,100%{transform:scale(1)}22%,67%{transform:scale(1.1,1.18)}80%{transform:scale(1)}}
 @keyframes shadow{0%,100%{transform:scaleX(1);opacity:1}21%{transform:scaleX(.94);opacity:.8}38%{transform:scaleX(1);opacity:1}}
-@keyframes explain{0%,100%{transform:rotate(8deg)}12%{transform:rotate(18deg)}28%,44%{transform:rotate(-12deg)}56%{transform:rotate(-4deg)}68%{transform:rotate(-9deg)}85%{transform:rotate(8deg)}}
+@keyframes explain{0%,100%{transform:rotate(4deg)}15%{transform:rotate(9deg)}30%,48%{transform:rotate(-8deg)}61%{transform:rotate(-3deg)}72%{transform:rotate(-7deg)}87%{transform:rotate(4deg)}}
 @keyframes lookRight{0%,100%{transform:none}22%,67%{transform:translate(8%,1%) rotate(3deg)}82%{transform:none}}
-@keyframes inspect{0%,100%{transform:rotate(12deg)}16%{transform:rotate(20deg)}32%,67%{transform:rotate(165deg)}81%{transform:rotate(8deg)}}
-@keyframes lookDown{0%,100%{transform:none}27%,67%{transform:translate(-7%,10%) rotate(-5deg)}82%{transform:none}}
+@keyframes rest{0%,100%{transform:none}40%{transform:rotate(2deg)}75%{transform:rotate(-1deg)}}
+@keyframes readingBody{0%,100%{transform:none}22%,73%{transform:rotate(-2deg)}87%{transform:none}}
+@keyframes scanDocument{0%,100%{transform:none}24%,34%{transform:translate(-7%,8%) rotate(-4deg)}48%{transform:translate(-1%,12%) rotate(-2deg)}62%,72%{transform:translate(-7%,16%) rotate(-4deg)}87%{transform:none}}
 @keyframes presentDocument{0%,100%{transform:none}25%,69%{transform:translate(1%,-8%) rotate(5deg)}82%{transform:none}}
-@keyframes nod{0%,24%,100%{transform:none}39%{transform:translateY(1%) rotate(2deg)}49%{transform:translateY(-.5%) rotate(-1deg)}59%{transform:translateY(.7%) rotate(1deg)}75%{transform:none}}
-@keyframes ponder{0%,100%{transform:rotate(8deg)}25%,67%{transform:rotate(63deg)}42%{transform:rotate(68deg)}82%{transform:rotate(8deg)}}
+@keyframes holdDocument{0%,100%{transform:none}36%,71%{transform:rotate(-2deg)}}
+@keyframes approve{0%,100%{transform:translateY(4%) rotate(4deg)}22%{transform:translateY(6%) rotate(7deg)}42%,68%{transform:translateY(-5%) rotate(-5deg)}79%{transform:translateY(-2%) rotate(-2deg)}}
+@keyframes nod{0%,28%,100%{transform:none}39%{transform:translateY(1.4%) rotate(2deg)}49%{transform:translateY(-.3%) rotate(-1deg)}61%{transform:translateY(.5%) rotate(.5deg)}77%{transform:none}}
+@keyframes confirmGaze{0%,100%{transform:none}18%,29%{transform:translate(-3%,4%)}41%,78%{transform:translate(2%,-2%)}}
+@keyframes thinkingBody{0%,100%{transform:none}28%,68%{transform:rotate(2deg)}85%{transform:none}}
 @keyframes lookUp{0%,100%{transform:none}24%,68%{transform:translate(5%,-7%) rotate(5deg)}82%{transform:none}}
 @keyframes celebrate{0%,100%{transform:none}12%{transform:translateY(2%) scale(1.035,.96)}27%{transform:translateY(-6%) scale(.975,1.03) rotate(-4deg)}39%{transform:translateY(-4%) rotate(3deg)}51%{transform:translateY(1%) scale(1.04,.96)}64%{transform:translateY(-1%) scale(.99,1.01)}80%{transform:none}}
 @keyframes cheer{0%,100%{transform:rotate(8deg)}24%,44%{transform:rotate(-23deg)}57%{transform:rotate(-8deg)}72%{transform:rotate(8deg)}}
